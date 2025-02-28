@@ -1,13 +1,17 @@
 
 import { useState } from "react";
-import { Camera, Edit, MapPin, Calendar, Plus } from "lucide-react";
+import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { InterestBadge } from "@/components/ui/interest-badge";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
+import { format } from "date-fns";
 
 export default function Profile() {
   const [bio, setBio] = useState("Philosophy enthusiast and tech professional. I enjoy deep conversations about consciousness, ethics, and the future of AI. Always up for a good debate or collaborative projects.");
@@ -16,10 +20,79 @@ export default function Profile() {
     "Philosophy", "Technology", "Ethics", "Artificial Intelligence", 
     "Psychology", "Climate Change", "Literature"
   ]);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const { toast } = useToast();
+  
+  // Mock user data
+  const user = {
+    id: "u1",
+    name: "John Doe",
+    username: "johndoe",
+    followers: 245,
+    following: 132,
+    location: "San Francisco, CA",
+    age: 28,
+    dob: "1995-05-15",
+    gender: "Male",
+    joinDate: "2023-09-15"
+  };
+  
+  // Mock posts data
+  const posts = [
+    {
+      id: "p1",
+      content: "Just finished reading 'Thinking, Fast and Slow'. Such a mind-opening book about cognitive biases!",
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
+      likes: 24,
+      comments: 7,
+      isPublic: true,
+      type: "post"
+    },
+    {
+      id: "p2",
+      content: "Organizing a philosophy discussion meetup this Saturday at Golden Gate Park. The topic will be 'Ethics in AI'. Join us!",
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5), // 5 days ago
+      likes: 48,
+      comments: 12,
+      isPublic: true,
+      type: "event",
+      eventDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2), // in 2 days
+      eventLocation: "Golden Gate Park, San Francisco"
+    },
+    {
+      id: "p3",
+      content: "Working on a new project exploring the intersection of technology and climate change. Looking for collaborators!",
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8), // 8 days ago
+      likes: 36,
+      comments: 9,
+      isPublic: true,
+      type: "post"
+    }
+  ];
   
   const handleSaveBio = () => {
     setEditingBio(false);
-    // Here you would typically save the updated bio to your backend
+    toast({
+      title: "Profile updated",
+      description: "Your bio has been updated successfully."
+    });
+  };
+  
+  const handleTogglePrivacy = () => {
+    setIsPrivate(!isPrivate);
+    toast({
+      title: isPrivate ? "Profile is now public" : "Profile is now private",
+      description: isPrivate 
+        ? "Everyone can now see your posts and activity." 
+        : "Only approved followers can now see your posts and activity."
+    });
+  };
+
+  const handleFollow = () => {
+    toast({
+      title: "Follow request sent",
+      description: "You'll be notified when they accept your request."
+    });
   };
   
   return (
@@ -28,10 +101,20 @@ export default function Profile() {
         {/* Profile header */}
         <div className="relative rounded-xl overflow-hidden">
           {/* Cover photo */}
-          <div className="h-48 md:h-64 bg-gradient-to-r from-primary/30 to-accent/30"></div>
+          <div className="h-48 md:h-64 bg-gradient-to-r from-primary/30 to-accent/30 relative">
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              className="absolute bottom-4 right-4"
+              aria-label="Edit cover photo"
+            >
+              <Camera className="h-4 w-4 mr-2" />
+              Edit Cover
+            </Button>
+          </div>
           
           {/* Profile photo */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-16 md:-bottom-20">
+          <div className="absolute left-8 md:left-10 -bottom-16 md:-bottom-20">
             <div className="relative">
               <Avatar className="h-32 w-32 md:h-40 md:w-40 border-4 border-background">
                 <AvatarImage src="/placeholder.svg" alt="Profile" />
@@ -47,18 +130,79 @@ export default function Profile() {
               </Button>
             </div>
           </div>
+          
+          {/* Profile actions */}
+          <div className="absolute right-4 bottom-4 md:bottom-6 flex items-center gap-2">
+            <Button variant="outline" size="sm" className="bg-background/80 backdrop-blur-sm">
+              <Settings className="h-4 w-4 mr-2" />
+              Edit Profile
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-background/80 backdrop-blur-sm"
+              onClick={handleTogglePrivacy}
+            >
+              {isPrivate ? (
+                <>
+                  <Lock className="h-4 w-4 mr-2" />
+                  Private
+                </>
+              ) : (
+                <>
+                  <Globe className="h-4 w-4 mr-2" />
+                  Public
+                </>
+              )}
+            </Button>
+          </div>
         </div>
         
         {/* Profile info */}
-        <div className="mt-20 text-center">
-          <h1 className="text-2xl font-bold">John Doe</h1>
-          <div className="flex items-center justify-center gap-3 text-muted-foreground mt-1">
-            <div className="flex items-center">
-              <MapPin className="h-4 w-4 mr-1" />
-              San Francisco, CA
+        <div className="mt-20 md:pl-44 flex flex-col md:flex-row md:justify-between md:items-end">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold">{user.name}</h1>
+              {isPrivate && <Lock className="h-4 w-4 text-muted-foreground" />}
             </div>
-            <span>•</span>
-            <div>28 years old</div>
+            <p className="text-muted-foreground">@{user.username}</p>
+            <div className="flex items-center gap-3 text-muted-foreground mt-1">
+              <div className="flex items-center">
+                <MapPin className="h-4 w-4 mr-1" />
+                {user.location}
+              </div>
+              <span>•</span>
+              <div>{user.age} years old</div>
+              <span>•</span>
+              <div>{user.gender}</div>
+            </div>
+          </div>
+          
+          <div className="flex mt-4 md:mt-0 gap-3">
+            <Button variant="default" size="sm">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Follow
+            </Button>
+            <Button variant="outline" size="sm">
+              <MessagesSquare className="h-4 w-4 mr-2" />
+              Message
+            </Button>
+          </div>
+        </div>
+        
+        {/* Stats */}
+        <div className="flex border rounded-lg divide-x">
+          <div className="flex-1 p-4 text-center">
+            <div className="text-2xl font-bold">{posts.length}</div>
+            <div className="text-sm text-muted-foreground">Posts</div>
+          </div>
+          <div className="flex-1 p-4 text-center">
+            <div className="text-2xl font-bold">{user.followers}</div>
+            <div className="text-sm text-muted-foreground">Followers</div>
+          </div>
+          <div className="flex-1 p-4 text-center">
+            <div className="text-2xl font-bold">{user.following}</div>
+            <div className="text-sm text-muted-foreground">Following</div>
           </div>
         </div>
         
@@ -134,29 +278,147 @@ export default function Profile() {
         </Card>
         
         {/* Activity tabs */}
-        <Tabs defaultValue="activities">
-          <TabsList className="grid grid-cols-2">
-            <TabsTrigger value="activities">Activities</TabsTrigger>
+        <Tabs defaultValue="posts">
+          <TabsList className="grid grid-cols-3">
+            <TabsTrigger value="posts">Posts</TabsTrigger>
+            <TabsTrigger value="events">Events</TabsTrigger>
             <TabsTrigger value="channels">Channels</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="activities" className="mt-4">
-            <Card>
-              <CardContent className="p-6 min-h-[200px] flex flex-col items-center justify-center text-center">
-                <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-1">No activities yet</h3>
-                <p className="text-muted-foreground max-w-md mb-4">
-                  You haven't planned any activities or meetups yet
-                </p>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Activity
-                </Button>
-              </CardContent>
-            </Card>
+          <div className="flex justify-between items-center mt-4">
+            <h2 className="text-lg font-medium">Activity</h2>
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Post
+            </Button>
+          </div>
+          
+          <TabsContent value="posts" className="mt-2 space-y-4">
+            {posts.filter(post => post.type === 'post').length > 0 ? (
+              posts
+                .filter(post => post.type === 'post')
+                .map(post => (
+                  <Card key={post.id} className="overflow-hidden">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src="/placeholder.svg" alt={user.name} />
+                          <AvatarFallback>{user.name[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-medium">{user.name}</h3>
+                              <p className="text-xs text-muted-foreground">
+                                {format(post.timestamp, 'MMM d, yyyy')} • {post.isPublic ? 'Public' : 'Private'}
+                              </p>
+                            </div>
+                            <Badge variant={post.isPublic ? "outline" : "secondary"} className="ml-2">
+                              {post.isPublic ? <Globe className="h-3 w-3 mr-1" /> : <Lock className="h-3 w-3 mr-1" />}
+                              {post.isPublic ? "Public" : "Private"}
+                            </Badge>
+                          </div>
+                          
+                          <p className="mt-2">{post.content}</p>
+                          
+                          <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
+                            <div>{post.likes} likes</div>
+                            <div>{post.comments} comments</div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+            ) : (
+              <Card>
+                <CardContent className="p-6 min-h-[200px] flex flex-col items-center justify-center text-center">
+                  <h3 className="text-lg font-medium mb-1">No posts yet</h3>
+                  <p className="text-muted-foreground max-w-md mb-4">
+                    Share your thoughts, ideas, or questions with your followers
+                  </p>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Post
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           
-          <TabsContent value="channels" className="mt-4">
+          <TabsContent value="events" className="mt-2 space-y-4">
+            {posts.filter(post => post.type === 'event').length > 0 ? (
+              posts
+                .filter(post => post.type === 'event')
+                .map(post => (
+                  <Card key={post.id} className="overflow-hidden">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src="/placeholder.svg" alt={user.name} />
+                          <AvatarFallback>{user.name[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-medium">{user.name}</h3>
+                              <p className="text-xs text-muted-foreground">
+                                Posted on {format(post.timestamp, 'MMM d, yyyy')} • Event
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              Event
+                            </Badge>
+                          </div>
+                          
+                          <p className="mt-2">{post.content}</p>
+                          
+                          {post.eventDate && post.eventLocation && (
+                            <div className="mt-3 p-3 bg-accent/30 rounded-md space-y-1">
+                              <div className="flex items-center">
+                                <Calendar className="h-4 w-4 mr-2 text-primary" />
+                                <span className="font-medium">{format(post.eventDate, 'EEEE, MMMM d, yyyy - h:mm a')}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-2 text-primary" />
+                                <span>{post.eventLocation}</span>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="mt-4 flex items-center justify-between">
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div>{post.likes} interested</div>
+                              <div>{post.comments} comments</div>
+                            </div>
+                            <Button size="sm" variant="outline">
+                              Interested
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+            ) : (
+              <Card>
+                <CardContent className="p-6 min-h-[200px] flex flex-col items-center justify-center text-center">
+                  <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-1">No events yet</h3>
+                  <p className="text-muted-foreground max-w-md mb-4">
+                    Create events to connect with people who share your interests
+                  </p>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Event
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="channels" className="mt-2">
             <Card>
               <CardContent className="p-6 min-h-[200px] flex flex-col items-center justify-center text-center">
                 <Users className="h-12 w-12 text-muted-foreground mb-4" />
@@ -173,11 +435,18 @@ export default function Profile() {
             </Card>
           </TabsContent>
         </Tabs>
+        
+        {/* Account info */}
+        <div className="text-sm text-muted-foreground border-t pt-6">
+          <p>Member since {format(new Date(user.joinDate), 'MMMM yyyy')}</p>
+        </div>
       </div>
     </MainLayout>
   );
 }
 
-// Missing import
+// Missing imports
 import { Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
