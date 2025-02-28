@@ -1,6 +1,7 @@
 
 import { useState } from "react";
-import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe } from "lucide-react";
+import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -444,9 +445,3 @@ export default function Profile() {
     </MainLayout>
   );
 }
-
-// Missing imports
-import { Users } from "lucide-react";
-import { Link } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
