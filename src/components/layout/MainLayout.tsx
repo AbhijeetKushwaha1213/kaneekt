@@ -8,7 +8,8 @@ import {
   User, 
   Menu, 
   X, 
-  Home 
+  Home,
+  Bell
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,11 +49,21 @@ export function MainLayout({ children }: MainLayoutProps) {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-medium">chatfield</h1>
-          <Avatar className="h-8 w-8">
-            <AvatarImage src="/placeholder.svg" alt="User" />
-            <AvatarFallback>U</AvatarFallback>
-          </Avatar>
+          <h1 className="text-lg font-medium">syncterest</h1>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label="Notifications"
+            >
+              <Bell className="h-5 w-5" />
+            </Button>
+            <Avatar className="h-8 w-8">
+              <AvatarImage src="/placeholder.svg" alt="User" />
+              <AvatarFallback>U</AvatarFallback>
+            </Avatar>
+          </div>
         </div>
       </header>
 
@@ -72,7 +83,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         )}
       >
         <div className="flex items-center justify-between h-14 px-4 border-b">
-          <h1 className="text-lg font-medium">chatfield</h1>
+          <h1 className="text-lg font-medium">syncterest</h1>
           <Button
             variant="ghost"
             size="icon"

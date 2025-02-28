@@ -8,6 +8,13 @@ export interface User {
   bio: string;
   interests: string[];
   distance?: number;
+  gender?: string;
+  dob?: string;
+  email?: string;
+  username?: string;
+  followers?: number;
+  following?: number;
+  isPrivate?: boolean;
 }
 
 export interface Channel {
@@ -29,6 +36,15 @@ export interface Message {
     avatar?: string;
   };
   isCurrentUser: boolean;
+  type?: 'text' | 'image' | 'video' | 'voice';
+  mediaUrl?: string;
+  reactions?: Reaction[];
+  status?: 'sent' | 'delivered' | 'read';
+}
+
+export interface Reaction {
+  emoji: string;
+  userId: string;
 }
 
 export interface Conversation {
@@ -44,4 +60,33 @@ export interface Conversation {
     timestamp: Date;
     unread: boolean;
   };
+  isApproved?: boolean;
+}
+
+export interface Post {
+  id: string;
+  author: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  content: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
+  timestamp: Date;
+  likes: number;
+  comments: number;
+  isPublic: boolean;
+  type?: 'post' | 'event' | 'announcement';
+  eventDate?: Date;
+  eventLocation?: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  username: string;
+  name: string;
+  avatar?: string;
+  isLoggedIn: boolean;
 }
