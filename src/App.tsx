@@ -1,38 +1,96 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
-import Discover from "./pages/Discover";
-import Channels from "./pages/Channels";
+import Auth from "./pages/Auth";
+import Profile from "./pages/Profile";
 import Chats from "./pages/Chats";
 import Chat from "./pages/Chat";
-import Profile from "./pages/Profile";
+import Discover from "./pages/Discover";
+import Channels from "./pages/Channels";
 import NotFound from "./pages/NotFound";
+import { Toaster } from "@/components/ui/toaster";
+import { useState, useEffect } from "react";
+import { AuthUser } from "./types";
 
-const queryClient = new QueryClient();
+// Protected route component
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  
+  useEffect(() => {
+    // Check if user is authenticated
+    const user = localStorage.getItem("user");
+    setIsAuthenticated(!!user);
+  }, []);
+  
+  // Still checking auth state
+  if (isAuthenticated === null) {
+    return <div className="h-screen flex items-center justify-center">Loading...</div>;
+  }
+  
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  // Render children if authenticated
+  return <>{children}</>;
+}
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+export default function App() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  
+  useEffect(() => {
+    // Load user data from localStorage on app start
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+      } catch (error) {
+        console.error("Failed to parse user data", error);
+        localStorage.removeItem("user");
+      }
+    }
+  }, []);
+  
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        
+        {/* Protected routes */}
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        } />
+        <Route path="/chats" element={
+          <ProtectedRoute>
+            <Chats />
+          </ProtectedRoute>
+        } />
+        <Route path="/chat/:id" element={
+          <ProtectedRoute>
+            <Chat />
+          </ProtectedRoute>
+        } />
+        <Route path="/discover" element={
+          <ProtectedRoute>
+            <Discover />
+          </ProtectedRoute>
+        } />
+        <Route path="/channels" element={
+          <ProtectedRoute>
+            <Channels />
+          </ProtectedRoute>
+        } />
+        
+        {/* 404 route */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
       <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/discover" element={<Discover />} />
-          <Route path="/channels" element={<Channels />} />
-          <Route path="/chats" element={<Chats />} />
-          <Route path="/chats/:chatId" element={<Chat />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/profile/:userId" element={<Profile />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
-
-export default App;
+    </BrowserRouter>
+  );
+}
