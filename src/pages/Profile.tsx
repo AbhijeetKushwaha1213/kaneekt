@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
-import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe, Users } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe, Users, UserCheck } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,6 +13,9 @@ import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { AuthUser, User } from "@/types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function Profile() {
   const [bio, setBio] = useState("Philosophy enthusiast and tech professional. I enjoy deep conversations about consciousness, ethics, and the future of AI. Always up for a good debate or collaborative projects.");
@@ -23,7 +25,11 @@ export default function Profile() {
     "Psychology", "Climate Change", "Literature"
   ]);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [editProfileData, setEditProfileData] = useState<Partial<User>>({});
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Get authenticated user from localStorage
   const [userData, setUserData] = useState<AuthUser | null>(null);
@@ -57,6 +63,16 @@ export default function Profile() {
         if (parsedProfile.interests && parsedProfile.interests.length > 0) {
           setInterests(parsedProfile.interests);
         }
+
+        // Initialize edit profile data
+        setEditProfileData({
+          name: parsedProfile.name,
+          location: parsedProfile.location,
+          gender: parsedProfile.gender,
+          dob: parsedProfile.dob,
+          bio: parsedProfile.bio,
+          interests: parsedProfile.interests
+        });
       } catch (error) {
         console.error("Failed to parse profile data", error);
       }
@@ -121,9 +137,67 @@ export default function Profile() {
   };
 
   const handleFollow = () => {
+    setIsFollowing(!isFollowing);
     toast({
-      title: "Follow request sent",
-      description: "You'll be notified when they accept your request."
+      title: isFollowing ? "Unfollowed" : "Following",
+      description: isFollowing 
+        ? "You are no longer following this user." 
+        : "You're now following this user. You'll see their updates in your feed."
+    });
+  };
+  
+  const handleMessage = () => {
+    // Navigate to chat section
+    navigate("/chats");
+    toast({
+      title: "Chat opened",
+      description: "You can now message this user."
+    });
+  };
+  
+  const handleOpenEditProfile = () => {
+    if (profileData) {
+      setEditProfileData({
+        name: profileData.name,
+        location: profileData.location,
+        gender: profileData.gender,
+        dob: profileData.dob,
+        bio: profileData.bio,
+        interests: profileData.interests
+      });
+    }
+    setEditProfileOpen(true);
+  };
+
+  const handleSaveProfile = () => {
+    // Save updated profile data to localStorage
+    if (profileData) {
+      const updatedProfile = { ...profileData, ...editProfileData };
+      localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
+      setProfileData(updatedProfile);
+      
+      // Update user data if necessary
+      if (userData && editProfileData.name) {
+        const updatedUser = { ...userData, name: editProfileData.name };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        setUserData(updatedUser);
+      }
+      
+      // Update bio if it was changed
+      if (editProfileData.bio) {
+        setBio(editProfileData.bio);
+      }
+      
+      // Update interests if they were changed
+      if (editProfileData.interests) {
+        setInterests(editProfileData.interests);
+      }
+    }
+    
+    setEditProfileOpen(false);
+    toast({
+      title: "Profile updated",
+      description: "Your profile has been updated successfully."
     });
   };
   
@@ -180,7 +254,12 @@ export default function Profile() {
           
           {/* Profile actions */}
           <div className="absolute right-4 bottom-4 md:bottom-6 flex items-center gap-2">
-            <Button variant="outline" size="sm" className="bg-background/80 backdrop-blur-sm">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-background/80 backdrop-blur-sm"
+              onClick={handleOpenEditProfile}
+            >
               <Settings className="h-4 w-4 mr-2" />
               Edit Profile
             </Button>
@@ -236,11 +315,28 @@ export default function Profile() {
           </div>
           
           <div className="flex mt-4 md:mt-0 gap-3">
-            <Button variant="default" size="sm">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Follow
+            <Button 
+              variant={isFollowing ? "secondary" : "default"} 
+              size="sm"
+              onClick={handleFollow}
+            >
+              {isFollowing ? (
+                <>
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Following
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Follow
+                </>
+              )}
             </Button>
-            <Button variant="outline" size="sm">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleMessage}
+            >
               <MessagesSquare className="h-4 w-4 mr-2" />
               Message
             </Button>
@@ -498,6 +594,90 @@ export default function Profile() {
           <p>Member since {userData ? format(new Date(userData.createdAt || new Date()), 'MMMM yyyy') : "Recently"}</p>
         </div>
       </div>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>
+              Update your profile information
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="name"
+                value={editProfileData.name || ''}
+                onChange={(e) => setEditProfileData({...editProfileData, name: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="location" className="text-right">
+                Location
+              </Label>
+              <Input
+                id="location"
+                value={editProfileData.location || ''}
+                onChange={(e) => setEditProfileData({...editProfileData, location: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="gender" className="text-right">
+                Gender
+              </Label>
+              <Input
+                id="gender"
+                value={editProfileData.gender || ''}
+                onChange={(e) => setEditProfileData({...editProfileData, gender: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="dob" className="text-right">
+                Date of Birth
+              </Label>
+              <Input
+                id="dob"
+                type="date"
+                value={editProfileData.dob || ''}
+                onChange={(e) => setEditProfileData({...editProfileData, dob: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="bio" className="text-right">
+                Bio
+              </Label>
+              <textarea
+                id="bio"
+                value={editProfileData.bio || ''}
+                onChange={(e) => setEditProfileData({...editProfileData, bio: e.target.value})}
+                className="col-span-3 p-2 border rounded-md h-24 resize-none"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditProfileOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleSaveProfile}>
+              Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
