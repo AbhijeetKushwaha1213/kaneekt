@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, User, Calendar, MapPin, Upload, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { AuthUser } from "@/types";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription
+} from "@/components/ui/dialog";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -16,6 +23,7 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
+  const [showSignupDialog, setShowSignupDialog] = useState(false);
   const [loginForm, setLoginForm] = useState({
     email: "",
     password: "",
@@ -35,38 +43,115 @@ export default function Auth() {
   // For step-by-step signup process
   const [signupStep, setSignupStep] = useState(1);
   
+  // Check if user is already logged in
+  useEffect(() => {
+    const storedUserData = localStorage.getItem("user");
+    if (storedUserData) {
+      try {
+        const userData = JSON.parse(storedUserData);
+        if (userData.isLoggedIn) {
+          // User is already logged in, redirect to chats
+          navigate("/chats");
+        }
+      } catch (error) {
+        console.error("Failed to parse user data", error);
+        // Clear invalid data
+        localStorage.removeItem("user");
+      }
+    }
+  }, [navigate]);
+  
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+  
+  const validatePassword = (password: string): boolean => {
+    return password.length >= 8;
+  };
+  
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate email format
+    if (!validateEmail(loginForm.email)) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      // In a real app, this would be an API call to authenticate
-      // Mock successful login for now
-      setTimeout(() => {
-        // Create mock authenticated user
-        const authUser: AuthUser = {
-          id: "u1",
-          email: loginForm.email,
-          username: "johndoe",
-          name: "John Doe", 
-          isLoggedIn: true
-        };
-        
-        // In a real app, you would store this in a context or state management
-        localStorage.setItem("user", JSON.stringify(authUser));
-        
-        toast({
-          title: "Login successful",
-          description: "Welcome back to syncterest!"
-        });
-        
-        // Redirect to chats page (primary screen)
-        navigate("/chats");
-      }, 1500);
+      // Get all registered users
+      const allUsers = localStorage.getItem("allUsers");
+      let users: AuthUser[] = [];
+      
+      if (allUsers) {
+        users = JSON.parse(allUsers);
+      }
+      
+      // Find user with matching email
+      const user = users.find(u => u.email.toLowerCase() === loginForm.email.toLowerCase());
+      
+      if (user) {
+        // In real app, we'd check password hash, but for demo we'll just check equality
+        if (user.password === loginForm.password) {
+          // Mark as logged in
+          user.isLoggedIn = true;
+          
+          // Update in users list
+          localStorage.setItem("allUsers", JSON.stringify(users));
+          
+          // Set current user
+          localStorage.setItem("user", JSON.stringify(user));
+          
+          // Create user profile if not exists
+          if (!localStorage.getItem("userProfile")) {
+            const userProfile = {
+              id: user.id,
+              name: user.name,
+              age: 0, // Will be calculated from DOB
+              location: user.location || "",
+              avatar: user.avatar || "/placeholder.svg",
+              bio: "I'm new to syncterest!",
+              interests: ["Technology", "Communication"],
+              gender: user.gender || "",
+              dob: user.dob || "",
+              email: user.email,
+              username: user.username,
+              followers: 0,
+              following: 0,
+              isPrivate: false
+            };
+            localStorage.setItem("userProfile", JSON.stringify(userProfile));
+          }
+          
+          toast({
+            title: "Login successful",
+            description: `Welcome back, ${user.name}!`
+          });
+          
+          navigate("/chats");
+        } else {
+          toast({
+            title: "Login failed",
+            description: "Invalid password. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        // No user found with this email
+        setShowSignupDialog(true);
+      }
     } catch (error) {
+      console.error("Login error:", error);
       toast({
         title: "Login failed",
-        description: "Invalid email or password. Please try again.",
+        description: "An error occurred during login. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -88,9 +173,8 @@ export default function Auth() {
         return;
       }
       
-      // Simple email validation
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(signupForm.email)) {
+      // Email validation
+      if (!validateEmail(signupForm.email)) {
         toast({
           title: "Invalid email",
           description: "Please enter a valid email address",
@@ -100,13 +184,44 @@ export default function Auth() {
       }
       
       // Password strength validation
-      if (signupForm.password.length < 8) {
+      if (!validatePassword(signupForm.password)) {
         toast({
           title: "Weak password",
           description: "Password must be at least 8 characters long",
           variant: "destructive"
         });
         return;
+      }
+      
+      // Check if email is already registered
+      const allUsers = localStorage.getItem("allUsers");
+      if (allUsers) {
+        const users: AuthUser[] = JSON.parse(allUsers);
+        const existingUser = users.find(u => u.email.toLowerCase() === signupForm.email.toLowerCase());
+        
+        if (existingUser) {
+          toast({
+            title: "Email already registered",
+            description: "This email is already in use. Please log in or use a different email.",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+      
+      // Check if username is already taken
+      if (allUsers) {
+        const users: AuthUser[] = JSON.parse(allUsers);
+        const existingUsername = users.find(u => u.username.toLowerCase() === signupForm.username.toLowerCase());
+        
+        if (existingUsername) {
+          toast({
+            title: "Username taken",
+            description: "This username is already taken. Please choose a different one.",
+            variant: "destructive"
+          });
+          return;
+        }
       }
       
       setSignupStep(2);
@@ -146,30 +261,72 @@ export default function Auth() {
     setIsLoading(true);
     
     try {
-      // In a real app, this would be an API call to register the user
-      // Mock successful signup for now
-      setTimeout(() => {
-        // Create mock authenticated user
-        const authUser: AuthUser = {
-          id: "u1",
-          email: signupForm.email,
-          username: signupForm.username,
-          name: signupForm.fullName,
-          isLoggedIn: true
-        };
-        
-        // In a real app, you would store this in a context or state management
-        localStorage.setItem("user", JSON.stringify(authUser));
-        
-        toast({
-          title: "Account created",
-          description: "Welcome to syncterest! Your account has been created successfully."
-        });
-        
-        // Redirect to chats page (primary screen)
-        navigate("/chats");
-      }, 1500);
+      // Create user ID
+      const userId = `user-${Date.now()}`;
+      
+      // Create authenticated user
+      const authUser: AuthUser & { password?: string } = {
+        id: userId,
+        email: signupForm.email,
+        username: signupForm.username,
+        name: signupForm.fullName,
+        avatar: "/placeholder.svg", // Default avatar
+        isLoggedIn: true,
+        createdAt: new Date().toISOString(),
+        password: signupForm.password, // In real app, this would be hashed
+        location: signupForm.location,
+        gender: signupForm.gender,
+        dob: signupForm.dob
+      };
+      
+      // Get existing users or create empty array
+      const allUsers = localStorage.getItem("allUsers");
+      let users: AuthUser[] = [];
+      
+      if (allUsers) {
+        users = JSON.parse(allUsers);
+      }
+      
+      // Add new user
+      users.push(authUser);
+      
+      // Save to localStorage
+      localStorage.setItem("allUsers", JSON.stringify(users));
+      
+      // Save current user (without password for security)
+      const currentUser = { ...authUser };
+      delete currentUser.password;
+      localStorage.setItem("user", JSON.stringify(currentUser));
+      
+      // Create user profile
+      const userProfile = {
+        id: userId,
+        name: signupForm.fullName,
+        age: 0, // Will be calculated from DOB
+        location: signupForm.location || "",
+        avatar: "/placeholder.svg",
+        bio: "I'm new to syncterest!",
+        interests: ["Technology", "Communication"],
+        gender: signupForm.gender,
+        dob: signupForm.dob,
+        email: signupForm.email,
+        username: signupForm.username,
+        followers: 0,
+        following: 0,
+        isPrivate: false
+      };
+      
+      localStorage.setItem("userProfile", JSON.stringify(userProfile));
+      
+      toast({
+        title: "Account created",
+        description: "Welcome to syncterest! Your account has been created successfully."
+      });
+      
+      // Redirect to chats page
+      navigate("/chats");
     } catch (error) {
+      console.error("Signup error:", error);
       toast({
         title: "Signup failed",
         description: "There was an error creating your account. Please try again.",
@@ -188,6 +345,16 @@ export default function Auth() {
         avatar: file
       });
     }
+  };
+  
+  const handleCreateAccount = () => {
+    setShowSignupDialog(false);
+    setActiveTab("signup");
+    // Pre-fill email from login attempt
+    setSignupForm({
+      ...signupForm,
+      email: loginForm.email
+    });
   };
   
   return (
@@ -500,6 +667,26 @@ export default function Auth() {
           </Tabs>
         </div>
       </div>
+      
+      {/* Account creation dialog */}
+      <Dialog open={showSignupDialog} onOpenChange={setShowSignupDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Account not found</DialogTitle>
+            <DialogDescription>
+              No account was found with this email address. Would you like to create a new account?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setShowSignupDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateAccount}>
+              Create Account
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

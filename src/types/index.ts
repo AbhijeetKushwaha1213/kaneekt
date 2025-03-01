@@ -89,5 +89,9 @@ export interface AuthUser {
   name: string;
   avatar?: string;
   isLoggedIn: boolean;
-  createdAt?: string; // Add createdAt field to track when user was created
+  createdAt?: string;
+  password?: string; // Added for authentication
+  location?: string; // Added to match profile data
+  gender?: string; // Added to match profile data
+  dob?: string; // Added to match profile data
 }

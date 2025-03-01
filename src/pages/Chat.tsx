@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChatMessage } from "@/components/ui/chat-message";
-import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import { Message, AuthUser } from "@/types";
 
 // Mock data for the chat messages
@@ -72,34 +72,44 @@ const MOCK_MESSAGES: Message[] = [
 export default function Chat() {
   const { chatId } = useParams();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
+  const { toast } = useToast();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [chatPartner, setChatPartner] = useState<AuthUser | null>(null);
-  
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-  
-  useEffect(() => {
-    // Try to get user data for the chat partner
+    // Check if user is logged in
     const storedUserData = localStorage.getItem("user");
-    if (storedUserData) {
-      try {
-        const userData = JSON.parse(storedUserData);
-        setChatPartner(userData);
-      } catch (error) {
-        console.error("Failed to parse user data", error);
-      }
+    
+    if (!storedUserData) {
+      // If not logged in, redirect to auth page
+      toast({
+        title: "Authentication required",
+        description: "Please log in to view this chat",
+        variant: "destructive"
+      });
+      navigate("/auth");
+      return;
     }
     
-    // Get conversation from localStorage if available
+    try {
+      const userData = JSON.parse(storedUserData);
+      setCurrentUser(userData);
+    } catch (error) {
+      console.error("Failed to parse user data", error);
+      navigate("/auth");
+    }
+  }, [navigate, toast]);
+  
+  useEffect(() => {
+    // Try to get chat partner data
+    if (!chatId) return;
+    
+    // First, check for direct conversations
     const storedConversations = localStorage.getItem("conversations");
-    if (storedConversations && chatId) {
+    if (storedConversations) {
       try {
         const conversations = JSON.parse(storedConversations);
         const currentConversation = conversations.find(
@@ -110,41 +120,152 @@ export default function Chat() {
           setChatPartner({
             id: currentConversation.user.id,
             name: currentConversation.user.name,
-            avatar: currentConversation.user.avatar,
+            avatar: currentConversation.user.avatar || "/placeholder.svg",
             email: "",
             username: "",
-            isLoggedIn: true
+            isLoggedIn: true,
+            createdAt: new Date().toISOString()
           });
+          
+          // Load chat history if exists
+          const chatKey = `chat_${chatId}`;
+          const storedMessages = localStorage.getItem(chatKey);
+          
+          if (storedMessages) {
+            const parsedMessages = JSON.parse(storedMessages);
+            setMessages(parsedMessages);
+          } else {
+            // For demo purposes, use mock data for chats that don't have history yet
+            setMessages(MOCK_MESSAGES);
+          }
+          return;
         }
       } catch (error) {
         console.error("Failed to parse conversations", error);
       }
     }
-  }, [chatId]);
+    
+    // If no conversation found, check all registered users
+    const allUsers = localStorage.getItem("allUsers");
+    if (allUsers) {
+      try {
+        const usersList = JSON.parse(allUsers);
+        const targetUser = usersList.find((user: AuthUser) => user.id === chatId);
+        
+        if (targetUser) {
+          setChatPartner(targetUser);
+          
+          // Create new conversation if it doesn't exist
+          let conversations = [];
+          if (storedConversations) {
+            conversations = JSON.parse(storedConversations);
+          }
+          
+          // Check if conversation already exists
+          const existingConv = conversations.find(
+            (conv: any) => conv.user.id === chatId
+          );
+          
+          if (!existingConv && currentUser) {
+            const newConversation = {
+              id: `conv-${Date.now()}`,
+              user: {
+                id: targetUser.id,
+                name: targetUser.name,
+                avatar: targetUser.avatar || "/placeholder.svg"
+              },
+              lastMessage: {
+                id: `msg-${Date.now()}`,
+                content: "Start a conversation...",
+                timestamp: new Date(),
+                unread: false
+              },
+              isApproved: true
+            };
+            
+            conversations.push(newConversation);
+            localStorage.setItem("conversations", JSON.stringify(conversations));
+          }
+          
+          // For demo purposes, use mock data for new chats
+          setMessages(MOCK_MESSAGES);
+          return;
+        }
+      } catch (error) {
+        console.error("Failed to parse users", error);
+      }
+    }
+    
+    // If no user found, use default values for demo
+    setChatPartner({
+      id: "u1",
+      name: "Emma",
+      avatar: "/placeholder.svg",
+      email: "",
+      username: "",
+      isLoggedIn: true,
+      createdAt: new Date().toISOString()
+    });
+    setMessages(MOCK_MESSAGES);
+  }, [chatId, currentUser]);
+  
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+  
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
   
   const handleSendMessage = () => {
-    if (newMessage.trim() === "") return;
+    if (newMessage.trim() === "" || !currentUser) return;
     
     const message: Message = {
       id: `new-${Date.now()}`,
       content: newMessage,
       timestamp: new Date(),
       sender: {
-        id: "current",
-        name: "You",
-        avatar: "/placeholder.svg"
+        id: currentUser.id,
+        name: currentUser.name,
+        avatar: currentUser.avatar || "/placeholder.svg"
       },
       isCurrentUser: true
     };
     
     // Add message to local messages state
-    setMessages([...messages, message]);
+    const updatedMessages = [...messages, message];
+    setMessages(updatedMessages);
     
     // Store the messages in localStorage
     const chatKey = `chat_${chatId || 'default'}`;
-    const storedMessages = JSON.parse(localStorage.getItem(chatKey) || "[]");
-    storedMessages.push(message);
-    localStorage.setItem(chatKey, JSON.stringify(storedMessages));
+    localStorage.setItem(chatKey, JSON.stringify(updatedMessages));
+    
+    // Update conversation last message
+    if (chatId) {
+      const storedConversations = localStorage.getItem("conversations");
+      if (storedConversations) {
+        try {
+          const conversations = JSON.parse(storedConversations);
+          const updatedConversations = conversations.map((conv: any) => {
+            if (conv.user.id === chatId || conv.id === chatId) {
+              return {
+                ...conv,
+                lastMessage: {
+                  id: message.id,
+                  content: message.content,
+                  timestamp: new Date(),
+                  unread: false
+                }
+              };
+            }
+            return conv;
+          });
+          localStorage.setItem("conversations", JSON.stringify(updatedConversations));
+        } catch (error) {
+          console.error("Failed to update conversation", error);
+        }
+      }
+    }
     
     setNewMessage("");
   };
