@@ -1,93 +1,44 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-
-// Mock conversation data
-const CONVERSATIONS = [
-  {
-    id: "1",
-    user: {
-      id: "u1",
-      name: "Emma Thompson",
-      avatar: "/placeholder.svg"
-    },
-    lastMessage: {
-      id: "m1",
-      content: "Are you still interested in joining the hiking group this weekend?",
-      timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
-      unread: true,
-    }
-  },
-  {
-    id: "2",
-    user: {
-      id: "u2",
-      name: "Michael Chen",
-      avatar: "/placeholder.svg"
-    },
-    lastMessage: {
-      id: "m2",
-      content: "I found an interesting article about quantum computing that I think you'd enjoy.",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-      unread: false,
-    }
-  },
-  {
-    id: "3",
-    user: {
-      id: "u3",
-      name: "Sophia Rodriguez",
-      avatar: "/placeholder.svg"
-    },
-    lastMessage: {
-      id: "m3",
-      content: "Let's continue our discussion about climate policy later today.",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-      unread: false,
-    }
-  },
-  {
-    id: "4",
-    user: {
-      id: "u4",
-      name: "Noah Williams",
-      avatar: "/placeholder.svg"
-    },
-    lastMessage: {
-      id: "m4",
-      content: "I'm putting together a basketball game for Saturday. Interested?",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 36), // 1.5 days ago
-      unread: true,
-    }
-  },
-  {
-    id: "5",
-    user: {
-      id: "u5",
-      name: "Olivia Johnson",
-      avatar: "/placeholder.svg"
-    },
-    lastMessage: {
-      id: "m5",
-      content: "Thanks for sharing your thoughts on the book. I found your perspective fascinating.",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48), // 2 days ago
-      unread: false,
-    }
-  },
-];
+import { Conversation } from "@/types";
 
 export function ConversationList() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const navigate = useNavigate();
   
-  const filteredConversations = CONVERSATIONS.filter(
+  // Load conversations from localStorage
+  useEffect(() => {
+    const storedConversations = localStorage.getItem("conversations");
+    if (storedConversations) {
+      try {
+        const parsedConversations = JSON.parse(storedConversations);
+        setConversations(parsedConversations);
+      } catch (error) {
+        console.error("Failed to parse conversations", error);
+        // If parsing fails, provide fallback empty conversations array
+        setConversations([]);
+      }
+    } else {
+      // If no conversations found, set empty array
+      setConversations([]);
+    }
+  }, []);
+  
+  const filteredConversations = conversations.filter(
     convo => convo.user.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const navigateToDiscoverPage = () => {
+    navigate("/discover");
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -106,7 +57,10 @@ export function ConversationList() {
       <div className="flex-1 overflow-y-auto">
         {filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-            <p className="text-muted-foreground">No conversations found</p>
+            <p className="text-muted-foreground mb-4">No conversations yet</p>
+            <Button onClick={navigateToDiscoverPage} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Start new chat
+            </Button>
           </div>
         ) : (
           <ul className="divide-y">
@@ -128,7 +82,7 @@ export function ConversationList() {
                     <div className="flex justify-between items-baseline">
                       <h3 className="font-medium truncate">{conversation.user.name}</h3>
                       <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
-                        {formatDistanceToNow(conversation.lastMessage.timestamp, { addSuffix: true })}
+                        {formatDistanceToNow(new Date(conversation.lastMessage.timestamp), { addSuffix: true })}
                       </span>
                     </div>
                     

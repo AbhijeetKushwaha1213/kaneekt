@@ -78,6 +78,7 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [chatPartner, setChatPartner] = useState<AuthUser | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     // Check if user is logged in
@@ -105,40 +106,86 @@ export default function Chat() {
   
   useEffect(() => {
     // Try to get chat partner data
-    if (!chatId) return;
+    if (!chatId || !currentUser) {
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    console.log("Looking for chat with ID:", chatId);
     
     // First, check for direct conversations
     const storedConversations = localStorage.getItem("conversations");
+    let foundConversation = false;
+    let targetUser = null;
+    
     if (storedConversations) {
       try {
         const conversations = JSON.parse(storedConversations);
-        const currentConversation = conversations.find(
-          (conv: any) => conv.user.id === chatId || conv.id === chatId
+        console.log("Stored conversations:", conversations);
+        
+        // First look for exact conversation ID match
+        const exactMatch = conversations.find(
+          (conv: any) => conv.id === chatId
         );
         
-        if (currentConversation) {
+        if (exactMatch) {
+          console.log("Found exact conversation match:", exactMatch);
           setChatPartner({
-            id: currentConversation.user.id,
-            name: currentConversation.user.name,
-            avatar: currentConversation.user.avatar || "/placeholder.svg",
+            id: exactMatch.user.id,
+            name: exactMatch.user.name,
+            avatar: exactMatch.user.avatar || "/placeholder.svg",
             email: "",
             username: "",
             isLoggedIn: true,
             createdAt: new Date().toISOString()
           });
+          foundConversation = true;
           
           // Load chat history if exists
           const chatKey = `chat_${chatId}`;
           const storedMessages = localStorage.getItem(chatKey);
           
           if (storedMessages) {
+            console.log("Loading stored messages for chat:", chatId);
             const parsedMessages = JSON.parse(storedMessages);
             setMessages(parsedMessages);
           } else {
-            // For demo purposes, use mock data for chats that don't have history yet
+            console.log("No stored messages, using mock data");
             setMessages(MOCK_MESSAGES);
           }
-          return;
+        } else {
+          // Try to find a conversation with the user
+          const userMatch = conversations.find(
+            (conv: any) => conv.user.id === chatId
+          );
+          
+          if (userMatch) {
+            console.log("Found conversation with user:", userMatch);
+            setChatPartner({
+              id: userMatch.user.id,
+              name: userMatch.user.name,
+              avatar: userMatch.user.avatar || "/placeholder.svg",
+              email: "",
+              username: "",
+              isLoggedIn: true,
+              createdAt: new Date().toISOString()
+            });
+            foundConversation = true;
+            
+            // Load chat history
+            const chatKey = `chat_${userMatch.id}`;
+            const storedMessages = localStorage.getItem(chatKey);
+            
+            if (storedMessages) {
+              console.log("Loading stored messages for user conversation:", userMatch.id);
+              const parsedMessages = JSON.parse(storedMessages);
+              setMessages(parsedMessages);
+            } else {
+              console.log("No stored messages for user, using mock data");
+              setMessages(MOCK_MESSAGES);
+            }
+          }
         }
       } catch (error) {
         console.error("Failed to parse conversations", error);
@@ -146,27 +193,24 @@ export default function Chat() {
     }
     
     // If no conversation found, check all registered users
-    const allUsers = localStorage.getItem("allUsers");
-    if (allUsers) {
-      try {
-        const usersList = JSON.parse(allUsers);
-        const targetUser = usersList.find((user: AuthUser) => user.id === chatId);
-        
-        if (targetUser) {
-          setChatPartner(targetUser);
+    if (!foundConversation) {
+      const allUsers = localStorage.getItem("allUsers");
+      if (allUsers) {
+        try {
+          const usersList = JSON.parse(allUsers);
+          console.log("Checking all users:", usersList);
+          targetUser = usersList.find((user: AuthUser) => user.id === chatId);
           
-          // Create new conversation if it doesn't exist
-          let conversations = [];
-          if (storedConversations) {
-            conversations = JSON.parse(storedConversations);
-          }
-          
-          // Check if conversation already exists
-          const existingConv = conversations.find(
-            (conv: any) => conv.user.id === chatId
-          );
-          
-          if (!existingConv && currentUser) {
+          if (targetUser) {
+            console.log("Found user in all users:", targetUser);
+            setChatPartner(targetUser);
+            
+            // Create new conversation if it doesn't exist
+            let conversations = [];
+            if (storedConversations) {
+              conversations = JSON.parse(storedConversations);
+            }
+            
             const newConversation = {
               id: `conv-${Date.now()}`,
               user: {
@@ -185,28 +229,63 @@ export default function Chat() {
             
             conversations.push(newConversation);
             localStorage.setItem("conversations", JSON.stringify(conversations));
+            
+            // For demo purposes, use mock data for new chats
+            setMessages(MOCK_MESSAGES);
+            foundConversation = true;
           }
-          
-          // For demo purposes, use mock data for new chats
-          setMessages(MOCK_MESSAGES);
-          return;
+        } catch (error) {
+          console.error("Failed to parse users", error);
         }
-      } catch (error) {
-        console.error("Failed to parse users", error);
       }
     }
     
-    // If no user found, use default values for demo
-    setChatPartner({
-      id: "u1",
-      name: "Emma",
-      avatar: "/placeholder.svg",
-      email: "",
-      username: "",
-      isLoggedIn: true,
-      createdAt: new Date().toISOString()
-    });
-    setMessages(MOCK_MESSAGES);
+    // If still no match found, create a default chat for demo purposes
+    if (!foundConversation) {
+      console.log("No conversation or user found, creating default chat for:", chatId);
+      const defaultUser = {
+        id: chatId,
+        name: `User ${chatId.substring(0, 4)}`,
+        avatar: "/placeholder.svg",
+        email: "",
+        username: "",
+        isLoggedIn: true,
+        createdAt: new Date().toISOString()
+      };
+      
+      setChatPartner(defaultUser);
+      
+      // Create a new conversation
+      let conversations = [];
+      const storedConvs = localStorage.getItem("conversations");
+      if (storedConvs) {
+        conversations = JSON.parse(storedConvs);
+      }
+      
+      const newConversation = {
+        id: `conv-${Date.now()}`,
+        user: {
+          id: defaultUser.id,
+          name: defaultUser.name,
+          avatar: defaultUser.avatar
+        },
+        lastMessage: {
+          id: `msg-${Date.now()}`,
+          content: "Start a conversation...",
+          timestamp: new Date(),
+          unread: false
+        },
+        isApproved: true
+      };
+      
+      conversations.push(newConversation);
+      localStorage.setItem("conversations", JSON.stringify(conversations));
+      
+      // Use mock messages
+      setMessages(MOCK_MESSAGES);
+    }
+    
+    setLoading(false);
   }, [chatId, currentUser]);
   
   const scrollToBottom = () => {
@@ -218,7 +297,7 @@ export default function Chat() {
   }, [messages]);
   
   const handleSendMessage = () => {
-    if (newMessage.trim() === "" || !currentUser) return;
+    if (newMessage.trim() === "" || !currentUser || !chatPartner) return;
     
     const message: Message = {
       id: `new-${Date.now()}`,
@@ -277,6 +356,16 @@ export default function Chat() {
     }
   };
   
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="h-[calc(100vh-3.5rem)] lg:h-screen flex flex-col items-center justify-center">
+          <p>Loading chat...</p>
+        </div>
+      </MainLayout>
+    );
+  }
+  
   return (
     <MainLayout>
       <div className="h-[calc(100vh-3.5rem)] lg:h-screen flex flex-col">
@@ -303,9 +392,15 @@ export default function Chat() {
         
         {/* Chat messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
-          ))}
+          {messages.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center p-4">
+              <p className="text-muted-foreground">No messages yet. Say hello!</p>
+            </div>
+          ) : (
+            messages.map((message) => (
+              <ChatMessage key={message.id} message={message} />
+            ))
+          )}
           <div ref={messagesEndRef} />
         </div>
         
