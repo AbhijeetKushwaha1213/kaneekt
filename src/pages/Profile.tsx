@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
+import { AuthUser, User } from "@/types";
 
 export default function Profile() {
   const [bio, setBio] = useState("Philosophy enthusiast and tech professional. I enjoy deep conversations about consciousness, ethics, and the future of AI. Always up for a good debate or collaborative projects.");
@@ -24,19 +25,43 @@ export default function Profile() {
   const [isPrivate, setIsPrivate] = useState(false);
   const { toast } = useToast();
   
-  // Mock user data
-  const user = {
-    id: "u1",
-    name: "John Doe",
-    username: "johndoe",
-    followers: 245,
-    following: 132,
-    location: "San Francisco, CA",
-    age: 28,
-    dob: "1995-05-15",
-    gender: "Male",
-    joinDate: "2023-09-15"
-  };
+  // Get authenticated user from localStorage
+  const [userData, setUserData] = useState<AuthUser | null>(null);
+  const [profileData, setProfileData] = useState<User | null>(null);
+  
+  useEffect(() => {
+    // Load user data from localStorage on component mount
+    const storedUserData = localStorage.getItem("user");
+    if (storedUserData) {
+      try {
+        const parsedUser = JSON.parse(storedUserData);
+        setUserData(parsedUser);
+      } catch (error) {
+        console.error("Failed to parse user data", error);
+      }
+    }
+    
+    // Load profile data from localStorage if available
+    const storedProfileData = localStorage.getItem("userProfile");
+    if (storedProfileData) {
+      try {
+        const parsedProfile = JSON.parse(storedProfileData);
+        setProfileData(parsedProfile);
+        
+        // Set bio if available
+        if (parsedProfile.bio) {
+          setBio(parsedProfile.bio);
+        }
+        
+        // Set interests if available
+        if (parsedProfile.interests && parsedProfile.interests.length > 0) {
+          setInterests(parsedProfile.interests);
+        }
+      } catch (error) {
+        console.error("Failed to parse profile data", error);
+      }
+    }
+  }, []);
   
   // Mock posts data
   const posts = [
@@ -73,6 +98,12 @@ export default function Profile() {
   
   const handleSaveBio = () => {
     setEditingBio(false);
+    // Save bio to localStorage if profile data exists
+    if (profileData) {
+      const updatedProfile = { ...profileData, bio };
+      localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
+      setProfileData(updatedProfile);
+    }
     toast({
       title: "Profile updated",
       description: "Your bio has been updated successfully."
@@ -94,6 +125,21 @@ export default function Profile() {
       title: "Follow request sent",
       description: "You'll be notified when they accept your request."
     });
+  };
+  
+  // Calculate age from DOB if available
+  const getAge = () => {
+    if (profileData?.dob) {
+      const birthDate = new Date(profileData.dob);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    }
+    return null;
   };
   
   return (
@@ -118,8 +164,8 @@ export default function Profile() {
           <div className="absolute left-8 md:left-10 -bottom-16 md:-bottom-20">
             <div className="relative">
               <Avatar className="h-32 w-32 md:h-40 md:w-40 border-4 border-background">
-                <AvatarImage src="/placeholder.svg" alt="Profile" />
-                <AvatarFallback className="text-4xl">JD</AvatarFallback>
+                <AvatarImage src={userData?.avatar || "/placeholder.svg"} alt="Profile" />
+                <AvatarFallback className="text-4xl">{userData?.name?.charAt(0) || userData?.username?.charAt(0) || "U"}</AvatarFallback>
               </Avatar>
               <Button 
                 variant="secondary" 
@@ -163,19 +209,29 @@ export default function Profile() {
         <div className="mt-20 md:pl-44 flex flex-col md:flex-row md:justify-between md:items-end">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">{user.name}</h1>
+              <h1 className="text-2xl font-bold">{userData?.name || "User"}</h1>
               {isPrivate && <Lock className="h-4 w-4 text-muted-foreground" />}
             </div>
-            <p className="text-muted-foreground">@{user.username}</p>
-            <div className="flex items-center gap-3 text-muted-foreground mt-1">
-              <div className="flex items-center">
-                <MapPin className="h-4 w-4 mr-1" />
-                {user.location}
-              </div>
-              <span>•</span>
-              <div>{user.age} years old</div>
-              <span>•</span>
-              <div>{user.gender}</div>
+            <p className="text-muted-foreground">@{userData?.username || "username"}</p>
+            <div className="flex items-center gap-3 text-muted-foreground mt-1 flex-wrap">
+              {profileData?.location && (
+                <div className="flex items-center">
+                  <MapPin className="h-4 w-4 mr-1" />
+                  {profileData.location}
+                </div>
+              )}
+              {getAge() && (
+                <>
+                  <span>•</span>
+                  <div>{getAge()} years old</div>
+                </>
+              )}
+              {profileData?.gender && (
+                <>
+                  <span>•</span>
+                  <div>{profileData.gender}</div>
+                </>
+              )}
             </div>
           </div>
           
@@ -198,11 +254,11 @@ export default function Profile() {
             <div className="text-sm text-muted-foreground">Posts</div>
           </div>
           <div className="flex-1 p-4 text-center">
-            <div className="text-2xl font-bold">{user.followers}</div>
+            <div className="text-2xl font-bold">{profileData?.followers || 0}</div>
             <div className="text-sm text-muted-foreground">Followers</div>
           </div>
           <div className="flex-1 p-4 text-center">
-            <div className="text-2xl font-bold">{user.following}</div>
+            <div className="text-2xl font-bold">{profileData?.following || 0}</div>
             <div className="text-sm text-muted-foreground">Following</div>
           </div>
         </div>
@@ -303,13 +359,13 @@ export default function Profile() {
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src="/placeholder.svg" alt={user.name} />
-                          <AvatarFallback>{user.name[0]}</AvatarFallback>
+                          <AvatarImage src={userData?.avatar || "/placeholder.svg"} alt={userData?.name || "User"} />
+                          <AvatarFallback>{userData?.name?.charAt(0) || userData?.username?.charAt(0) || "U"}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                           <div className="flex justify-between items-start">
                             <div>
-                              <h3 className="font-medium">{user.name}</h3>
+                              <h3 className="font-medium">{userData?.name || "User"}</h3>
                               <p className="text-xs text-muted-foreground">
                                 {format(post.timestamp, 'MMM d, yyyy')} • {post.isPublic ? 'Public' : 'Private'}
                               </p>
@@ -356,13 +412,13 @@ export default function Profile() {
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src="/placeholder.svg" alt={user.name} />
-                          <AvatarFallback>{user.name[0]}</AvatarFallback>
+                          <AvatarImage src={userData?.avatar || "/placeholder.svg"} alt={userData?.name || "User"} />
+                          <AvatarFallback>{userData?.name?.charAt(0) || userData?.username?.charAt(0) || "U"}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                           <div className="flex justify-between items-start">
                             <div>
-                              <h3 className="font-medium">{user.name}</h3>
+                              <h3 className="font-medium">{userData?.name || "User"}</h3>
                               <p className="text-xs text-muted-foreground">
                                 Posted on {format(post.timestamp, 'MMM d, yyyy')} • Event
                               </p>
@@ -439,7 +495,7 @@ export default function Profile() {
         
         {/* Account info */}
         <div className="text-sm text-muted-foreground border-t pt-6">
-          <p>Member since {format(new Date(user.joinDate), 'MMMM yyyy')}</p>
+          <p>Member since {userData ? format(new Date(userData.createdAt || new Date()), 'MMMM yyyy') : "Recently"}</p>
         </div>
       </div>
     </MainLayout>
