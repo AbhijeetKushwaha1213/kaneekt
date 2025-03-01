@@ -1,6 +1,6 @@
 
 import { useState, useRef, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChatMessage } from "@/components/ui/chat-message";
 import { cn } from "@/lib/utils";
-import { Message } from "@/types";
+import { Message, AuthUser } from "@/types";
 
 // Mock data for the chat messages
 const MOCK_MESSAGES: Message[] = [
@@ -71,9 +71,11 @@ const MOCK_MESSAGES: Message[] = [
 
 export default function Chat() {
   const { chatId } = useParams();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [chatPartner, setChatPartner] = useState<AuthUser | null>(null);
   
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -82,6 +84,43 @@ export default function Chat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  
+  useEffect(() => {
+    // Try to get user data for the chat partner
+    const storedUserData = localStorage.getItem("user");
+    if (storedUserData) {
+      try {
+        const userData = JSON.parse(storedUserData);
+        setChatPartner(userData);
+      } catch (error) {
+        console.error("Failed to parse user data", error);
+      }
+    }
+    
+    // Get conversation from localStorage if available
+    const storedConversations = localStorage.getItem("conversations");
+    if (storedConversations && chatId) {
+      try {
+        const conversations = JSON.parse(storedConversations);
+        const currentConversation = conversations.find(
+          (conv: any) => conv.user.id === chatId || conv.id === chatId
+        );
+        
+        if (currentConversation) {
+          setChatPartner({
+            id: currentConversation.user.id,
+            name: currentConversation.user.name,
+            avatar: currentConversation.user.avatar,
+            email: "",
+            username: "",
+            isLoggedIn: true
+          });
+        }
+      } catch (error) {
+        console.error("Failed to parse conversations", error);
+      }
+    }
+  }, [chatId]);
   
   const handleSendMessage = () => {
     if (newMessage.trim() === "") return;
@@ -98,7 +137,15 @@ export default function Chat() {
       isCurrentUser: true
     };
     
+    // Add message to local messages state
     setMessages([...messages, message]);
+    
+    // Store the messages in localStorage
+    const chatKey = `chat_${chatId || 'default'}`;
+    const storedMessages = JSON.parse(localStorage.getItem(chatKey) || "[]");
+    storedMessages.push(message);
+    localStorage.setItem(chatKey, JSON.stringify(storedMessages));
+    
     setNewMessage("");
   };
   
@@ -121,14 +168,14 @@ export default function Chat() {
           </Link>
           
           <Avatar className="h-10 w-10">
-            <AvatarImage src="/placeholder.svg" alt="Emma" />
-            <AvatarFallback>ET</AvatarFallback>
+            <AvatarImage src={chatPartner?.avatar || "/placeholder.svg"} alt={chatPartner?.name || "User"} />
+            <AvatarFallback>{chatPartner?.name?.charAt(0) || "U"}</AvatarFallback>
           </Avatar>
           
           <div className="ml-3 flex-1">
-            <h2 className="font-medium">Emma Thompson</h2>
+            <h2 className="font-medium">{chatPartner?.name || "User"}</h2>
             <p className="text-xs text-muted-foreground">
-              Philosophy enthusiast • Last active 5m ago
+              {chatPartner?.username ? `@${chatPartner.username} • ` : ""}Last active recently
             </p>
           </div>
         </div>

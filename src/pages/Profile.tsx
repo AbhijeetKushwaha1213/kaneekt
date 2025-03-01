@@ -31,12 +31,10 @@ export default function Profile() {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Get authenticated user from localStorage
   const [userData, setUserData] = useState<AuthUser | null>(null);
   const [profileData, setProfileData] = useState<User | null>(null);
   
   useEffect(() => {
-    // Load user data from localStorage on component mount
     const storedUserData = localStorage.getItem("user");
     if (storedUserData) {
       try {
@@ -47,24 +45,24 @@ export default function Profile() {
       }
     }
     
-    // Load profile data from localStorage if available
     const storedProfileData = localStorage.getItem("userProfile");
     if (storedProfileData) {
       try {
         const parsedProfile = JSON.parse(storedProfileData);
         setProfileData(parsedProfile);
         
-        // Set bio if available
         if (parsedProfile.bio) {
           setBio(parsedProfile.bio);
         }
         
-        // Set interests if available
         if (parsedProfile.interests && parsedProfile.interests.length > 0) {
           setInterests(parsedProfile.interests);
         }
 
-        // Initialize edit profile data
+        if (parsedProfile.isPrivate !== undefined) {
+          setIsPrivate(parsedProfile.isPrivate);
+        }
+
         setEditProfileData({
           name: parsedProfile.name,
           location: parsedProfile.location,
@@ -79,12 +77,11 @@ export default function Profile() {
     }
   }, []);
   
-  // Mock posts data
   const posts = [
     {
       id: "p1",
       content: "Just finished reading 'Thinking, Fast and Slow'. Such a mind-opening book about cognitive biases!",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
       likes: 24,
       comments: 7,
       isPublic: true,
@@ -93,18 +90,18 @@ export default function Profile() {
     {
       id: "p2",
       content: "Organizing a philosophy discussion meetup this Saturday at Golden Gate Park. The topic will be 'Ethics in AI'. Join us!",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5), // 5 days ago
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5),
       likes: 48,
       comments: 12,
       isPublic: true,
       type: "event",
-      eventDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2), // in 2 days
+      eventDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2),
       eventLocation: "Golden Gate Park, San Francisco"
     },
     {
       id: "p3",
       content: "Working on a new project exploring the intersection of technology and climate change. Looking for collaborators!",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8), // 8 days ago
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8),
       likes: 36,
       comments: 9,
       isPublic: true,
@@ -114,7 +111,6 @@ export default function Profile() {
   
   const handleSaveBio = () => {
     setEditingBio(false);
-    // Save bio to localStorage if profile data exists
     if (profileData) {
       const updatedProfile = { ...profileData, bio };
       localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
@@ -147,8 +143,37 @@ export default function Profile() {
   };
   
   const handleMessage = () => {
-    // Navigate to chat section
-    navigate("/chats");
+    const currentUser = userData;
+    if (currentUser) {
+      let conversations = JSON.parse(localStorage.getItem("conversations") || "[]");
+      
+      const existingConvIndex = conversations.findIndex(
+        (conv: any) => conv.user.id === currentUser.id
+      );
+      
+      if (existingConvIndex === -1) {
+        const newConversation = {
+          id: `conv-${Date.now()}`,
+          user: {
+            id: currentUser.id,
+            name: currentUser.name,
+            avatar: currentUser.avatar
+          },
+          lastMessage: {
+            id: `msg-${Date.now()}`,
+            content: "Start a conversation...",
+            timestamp: new Date(),
+            unread: false
+          },
+          isApproved: true
+        };
+        
+        conversations.push(newConversation);
+        localStorage.setItem("conversations", JSON.stringify(conversations));
+      }
+    }
+    
+    navigate(`/chats/${userData?.id || 'new'}`);
     toast({
       title: "Chat opened",
       description: "You can now message this user."
@@ -170,25 +195,29 @@ export default function Profile() {
   };
 
   const handleSaveProfile = () => {
-    // Save updated profile data to localStorage
     if (profileData) {
-      const updatedProfile = { ...profileData, ...editProfileData };
+      const updatedProfile = { 
+        ...profileData, 
+        ...editProfileData,
+        isPrivate: isPrivate
+      };
       localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
       setProfileData(updatedProfile);
       
-      // Update user data if necessary
       if (userData && editProfileData.name) {
-        const updatedUser = { ...userData, name: editProfileData.name };
+        const updatedUser = { 
+          ...userData, 
+          name: editProfileData.name,
+          avatar: userData.avatar
+        };
         localStorage.setItem("user", JSON.stringify(updatedUser));
         setUserData(updatedUser);
       }
       
-      // Update bio if it was changed
       if (editProfileData.bio) {
         setBio(editProfileData.bio);
       }
       
-      // Update interests if they were changed
       if (editProfileData.interests) {
         setInterests(editProfileData.interests);
       }
@@ -201,7 +230,6 @@ export default function Profile() {
     });
   };
   
-  // Calculate age from DOB if available
   const getAge = () => {
     if (profileData?.dob) {
       const birthDate = new Date(profileData.dob);
@@ -219,9 +247,7 @@ export default function Profile() {
   return (
     <MainLayout>
       <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-8">
-        {/* Profile header */}
         <div className="relative rounded-xl overflow-hidden">
-          {/* Cover photo */}
           <div className="h-48 md:h-64 bg-gradient-to-r from-primary/30 to-accent/30 relative">
             <Button 
               variant="secondary" 
@@ -234,7 +260,6 @@ export default function Profile() {
             </Button>
           </div>
           
-          {/* Profile photo */}
           <div className="absolute left-8 md:left-10 -bottom-16 md:-bottom-20">
             <div className="relative">
               <Avatar className="h-32 w-32 md:h-40 md:w-40 border-4 border-background">
@@ -252,7 +277,6 @@ export default function Profile() {
             </div>
           </div>
           
-          {/* Profile actions */}
           <div className="absolute right-4 bottom-4 md:bottom-6 flex items-center gap-2">
             <Button 
               variant="outline" 
@@ -284,7 +308,6 @@ export default function Profile() {
           </div>
         </div>
         
-        {/* Profile info */}
         <div className="mt-20 md:pl-44 flex flex-col md:flex-row md:justify-between md:items-end">
           <div>
             <div className="flex items-center gap-2">
@@ -343,7 +366,6 @@ export default function Profile() {
           </div>
         </div>
         
-        {/* Stats */}
         <div className="flex border rounded-lg divide-x">
           <div className="flex-1 p-4 text-center">
             <div className="text-2xl font-bold">{posts.length}</div>
@@ -359,7 +381,6 @@ export default function Profile() {
           </div>
         </div>
         
-        {/* Bio */}
         <Card className="relative">
           <CardContent className="p-4 sm:p-6">
             <div className="flex justify-between items-start mb-2">
@@ -403,7 +424,6 @@ export default function Profile() {
           </CardContent>
         </Card>
         
-        {/* Interests */}
         <Card>
           <CardContent className="p-4 sm:p-6">
             <div className="flex justify-between items-start mb-4">
@@ -430,7 +450,6 @@ export default function Profile() {
           </CardContent>
         </Card>
         
-        {/* Activity tabs */}
         <Tabs defaultValue="posts">
           <TabsList className="grid grid-cols-3">
             <TabsTrigger value="posts">Posts</TabsTrigger>
@@ -589,13 +608,11 @@ export default function Profile() {
           </TabsContent>
         </Tabs>
         
-        {/* Account info */}
         <div className="text-sm text-muted-foreground border-t pt-6">
           <p>Member since {userData ? format(new Date(userData.createdAt || new Date()), 'MMMM yyyy') : "Recently"}</p>
         </div>
       </div>
 
-      {/* Edit Profile Dialog */}
       <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
