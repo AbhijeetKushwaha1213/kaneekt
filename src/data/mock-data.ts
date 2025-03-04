@@ -63,6 +63,7 @@ export const USERS: User[] = [
     age: 25,
     location: "Boston",
     bio: "Physicist by day, amateur philosopher by night. Let's discuss quantum mechanics and its philosophical implications.",
+  
     interests: ["Science", "Physics", "Philosophy", "Technology"],
     distance: 7,
   },
