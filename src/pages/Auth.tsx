@@ -10,9 +10,12 @@ export default function Auth() {
   
   // Redirect to chats if already logged in
   useEffect(() => {
+    console.log("Auth page - Checking authentication:", user?.email, "Loading:", loading);
+    
     if (user && !loading) {
       console.log("User already authenticated, redirecting to /chats");
-      navigate("/chats");
+      // Small timeout to ensure any pending state updates complete
+      setTimeout(() => navigate("/chats"), 100);
     }
   }, [user, loading, navigate]);
   

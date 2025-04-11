@@ -23,23 +23,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     console.log("Setting up auth state listener");
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log("Auth state changed:", event, session?.user?.email);
+        
+        // Update state with session data
         setSession(session);
         setUser(session?.user ?? null);
         
         if (event === 'SIGNED_IN') {
+          console.log("User signed in event triggered");
           toast({
             title: "Welcome back!",
             description: "You have successfully signed in.",
           });
         } else if (event === 'SIGNED_OUT') {
+          console.log("User signed out event triggered");
           toast({
             title: "Signed out",
             description: "You have been signed out.",
           });
+        } else if (event === 'USER_UPDATED') {
+          console.log("User updated event triggered");
         }
       }
     );
@@ -47,22 +54,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // THEN check for existing session
     console.log("Checking for existing session");
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log("Existing session check:", session?.user?.email);
+      console.log("Existing session check result:", session ? "Session found" : "No session found");
+      if (session?.user) {
+        console.log("User from session:", session.user.email);
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
+      setLoading(false);
+    }).catch(error => {
+      console.error("Error getting session:", error);
       setLoading(false);
     });
 
     return () => {
+      console.log("Cleaning up auth listener");
       subscription.unsubscribe();
     };
   }, [toast]);
 
   const signIn = async (email: string, password: string) => {
-    console.log("SignIn function called");
+    console.log("SignIn function called with email:", email);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      console.log("SignIn result:", error ? "Error" : "Success");
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      console.log("SignIn result:", error ? "Error" : "Success", data?.user?.email);
+      
+      if (data?.session) {
+        // Manually update state in case the listener doesn't trigger immediately
+        setSession(data.session);
+        setUser(data.user);
+      }
+      
       return { error };
     } catch (error) {
       console.error("SignIn exception:", error);
@@ -71,7 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, userData: any) => {
-    console.log("SignUp function called");
+    console.log("SignUp function called with email:", email);
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -80,7 +103,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           data: userData
         }
       });
-      console.log("SignUp result:", error ? "Error" : "Success");
+      
+      console.log("SignUp result:", error ? "Error" : "Success", data?.user?.email);
+      
+      if (data?.session) {
+        // Manually update state in case the listener doesn't trigger immediately
+        setSession(data.session);
+        setUser(data.user);
+      }
+      
       return { data, error };
     } catch (error) {
       console.error("SignUp exception:", error);
