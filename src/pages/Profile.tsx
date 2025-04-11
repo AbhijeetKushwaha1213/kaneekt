@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe, Users, UserCheck } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe, Users, UserCheck, Image, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,15 @@ import { InterestBadge } from "@/components/ui/interest-badge";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { AuthUser, User } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { v4 as uuidv4 } from 'uuid';
 
 export default function Profile() {
   const [bio, setBio] = useState("Philosophy enthusiast and tech professional. I enjoy deep conversations about consciousness, ethics, and the future of AI. Always up for a good debate or collaborative projects.");
@@ -30,11 +33,34 @@ export default function Profile() {
   const [editProfileData, setEditProfileData] = useState<Partial<User>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const postFileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  
+  const [createPostOpen, setCreatePostOpen] = useState(false);
+  const [postContent, setPostContent] = useState("");
+  const [postImage, setPostImage] = useState<File | null>(null);
+  const [postImageUrl, setPostImageUrl] = useState<string | null>(null);
+  const [isPostPublic, setIsPostPublic] = useState(true);
   
   const [userData, setUserData] = useState<AuthUser | null>(null);
   const [profileData, setProfileData] = useState<User | null>(null);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   
   useEffect(() => {
+    if (user) {
+      setUserData({
+        id: user.id,
+        name: user.user_metadata?.name || "User",
+        email: user.email || "",
+        username: user.user_metadata?.username || user.email?.split('@')[0] || "user",
+        avatar: user.user_metadata?.avatar_url || "/placeholder.svg",
+        isLoggedIn: true,
+        createdAt: user.created_at
+      });
+    }
+    
     const storedUserData = localStorage.getItem("user");
     if (storedUserData) {
       try {
@@ -62,6 +88,10 @@ export default function Profile() {
         if (parsedProfile.isPrivate !== undefined) {
           setIsPrivate(parsedProfile.isPrivate);
         }
+        
+        if (parsedProfile.avatar) {
+          setAvatarUrl(parsedProfile.avatar);
+        }
 
         setEditProfileData({
           name: parsedProfile.name,
@@ -75,39 +105,50 @@ export default function Profile() {
         console.error("Failed to parse profile data", error);
       }
     }
-  }, []);
-  
-  const posts = [
-    {
-      id: "p1",
-      content: "Just finished reading 'Thinking, Fast and Slow'. Such a mind-opening book about cognitive biases!",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-      likes: 24,
-      comments: 7,
-      isPublic: true,
-      type: "post"
-    },
-    {
-      id: "p2",
-      content: "Organizing a philosophy discussion meetup this Saturday at Golden Gate Park. The topic will be 'Ethics in AI'. Join us!",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5),
-      likes: 48,
-      comments: 12,
-      isPublic: true,
-      type: "event",
-      eventDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2),
-      eventLocation: "Golden Gate Park, San Francisco"
-    },
-    {
-      id: "p3",
-      content: "Working on a new project exploring the intersection of technology and climate change. Looking for collaborators!",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8),
-      likes: 36,
-      comments: 9,
-      isPublic: true,
-      type: "post"
+    
+    const storedPosts = localStorage.getItem("userPosts");
+    if (storedPosts) {
+      try {
+        const parsedPosts = JSON.parse(storedPosts);
+        setPosts(parsedPosts);
+      } catch (error) {
+        console.error("Failed to parse posts data", error);
+      }
+    } else {
+      setPosts([
+        {
+          id: "p1",
+          content: "Just finished reading 'Thinking, Fast and Slow'. Such a mind-opening book about cognitive biases!",
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+          likes: 24,
+          comments: 7,
+          isPublic: true,
+          type: "post"
+        },
+        {
+          id: "p2",
+          content: "Organizing a philosophy discussion meetup this Saturday at Golden Gate Park. The topic will be 'Ethics in AI'. Join us!",
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
+          likes: 48,
+          comments: 12,
+          isPublic: true,
+          type: "event",
+          eventDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2).toISOString(),
+          eventLocation: "Golden Gate Park, San Francisco"
+        },
+        {
+          id: "p3",
+          content: "Working on a new project exploring the intersection of technology and climate change. Looking for collaborators!",
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString(),
+          likes: 36,
+          comments: 9,
+          isPublic: true,
+          type: "post"
+        }
+      ]);
+      localStorage.setItem("userPosts", JSON.stringify(posts));
     }
-  ];
+  }, [user]);
   
   const handleSaveBio = () => {
     setEditingBio(false);
@@ -180,6 +221,36 @@ export default function Profile() {
     });
   };
   
+  const handleProfilePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+  
+  const handleProfilePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      const imageUrl = URL.createObjectURL(file);
+      setAvatarUrl(imageUrl);
+      
+      if (profileData) {
+        const updatedProfile = { ...profileData, avatar: imageUrl };
+        localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
+        setProfileData(updatedProfile);
+      }
+      
+      if (userData) {
+        const updatedUser = { ...userData, avatar: imageUrl };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        setUserData(updatedUser);
+      }
+      
+      toast({
+        title: "Profile photo updated",
+        description: "Your profile photo has been updated successfully."
+      });
+    }
+  };
+  
   const handleOpenEditProfile = () => {
     if (profileData) {
       setEditProfileData({
@@ -199,7 +270,8 @@ export default function Profile() {
       const updatedProfile = { 
         ...profileData, 
         ...editProfileData,
-        isPrivate: isPrivate
+        isPrivate: isPrivate,
+        avatar: avatarUrl || profileData.avatar
       };
       localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
       setProfileData(updatedProfile);
@@ -208,7 +280,7 @@ export default function Profile() {
         const updatedUser = { 
           ...userData, 
           name: editProfileData.name,
-          avatar: userData.avatar
+          avatar: avatarUrl || userData.avatar
         };
         localStorage.setItem("user", JSON.stringify(updatedUser));
         setUserData(updatedUser);
@@ -227,6 +299,62 @@ export default function Profile() {
     toast({
       title: "Profile updated",
       description: "Your profile has been updated successfully."
+    });
+  };
+
+  const handleCreatePostClick = () => {
+    setPostContent("");
+    setPostImage(null);
+    setPostImageUrl(null);
+    setIsPostPublic(true);
+    setCreatePostOpen(true);
+  };
+  
+  const handlePostImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setPostImage(file);
+      setPostImageUrl(URL.createObjectURL(file));
+    }
+  };
+  
+  const handleRemovePostImage = () => {
+    setPostImage(null);
+    setPostImageUrl(null);
+    if (postFileInputRef.current) {
+      postFileInputRef.current.value = '';
+    }
+  };
+  
+  const handleCreatePost = () => {
+    if (postContent.trim() === '') {
+      toast({
+        title: "Cannot create post",
+        description: "Please enter some content for your post.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const newPost = {
+      id: `p-${uuidv4()}`,
+      content: postContent,
+      image: postImageUrl,
+      timestamp: new Date().toISOString(),
+      likes: 0,
+      comments: 0,
+      isPublic: isPostPublic,
+      type: "post"
+    };
+    
+    const updatedPosts = [newPost, ...posts];
+    setPosts(updatedPosts);
+    localStorage.setItem("userPosts", JSON.stringify(updatedPosts));
+    
+    setCreatePostOpen(false);
+    toast({
+      title: "Post created",
+      description: "Your post has been published successfully."
     });
   };
   
@@ -263,7 +391,7 @@ export default function Profile() {
           <div className="absolute left-8 md:left-10 -bottom-16 md:-bottom-20">
             <div className="relative">
               <Avatar className="h-32 w-32 md:h-40 md:w-40 border-4 border-background">
-                <AvatarImage src={userData?.avatar || "/placeholder.svg"} alt="Profile" />
+                <AvatarImage src={avatarUrl || userData?.avatar || "/placeholder.svg"} alt="Profile" />
                 <AvatarFallback className="text-4xl">{userData?.name?.charAt(0) || userData?.username?.charAt(0) || "U"}</AvatarFallback>
               </Avatar>
               <Button 
@@ -271,9 +399,17 @@ export default function Profile() {
                 size="icon" 
                 className="absolute bottom-2 right-2 rounded-full shadow-md"
                 aria-label="Change profile picture"
+                onClick={handleProfilePhotoClick}
               >
                 <Camera className="h-4 w-4" />
               </Button>
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept="image/*"
+                className="hidden" 
+                onChange={handleProfilePhotoChange}
+              />
             </div>
           </div>
           
@@ -459,7 +595,7 @@ export default function Profile() {
           
           <div className="flex justify-between items-center mt-4">
             <h2 className="text-lg font-medium">Activity</h2>
-            <Button size="sm">
+            <Button size="sm" onClick={handleCreatePostClick}>
               <Plus className="h-4 w-4 mr-2" />
               Create Post
             </Button>
@@ -474,7 +610,7 @@ export default function Profile() {
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={userData?.avatar || "/placeholder.svg"} alt={userData?.name || "User"} />
+                          <AvatarImage src={avatarUrl || userData?.avatar || "/placeholder.svg"} alt={userData?.name || "User"} />
                           <AvatarFallback>{userData?.name?.charAt(0) || userData?.username?.charAt(0) || "U"}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
@@ -482,7 +618,7 @@ export default function Profile() {
                             <div>
                               <h3 className="font-medium">{userData?.name || "User"}</h3>
                               <p className="text-xs text-muted-foreground">
-                                {format(post.timestamp, 'MMM d, yyyy')} • {post.isPublic ? 'Public' : 'Private'}
+                                {format(new Date(post.timestamp), 'MMM d, yyyy')} • {post.isPublic ? 'Public' : 'Private'}
                               </p>
                             </div>
                             <Badge variant={post.isPublic ? "outline" : "secondary"} className="ml-2">
@@ -492,6 +628,16 @@ export default function Profile() {
                           </div>
                           
                           <p className="mt-2">{post.content}</p>
+                          
+                          {post.image && (
+                            <div className="mt-3">
+                              <img 
+                                src={post.image} 
+                                alt="Post image" 
+                                className="rounded-md max-h-80 w-auto" 
+                              />
+                            </div>
+                          )}
                           
                           <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
                             <div>{post.likes} likes</div>
@@ -509,7 +655,7 @@ export default function Profile() {
                   <p className="text-muted-foreground max-w-md mb-4">
                     Share your thoughts, ideas, or questions with your followers
                   </p>
-                  <Button>
+                  <Button onClick={handleCreatePostClick}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create Post
                   </Button>
@@ -527,7 +673,7 @@ export default function Profile() {
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={userData?.avatar || "/placeholder.svg"} alt={userData?.name || "User"} />
+                          <AvatarImage src={avatarUrl || userData?.avatar || "/placeholder.svg"} alt={userData?.name || "User"} />
                           <AvatarFallback>{userData?.name?.charAt(0) || userData?.username?.charAt(0) || "U"}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
@@ -535,7 +681,7 @@ export default function Profile() {
                             <div>
                               <h3 className="font-medium">{userData?.name || "User"}</h3>
                               <p className="text-xs text-muted-foreground">
-                                Posted on {format(post.timestamp, 'MMM d, yyyy')} • Event
+                                Posted on {format(new Date(post.timestamp), 'MMM d, yyyy')} • Event
                               </p>
                             </div>
                             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
@@ -546,11 +692,21 @@ export default function Profile() {
                           
                           <p className="mt-2">{post.content}</p>
                           
+                          {post.image && (
+                            <div className="mt-3">
+                              <img 
+                                src={post.image} 
+                                alt="Event image" 
+                                className="rounded-md max-h-80 w-auto" 
+                              />
+                            </div>
+                          )}
+                          
                           {post.eventDate && post.eventLocation && (
                             <div className="mt-3 p-3 bg-accent/30 rounded-md space-y-1">
                               <div className="flex items-center">
                                 <Calendar className="h-4 w-4 mr-2 text-primary" />
-                                <span className="font-medium">{format(post.eventDate, 'EEEE, MMMM d, yyyy - h:mm a')}</span>
+                                <span className="font-medium">{format(new Date(post.eventDate), 'EEEE, MMMM d, yyyy - h:mm a')}</span>
                               </div>
                               <div className="flex items-center">
                                 <MapPin className="h-4 w-4 mr-2 text-primary" />
@@ -581,7 +737,7 @@ export default function Profile() {
                   <p className="text-muted-foreground max-w-md mb-4">
                     Create events to connect with people who share your interests
                   </p>
-                  <Button>
+                  <Button onClick={handleCreatePostClick}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create Event
                   </Button>
@@ -691,6 +847,97 @@ export default function Profile() {
             </Button>
             <Button type="button" onClick={handleSaveProfile}>
               Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createPostOpen} onOpenChange={setCreatePostOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create Post</DialogTitle>
+            <DialogDescription>
+              Share your thoughts with your followers
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <Textarea 
+              placeholder="What's on your mind?"
+              value={postContent}
+              onChange={(e) => setPostContent(e.target.value)}
+              className="min-h-[120px]"
+            />
+            
+            {postImageUrl ? (
+              <div className="relative">
+                <img 
+                  src={postImageUrl} 
+                  alt="Post preview" 
+                  className="w-full h-auto max-h-60 rounded-md object-contain bg-accent/10"
+                />
+                <Button 
+                  variant="destructive" 
+                  size="icon" 
+                  className="absolute top-2 right-2 h-8 w-8 rounded-full"
+                  onClick={handleRemovePostImage}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <Button 
+                  variant="outline" 
+                  className="w-full h-16 border-dashed flex flex-col gap-1"
+                  onClick={() => postFileInputRef.current?.click()}
+                >
+                  <Image className="h-5 w-5" />
+                  <span className="text-xs">Add Photo</span>
+                </Button>
+                <input 
+                  ref={postFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePostImageChange}
+                />
+              </div>
+            )}
+            
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="post-privacy" className="text-sm font-medium">
+                Privacy:
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn("gap-2", !isPostPublic && "bg-secondary text-secondary-foreground")}
+                onClick={() => setIsPostPublic(false)}
+              >
+                <Lock className="h-3.5 w-3.5" />
+                Private
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn("gap-2", isPostPublic && "bg-secondary text-secondary-foreground")}
+                onClick={() => setIsPostPublic(true)}
+              >
+                <Globe className="h-3.5 w-3.5" />
+                Public
+              </Button>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreatePostOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreatePost}>
+              Post
             </Button>
           </DialogFooter>
         </DialogContent>
