@@ -25,17 +25,20 @@ const AuthForm = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    console.log("Attempting to log in with:", email);
 
     try {
       const { error } = await signIn(email, password);
       
       if (error) {
+        console.error("Login error:", error);
         toast({
           title: "Authentication error",
           description: error.message,
           variant: "destructive",
         });
       } else {
+        console.log("Login successful, redirecting to /chats");
         toast({
           title: "Login successful",
           description: "Welcome back!",
@@ -43,6 +46,7 @@ const AuthForm = () => {
         navigate("/chats"); // Redirect to chats page after successful login
       }
     } catch (error: any) {
+      console.error("Login exception:", error);
       toast({
         title: "Authentication error",
         description: error.message || "An unexpected error occurred",
@@ -56,21 +60,24 @@ const AuthForm = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    console.log("Attempting to register with:", email, name);
 
     try {
       if (!name || !email || !password) {
         throw new Error("Please fill in all required fields");
       }
       
-      const { error } = await signUp(email, password, { name });
+      const { error, data } = await signUp(email, password, { name });
       
       if (error) {
+        console.error("Registration error:", error);
         toast({
           title: "Registration error",
           description: error.message,
           variant: "destructive",
         });
       } else {
+        console.log("Registration successful:", data);
         toast({
           title: "Registration successful",
           description: "Welcome! You are now logged in.",
@@ -78,6 +85,7 @@ const AuthForm = () => {
         navigate("/chats"); // Redirect to chats page after successful registration
       }
     } catch (error: any) {
+      console.error("Registration exception:", error);
       toast({
         title: "Registration error",
         description: error.message || "An unexpected error occurred",

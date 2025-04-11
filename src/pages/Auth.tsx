@@ -11,6 +11,7 @@ export default function Auth() {
   // Redirect to chats if already logged in
   useEffect(() => {
     if (user && !loading) {
+      console.log("User already authenticated, redirecting to /chats");
       navigate("/chats");
     }
   }, [user, loading, navigate]);

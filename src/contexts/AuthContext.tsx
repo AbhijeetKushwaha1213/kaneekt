@@ -3,7 +3,6 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
 
 type AuthContextType = {
   session: Session | null;
@@ -23,9 +22,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log("Setting up auth state listener");
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log("Auth state changed:", event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -44,7 +45,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     // THEN check for existing session
+    console.log("Checking for existing session");
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("Existing session check:", session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -56,15 +59,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [toast]);
 
   const signIn = async (email: string, password: string) => {
+    console.log("SignIn function called");
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log("SignIn result:", error ? "Error" : "Success");
       return { error };
     } catch (error) {
+      console.error("SignIn exception:", error);
       return { error };
     }
   };
 
   const signUp = async (email: string, password: string, userData: any) => {
+    console.log("SignUp function called");
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -73,13 +80,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           data: userData
         }
       });
+      console.log("SignUp result:", error ? "Error" : "Success");
       return { data, error };
     } catch (error) {
+      console.error("SignUp exception:", error);
       return { data: null, error };
     }
   };
 
   const signOut = async () => {
+    console.log("SignOut function called");
     await supabase.auth.signOut();
   };
 
