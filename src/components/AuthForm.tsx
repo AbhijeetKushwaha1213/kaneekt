@@ -8,8 +8,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from "react-router-dom";
 
 const AuthForm = () => {
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') === 'signup' ? 'register' : 'login';
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -24,6 +28,7 @@ const AuthForm = () => {
 
     try {
       const { error } = await signIn(email, password);
+      
       if (error) {
         toast({
           title: "Authentication error",
@@ -53,6 +58,10 @@ const AuthForm = () => {
     setIsLoading(true);
 
     try {
+      if (!name || !email || !password) {
+        throw new Error("Please fill in all required fields");
+      }
+      
       const { error } = await signUp(email, password, { name });
       
       if (error) {
@@ -88,7 +97,7 @@ const AuthForm = () => {
             Sign in to your account or create a new one
           </CardDescription>
         </CardHeader>
-        <Tabs defaultValue="login" className="w-full">
+        <Tabs defaultValue={defaultTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="register">Register</TabsTrigger>

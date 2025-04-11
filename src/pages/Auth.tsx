@@ -37,7 +37,9 @@ export default function Auth() {
       </header>
       
       {/* Auth form */}
-      <AuthForm />
+      <div className="flex-1 flex flex-col">
+        <AuthForm />
+      </div>
     </div>
   );
 }
