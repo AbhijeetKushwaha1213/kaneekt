@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 type AuthContextType = {
   session: Session | null;

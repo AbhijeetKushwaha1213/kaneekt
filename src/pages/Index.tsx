@@ -1,32 +1,31 @@
-
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { MessageSquare, Search, Users, ArrowRight } from "lucide-react";
-import { useEffect, useState } from "react";
-import { AuthUser } from "@/types";
+import { useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Index() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const { user, loading } = useAuth();
   
   useEffect(() => {
-    // Check if user is already logged in
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-        
-        // Redirect to chats if already logged in
-        if (parsedUser.isLoggedIn) {
-          navigate("/chats");
-        }
-      } catch (error) {
-        console.error("Failed to parse user data", error);
-        localStorage.removeItem("user");
-      }
+    // Redirect to chats if already logged in
+    if (user && !loading) {
+      navigate("/chats");
     }
-  }, [navigate]);
+  }, [user, loading, navigate]);
+  
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">Loading...</h2>
+          <p className="text-muted-foreground">Please wait</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen flex flex-col">

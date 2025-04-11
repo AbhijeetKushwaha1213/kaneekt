@@ -31,7 +31,11 @@ const AuthForm = () => {
           variant: "destructive",
         });
       } else {
-        navigate("/");
+        toast({
+          title: "Login successful",
+          description: "Welcome back!",
+        });
+        navigate("/chats"); // Redirect to chats page after successful login
       }
     } catch (error: any) {
       toast({
@@ -60,9 +64,9 @@ const AuthForm = () => {
       } else {
         toast({
           title: "Registration successful",
-          description: "Welcome! You can now log in to your account.",
+          description: "Welcome! You are now logged in.",
         });
-        navigate("/");
+        navigate("/chats"); // Redirect to chats page after successful registration
       }
     } catch (error: any) {
       toast({

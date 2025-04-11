@@ -1,27 +1,25 @@
 
 import type { Database } from '@/integrations/supabase/types';
 
-// Define types based on the generated Database type
-export type TablesInsert = Database['public']['Tables']['Insert'];
-export type TablesRow = Database['public']['Tables']['Row'];
-export type TablesUpdate = Database['public']['Tables']['Update'];
+// Define custom types based on the generated Database type
+export type Tables = Database['public']['Tables'];
 
 // Profile-related types
-export type Profile = TablesRow['profiles'];
-export type ProfileInsert = TablesInsert['profiles'];
-export type ProfileUpdate = TablesUpdate['profiles'];
+export type Profile = Tables['profiles']['Row'];
+export type ProfileInsert = Tables['profiles']['Insert'];
+export type ProfileUpdate = Tables['profiles']['Update'];
 
 // Post-related types
-export type Post = TablesRow['posts'];
-export type PostInsert = TablesInsert['posts'];
-export type PostUpdate = TablesUpdate['posts'];
+export type Post = Tables['posts']['Row'];
+export type PostInsert = Tables['posts']['Insert'];
+export type PostUpdate = Tables['posts']['Update'];
 
 // Conversation-related types
-export type Conversation = TablesRow['conversations'];
-export type ConversationInsert = TablesInsert['conversations'];
-export type ConversationUpdate = TablesUpdate['conversations'];
+export type Conversation = Tables['conversations']['Row'];
+export type ConversationInsert = Tables['conversations']['Insert'];
+export type ConversationUpdate = Tables['conversations']['Update'];
 
 // Message-related types
-export type Message = TablesRow['messages'];
-export type MessageInsert = TablesInsert['messages'];
-export type MessageUpdate = TablesUpdate['messages'];
+export type Message = Tables['messages']['Row'];
+export type MessageInsert = Tables['messages']['Insert'];
+export type MessageUpdate = Tables['messages']['Update'];
