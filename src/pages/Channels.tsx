@@ -16,6 +16,7 @@ import { InterestBadge } from "@/components/ui/interest-badge";
 import { useToast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useNavigate } from "react-router-dom";
 
 // Channel categories
 const CHANNEL_CATEGORIES = [
@@ -34,6 +35,7 @@ const CHANNEL_CATEGORIES = [
 ];
 
 export default function Channels() {
+  const navigate = useNavigate();
   const [filteredChannels, setFilteredChannels] = useState<Channel[]>(CHANNELS);
   const [myChannels, setMyChannels] = useState<Channel[]>([]);
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
@@ -163,6 +165,9 @@ export default function Channels() {
       visibility: "public"
     });
     setIsCreatingChannel(false);
+    
+    // Navigate to the new channel
+    navigate(`/channels/${createdChannel.id}`);
   };
 
   const handleDeleteChannel = (channelId: string) => {
@@ -180,6 +185,10 @@ export default function Channels() {
       title: "Channel deleted",
       description: "Your channel has been deleted successfully."
     });
+  };
+  
+  const handleChannelClick = (channelId: string) => {
+    navigate(`/channels/${channelId}`);
   };
   
   return (
@@ -305,7 +314,7 @@ export default function Channels() {
                       placeholder="Add a tag" 
                       value={tempTag}
                       onChange={(e) => setTempTag(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
                     />
                     <Button type="button" onClick={handleAddTag} variant="secondary">
                       Add
@@ -413,7 +422,11 @@ export default function Channels() {
                       </p>
                     ) : (
                       myChannels.map(channel => (
-                        <div key={channel.id} className="flex justify-between items-center px-2 py-1 hover:bg-muted rounded text-sm group">
+                        <div 
+                          key={channel.id} 
+                          className="flex justify-between items-center px-2 py-1 hover:bg-muted rounded text-sm group cursor-pointer"
+                          onClick={() => handleChannelClick(channel.id)}
+                        >
                           <div className="flex items-center overflow-hidden">
                             {channel.type === 'text' ? (
                               <Hash className="h-4 w-4 mr-1.5 shrink-0" />
@@ -427,7 +440,7 @@ export default function Channels() {
                             size="icon" 
                             className="h-6 w-6 opacity-0 group-hover:opacity-100"
                             onClick={(e) => {
-                              e.preventDefault();
+                              e.stopPropagation();
                               handleDeleteChannel(channel.id);
                             }}
                           >
@@ -461,7 +474,11 @@ export default function Channels() {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-1 pl-2 mt-1">
                     {CHANNELS.slice(0, 5).map(channel => (
-                      <div key={channel.id} className="flex items-center px-2 py-1 hover:bg-muted rounded text-sm">
+                      <div 
+                        key={channel.id} 
+                        className="flex items-center px-2 py-1 hover:bg-muted rounded text-sm cursor-pointer"
+                        onClick={() => handleChannelClick(channel.id)}
+                      >
                         {channel.type === 'voice' ? (
                           <Users className="h-4 w-4 mr-1.5" />
                         ) : (
@@ -496,12 +513,17 @@ export default function Channels() {
               <div className="lg:col-span-9">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                   {filteredChannels.map((channel, index) => (
-                    <ChannelCard 
-                      key={channel.id} 
-                      channel={channel}
-                      onDelete={channel.ownerId === "user-1" ? handleDeleteChannel : undefined}
-                      className={`animate-in fade-in-up stagger-${(index % 5) + 1}`}
-                    />
+                    <div 
+                      key={channel.id}
+                      className="cursor-pointer"
+                      onClick={() => handleChannelClick(channel.id)}
+                    >
+                      <ChannelCard 
+                        channel={channel}
+                        onDelete={channel.ownerId === "user-1" ? handleDeleteChannel : undefined}
+                        className={`animate-in fade-in-up stagger-${(index % 5) + 1}`}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
