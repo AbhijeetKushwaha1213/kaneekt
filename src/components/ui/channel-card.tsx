@@ -1,9 +1,10 @@
 
 import { Link } from "react-router-dom";
-import { Users, Lock, Hash, User, Crown, Mic } from "lucide-react";
+import { Users, Lock, Hash, User, Crown, Mic, Bell, Globe } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { InterestBadge } from "@/components/ui/interest-badge";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
@@ -15,9 +16,11 @@ interface ChannelCardProps {
     members: number;
     tags: string[];
     isPrivate: boolean;
+    inviteOnly?: boolean;
     ownerId?: string;
     createdAt?: Date;
     type?: 'text' | 'voice' | 'video';
+    category?: string;
   };
   onDelete?: (channelId: string) => void;
   className?: string;
@@ -53,8 +56,11 @@ export function ChannelCard({ channel, onDelete, className }: ChannelCardProps) 
                 <Hash className="h-4 w-4 mr-2 inline-block text-muted-foreground" />
               )}
               {channel.name}
-              {channel.isPrivate && (
+              {channel.isPrivate && !channel.inviteOnly && (
                 <Lock className="h-4 w-4 ml-2 inline-block text-muted-foreground" />
+              )}
+              {channel.inviteOnly && (
+                <User className="h-4 w-4 ml-2 inline-block text-muted-foreground" />
               )}
               {isOwner && (
                 <Crown className="h-4 w-4 ml-2 inline-block text-amber-500" />
@@ -69,6 +75,11 @@ export function ChannelCard({ channel, onDelete, className }: ChannelCardProps) 
             <p className="text-xs text-muted-foreground mt-1">
               Created {formatDistanceToNow(channel.createdAt, { addSuffix: true })}
             </p>
+          )}
+          {channel.category && (
+            <Badge variant="outline" className="mt-1.5">
+              {channel.category}
+            </Badge>
           )}
         </CardHeader>
         <CardContent className="pb-4 space-y-3">
@@ -88,8 +99,25 @@ export function ChannelCard({ channel, onDelete, className }: ChannelCardProps) 
               className={cn("flex-1", isOwner && "bg-primary text-primary-foreground")}
               size="sm"
             >
-              {isOwner ? "Manage Channel" : channel.isPrivate ? "Request to Join" : "Join Channel"}
+              {isOwner ? 
+                "Manage Channel" : 
+                channel.inviteOnly ? 
+                  "Request Invite" : 
+                  channel.isPrivate ? 
+                    "Request to Join" : 
+                    "Join Channel"
+              }
             </Button>
+            
+            {!isOwner && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Bell className="h-4 w-4" />
+              </Button>
+            )}
             
             {isOwner && onDelete && (
               <Button

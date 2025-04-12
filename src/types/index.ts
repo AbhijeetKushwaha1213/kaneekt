@@ -23,10 +23,12 @@ export interface Channel {
   members: number;
   tags: string[];
   isPrivate: boolean;
-  ownerId?: string; // Added for tracking channel ownership
-  createdAt?: Date; // Added for sorting channels
-  lastActive?: Date; // Added for activity tracking
-  type?: 'text' | 'voice' | 'video'; // Added for channel type
+  inviteOnly?: boolean;
+  ownerId?: string;
+  createdAt?: Date;
+  type?: 'text' | 'voice' | 'video';
+  category?: string;
+  visibility?: 'public' | 'private' | 'invite';
 }
 
 export interface Message {
@@ -98,8 +100,8 @@ export interface AuthUser {
   avatar?: string;
   isLoggedIn: boolean;
   createdAt?: string;
-  password?: string; // Added for authentication
-  location?: string; // Added to match profile data
-  gender?: string; // Added to match profile data
-  dob?: string; // Added to match profile data
+  password?: string;
+  location?: string;
+  gender?: string;
+  dob?: string;
 }

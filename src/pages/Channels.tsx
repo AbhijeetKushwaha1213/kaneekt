@@ -15,6 +15,23 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { InterestBadge } from "@/components/ui/interest-badge";
 import { useToast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Channel categories
+const CHANNEL_CATEGORIES = [
+  "Gaming",
+  "Technology",
+  "Books",
+  "Music",
+  "Art",
+  "Education",
+  "Fitness",
+  "Food",
+  "Travel",
+  "Movies",
+  "Science",
+  "Other"
+];
 
 export default function Channels() {
   const [filteredChannels, setFilteredChannels] = useState<Channel[]>(CHANNELS);
@@ -26,7 +43,9 @@ export default function Channels() {
     tags: [],
     isPrivate: false,
     type: 'text',
-    ownerId: "user-1" // Assuming current user id, in a real app this would come from auth context
+    ownerId: "user-1", // Assuming current user id, in a real app this would come from auth context
+    category: "Other",
+    visibility: "public"
   });
   const [tempTag, setTempTag] = useState("");
   const [isMyChannelsOpen, setIsMyChannelsOpen] = useState(true);
@@ -108,10 +127,12 @@ export default function Channels() {
       description: newChannel.description,
       members: 1, // Current user
       tags: newChannel.tags || [],
-      isPrivate: newChannel.isPrivate || false,
+      isPrivate: newChannel.visibility === "private" || newChannel.visibility === "invite",
+      inviteOnly: newChannel.visibility === "invite",
       ownerId: "user-1", // Assuming current user id
       createdAt: new Date(),
-      type: newChannel.type || 'text'
+      type: newChannel.type || 'text',
+      category: newChannel.category || "Other"
     };
 
     // Add to myChannels list
@@ -137,7 +158,9 @@ export default function Channels() {
       tags: [],
       isPrivate: false,
       type: 'text',
-      ownerId: "user-1"
+      ownerId: "user-1",
+      category: "Other",
+      visibility: "public"
     });
     setIsCreatingChannel(false);
   };
@@ -203,6 +226,24 @@ export default function Channels() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="channel-category">Category</Label>
+                  <Select 
+                    value={newChannel.category} 
+                    onValueChange={(value) => setNewChannel({...newChannel, category: value})}
+                  >
+                    <SelectTrigger className="w-full" id="channel-category">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CHANNEL_CATEGORIES.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Channel Type</Label>
                   <div className="flex gap-3">
                     <Button
@@ -222,6 +263,38 @@ export default function Channels() {
                     >
                       <Users className="w-4 h-4 mr-2" />
                       Voice
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Visibility</Label>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      type="button"
+                      variant={newChannel.visibility === 'public' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setNewChannel({...newChannel, visibility: 'public'})}
+                    >
+                      <Globe className="w-4 h-4 mr-2" />
+                      Public
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={newChannel.visibility === 'private' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setNewChannel({...newChannel, visibility: 'private'})}
+                    >
+                      <Lock className="w-4 h-4 mr-2" />
+                      Private
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={newChannel.visibility === 'invite' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setNewChannel({...newChannel, visibility: 'invite'})}
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Invite-only
                     </Button>
                   </div>
                 </div>
@@ -251,18 +324,6 @@ export default function Channels() {
                       ))}
                     </div>
                   )}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="channel-privacy" 
-                    checked={newChannel.isPrivate}
-                    onCheckedChange={(checked) => 
-                      setNewChannel({...newChannel, isPrivate: checked as boolean})
-                    }
-                  />
-                  <Label htmlFor="channel-privacy" className="text-sm font-normal">
-                    Make this channel private (invite only)
-                  </Label>
                 </div>
               </div>
               <DialogFooter>
@@ -352,7 +413,7 @@ export default function Channels() {
                       </p>
                     ) : (
                       myChannels.map(channel => (
-                        <div key={channel.id} className="flex justify-between items-center px-2 py-1 hover:bg-muted rounded text-sm">
+                        <div key={channel.id} className="flex justify-between items-center px-2 py-1 hover:bg-muted rounded text-sm group">
                           <div className="flex items-center overflow-hidden">
                             {channel.type === 'text' ? (
                               <Hash className="h-4 w-4 mr-1.5 shrink-0" />
@@ -414,6 +475,21 @@ export default function Channels() {
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
+                
+                {/* Categories Section */}
+                <div className="pt-2">
+                  <h3 className="text-xs font-medium text-muted-foreground px-2 py-1">CATEGORIES</h3>
+                  <div className="space-y-1 mt-1 pl-2">
+                    {CHANNEL_CATEGORIES.slice(0, 6).map(category => (
+                      <div key={category} className="flex items-center px-2 py-1 hover:bg-muted rounded text-sm cursor-pointer">
+                        <span className="truncate">{category}</span>
+                      </div>
+                    ))}
+                    <div className="px-2 py-1 text-xs text-muted-foreground">
+                      + more categories
+                    </div>
+                  </div>
+                </div>
               </div>
               
               {/* Main content with channel cards */}

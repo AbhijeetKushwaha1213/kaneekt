@@ -7,6 +7,7 @@ import Chats from "./pages/Chats";
 import Chat from "./pages/Chat";
 import Discover from "./pages/Discover";
 import Channels from "./pages/Channels";
+import Channel from "./pages/Channel";
 import NotFound from "./pages/NotFound";
 import { Toaster } from "@/components/ui/toaster";
 import { useState, useEffect } from "react";
@@ -63,6 +64,11 @@ export default function App() {
           <Route path="/channels" element={
             <ProtectedRoute>
               <Channels />
+            </ProtectedRoute>
+          } />
+          <Route path="/channels/:channelId" element={
+            <ProtectedRoute>
+              <Channel />
             </ProtectedRoute>
           } />
           
