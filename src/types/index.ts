@@ -40,6 +40,11 @@ export interface Message {
   mediaUrl?: string;
   reactions?: Reaction[];
   status?: 'sent' | 'delivered' | 'read';
+  attachment?: {
+    type: 'image' | 'document';
+    url: string;
+    name: string;
+  };
 }
 
 export interface Reaction {

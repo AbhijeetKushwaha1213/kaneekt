@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -52,7 +51,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               localStorage.setItem("user", JSON.stringify(userData));
               
               // Initialize a user profile if it doesn't exist
-              if (!localStorage.getItem("userProfile")) {
+              const storedProfile = localStorage.getItem("userProfile");
+              if (!storedProfile) {
                 const userProfile = {
                   id: session.user.id,
                   name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || "User",
@@ -66,6 +66,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   isPrivate: false
                 };
                 localStorage.setItem("userProfile", JSON.stringify(userProfile));
+              } else {
+                // Update the existing profile with current user data while keeping other user settings
+                try {
+                  const existingProfile = JSON.parse(storedProfile);
+                  const updatedProfile = {
+                    ...existingProfile,
+                    id: session.user.id,
+                    name: session.user.user_metadata?.name || existingProfile.name,
+                    email: session.user.email || existingProfile.email,
+                    username: session.user.user_metadata?.username || existingProfile.username,
+                  };
+                  localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
+                } catch (error) {
+                  console.error("Error updating existing profile", error);
+                }
               }
             } catch (error) {
               console.error("Error saving user data to localStorage", error);
@@ -79,8 +94,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else if (event === 'SIGNED_OUT') {
           console.log("User signed out event triggered");
           
-          // Clear user from localStorage on sign out
-          localStorage.removeItem("user");
+          // Do NOT remove user data on signout to maintain persistence
+          // Just update the isLoggedIn status
+          try {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+              const parsedUser = JSON.parse(storedUser);
+              parsedUser.isLoggedIn = false;
+              localStorage.setItem("user", JSON.stringify(parsedUser));
+            }
+          } catch (error) {
+            console.error("Error updating user login status", error);
+          }
           
           toast({
             title: "Signed out",
@@ -102,6 +127,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   avatar: session.user.user_metadata?.avatar_url || parsedUser.avatar
                 };
                 localStorage.setItem("user", JSON.stringify(updatedUser));
+              }
+              
+              // Also update profile data
+              const storedProfile = localStorage.getItem("userProfile");
+              if (storedProfile) {
+                const parsedProfile = JSON.parse(storedProfile);
+                const updatedProfile = {
+                  ...parsedProfile,
+                  name: session.user.user_metadata?.name || parsedProfile.name,
+                  avatar: session.user.user_metadata?.avatar_url || parsedProfile.avatar
+                };
+                localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
               }
             } catch (error) {
               console.error("Error updating user data in localStorage", error);

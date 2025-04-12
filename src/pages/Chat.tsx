@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Paperclip, Smile, Image, File, X } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, Smile, Image as ImageIcon, File, X } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Message, AuthUser } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { v4 as uuidv4 } from 'uuid';
 
 // Common emoji sets for the emoji picker
 const EMOJI_SETS = [
@@ -368,7 +369,7 @@ export default function Chat() {
     if ((newMessage.trim() === "" && !attachment) || !currentUser || !chatPartner) return;
     
     const message: Message = {
-      id: `new-${Date.now()}`,
+      id: `new-${uuidv4()}`,
       content: newMessage,
       timestamp: new Date(),
       sender: {
@@ -377,11 +378,13 @@ export default function Chat() {
         avatar: currentUser.avatar || "/placeholder.svg"
       },
       isCurrentUser: true,
-      attachment: attachment ? {
-        type: attachmentType || 'document',
-        url: attachmentPreview || `file-${Date.now()}`,
-        name: attachment.name
-      } : undefined
+      ...(attachment && {
+        attachment: {
+          type: attachmentType || 'document',
+          url: attachmentPreview || `file-${Date.now()}`,
+          name: attachment.name
+        }
+      })
     };
     
     // Add message to local messages state

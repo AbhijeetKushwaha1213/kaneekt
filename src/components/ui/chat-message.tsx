@@ -2,6 +2,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { File, Image as ImageIcon } from "lucide-react";
 
 interface ChatMessageProps {
   message: {
@@ -14,6 +15,11 @@ interface ChatMessageProps {
       avatar?: string;
     };
     isCurrentUser: boolean;
+    attachment?: {
+      type: 'image' | 'document';
+      url: string;
+      name: string;
+    };
   };
   className?: string;
 }
@@ -41,6 +47,26 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
           : "bg-secondary text-secondary-foreground rounded-tl-none"
       )}>
         <div className="text-sm">{message.content}</div>
+        
+        {message.attachment && (
+          <div className="mt-2">
+            {message.attachment.type === 'image' ? (
+              <div className="mt-2">
+                <img 
+                  src={message.attachment.url} 
+                  alt={message.attachment.name} 
+                  className="rounded-md max-h-60 w-auto object-contain"
+                />
+                <p className="text-xs mt-1 opacity-70">{message.attachment.name}</p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 bg-background/20 p-2 rounded-md">
+                <File className="h-5 w-5" />
+                <span className="text-xs truncate">{message.attachment.name}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       <span className={cn(

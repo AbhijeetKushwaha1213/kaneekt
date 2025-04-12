@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe, Users, UserCheck, Image, X } from "lucide-react";
+import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe, Users, UserCheck, Image as ImageIcon, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
 
 export default function Profile() {
@@ -115,7 +114,7 @@ export default function Profile() {
         console.error("Failed to parse posts data", error);
       }
     } else {
-      setPosts([
+      const defaultPosts = [
         {
           id: "p1",
           content: "Just finished reading 'Thinking, Fast and Slow'. Such a mind-opening book about cognitive biases!",
@@ -145,8 +144,9 @@ export default function Profile() {
           isPublic: true,
           type: "post"
         }
-      ]);
-      localStorage.setItem("userPosts", JSON.stringify(posts));
+      ];
+      setPosts(defaultPosts);
+      localStorage.setItem("userPosts", JSON.stringify(defaultPosts));
     }
   }, [user]);
   
@@ -892,7 +892,7 @@ export default function Profile() {
                   className="w-full h-16 border-dashed flex flex-col gap-1"
                   onClick={() => postFileInputRef.current?.click()}
                 >
-                  <Image className="h-5 w-5" />
+                  <ImageIcon className="h-5 w-5" />
                   <span className="text-xs">Add Photo</span>
                 </Button>
                 <input 
