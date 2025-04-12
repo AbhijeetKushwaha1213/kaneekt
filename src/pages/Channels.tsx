@@ -1,12 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SearchFilters } from "@/components/ui/search-filters";
 import { ChannelCard } from "@/components/ui/channel-card";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { CHANNELS } from "@/data/mock-data";
 import { Channel } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Plus, Lock, Globe } from "lucide-react";
+import { Plus, Lock, Globe, Server, ChevronDown, Hash, Users, User, Settings, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,22 +14,39 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InterestBadge } from "@/components/ui/interest-badge";
 import { useToast } from "@/hooks/use-toast";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export default function Channels() {
   const [filteredChannels, setFilteredChannels] = useState<Channel[]>(CHANNELS);
+  const [myChannels, setMyChannels] = useState<Channel[]>([]);
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
   const [newChannel, setNewChannel] = useState<Partial<Channel>>({
     name: "",
     description: "",
     tags: [],
-    isPrivate: false
+    isPrivate: false,
+    type: 'text',
+    ownerId: "user-1" // Assuming current user id, in a real app this would come from auth context
   });
   const [tempTag, setTempTag] = useState("");
+  const [isMyChannelsOpen, setIsMyChannelsOpen] = useState(true);
+  const [isPublicChannelsOpen, setIsPublicChannelsOpen] = useState(true);
   const { toast } = useToast();
   
+  // Load channels from localStorage on component mount
+  useEffect(() => {
+    const savedChannels = localStorage.getItem('userChannels');
+    if (savedChannels) {
+      const parsedChannels = JSON.parse(savedChannels);
+      setMyChannels(parsedChannels);
+      // Merge with the existing channels
+      setFilteredChannels([...parsedChannels, ...CHANNELS]);
+    }
+  }, []);
+
   const handleSearch = (filters: any) => {
     // Apply filters to the channels data
-    let results = [...CHANNELS];
+    let results = [...CHANNELS, ...myChannels];
     
     // Filter by search query
     if (filters.query) {
@@ -86,16 +103,25 @@ export default function Channels() {
 
     // Create a new channel
     const createdChannel: Channel = {
-      id: `c${CHANNELS.length + 1}`,
+      id: `c${new Date().getTime()}`,
       name: newChannel.name,
       description: newChannel.description,
       members: 1, // Current user
       tags: newChannel.tags || [],
-      isPrivate: newChannel.isPrivate || false
+      isPrivate: newChannel.isPrivate || false,
+      ownerId: "user-1", // Assuming current user id
+      createdAt: new Date(),
+      type: newChannel.type || 'text'
     };
 
-    // In a real app, we would send this to the backend
-    // For now, let's just add it to our filtered channels
+    // Add to myChannels list
+    const updatedMyChannels = [...myChannels, createdChannel];
+    setMyChannels(updatedMyChannels);
+    
+    // Save to localStorage for persistence
+    localStorage.setItem('userChannels', JSON.stringify(updatedMyChannels));
+
+    // Update filtered channels to include the new one
     setFilteredChannels([createdChannel, ...filteredChannels]);
 
     // Show success message
@@ -109,9 +135,28 @@ export default function Channels() {
       name: "",
       description: "",
       tags: [],
-      isPrivate: false
+      isPrivate: false,
+      type: 'text',
+      ownerId: "user-1"
     });
     setIsCreatingChannel(false);
+  };
+
+  const handleDeleteChannel = (channelId: string) => {
+    // Filter out the deleted channel
+    const updatedMyChannels = myChannels.filter(channel => channel.id !== channelId);
+    setMyChannels(updatedMyChannels);
+    
+    // Update filtered channels
+    setFilteredChannels(filteredChannels.filter(channel => channel.id !== channelId));
+    
+    // Update localStorage
+    localStorage.setItem('userChannels', JSON.stringify(updatedMyChannels));
+    
+    toast({
+      title: "Channel deleted",
+      description: "Your channel has been deleted successfully."
+    });
   };
   
   return (
@@ -156,6 +201,29 @@ export default function Channels() {
                     value={newChannel.description}
                     onChange={(e) => setNewChannel({...newChannel, description: e.target.value})}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Channel Type</Label>
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant={newChannel.type === 'text' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setNewChannel({...newChannel, type: 'text'})}
+                    >
+                      <Hash className="w-4 h-4 mr-2" />
+                      Text
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={newChannel.type === 'voice' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setNewChannel({...newChannel, type: 'voice'})}
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Voice
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Tags (interests)</Label>
@@ -264,14 +332,103 @@ export default function Channels() {
               </Button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredChannels.map((channel, index) => (
-                <ChannelCard 
-                  key={channel.id} 
-                  channel={channel}
-                  className={`animate-in fade-in-up stagger-${(index % 5) + 1}`}
-                />
-              ))}
+            {/* Discord-like server/channel listing */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Sidebar with categories */}
+              <div className="lg:col-span-3 border rounded-lg p-3 space-y-2">
+                {/* My Channels Section */}
+                <Collapsible open={isMyChannelsOpen} onOpenChange={setIsMyChannelsOpen}>
+                  <CollapsibleTrigger className="flex w-full justify-between items-center px-2 py-1.5 hover:bg-muted rounded">
+                    <div className="flex items-center">
+                      <Server className="h-4 w-4 mr-2" />
+                      <span className="text-sm font-medium">MY CHANNELS</span>
+                    </div>
+                    <ChevronDown className="h-4 w-4" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-1 pl-2 mt-1">
+                    {myChannels.length === 0 ? (
+                      <p className="text-xs text-muted-foreground px-2 py-1">
+                        No channels created yet
+                      </p>
+                    ) : (
+                      myChannels.map(channel => (
+                        <div key={channel.id} className="flex justify-between items-center px-2 py-1 hover:bg-muted rounded text-sm">
+                          <div className="flex items-center overflow-hidden">
+                            {channel.type === 'text' ? (
+                              <Hash className="h-4 w-4 mr-1.5 shrink-0" />
+                            ) : (
+                              <Users className="h-4 w-4 mr-1.5 shrink-0" />
+                            )}
+                            <span className="truncate">{channel.name}</span>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleDeleteChannel(channel.id);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                    <div className="px-2 py-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-start text-xs h-7"
+                        onClick={() => setIsCreatingChannel(true)}
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        Create Channel
+                      </Button>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+                
+                {/* Public Channels Section */}
+                <Collapsible open={isPublicChannelsOpen} onOpenChange={setIsPublicChannelsOpen}>
+                  <CollapsibleTrigger className="flex w-full justify-between items-center px-2 py-1.5 hover:bg-muted rounded">
+                    <div className="flex items-center">
+                      <Globe className="h-4 w-4 mr-2" />
+                      <span className="text-sm font-medium">PUBLIC CHANNELS</span>
+                    </div>
+                    <ChevronDown className="h-4 w-4" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-1 pl-2 mt-1">
+                    {CHANNELS.slice(0, 5).map(channel => (
+                      <div key={channel.id} className="flex items-center px-2 py-1 hover:bg-muted rounded text-sm">
+                        {channel.type === 'voice' ? (
+                          <Users className="h-4 w-4 mr-1.5" />
+                        ) : (
+                          <Hash className="h-4 w-4 mr-1.5" />
+                        )}
+                        <span className="truncate">{channel.name}</span>
+                      </div>
+                    ))}
+                    <div className="px-2 py-1 text-xs text-muted-foreground">
+                      + {CHANNELS.length - 5} more channels
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+              
+              {/* Main content with channel cards */}
+              <div className="lg:col-span-9">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredChannels.map((channel, index) => (
+                    <ChannelCard 
+                      key={channel.id} 
+                      channel={channel}
+                      onDelete={channel.ownerId === "user-1" ? handleDeleteChannel : undefined}
+                      className={`animate-in fade-in-up stagger-${(index % 5) + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </>
         )}

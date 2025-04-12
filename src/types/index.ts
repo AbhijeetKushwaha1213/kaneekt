@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   name: string;
@@ -24,6 +23,10 @@ export interface Channel {
   members: number;
   tags: string[];
   isPrivate: boolean;
+  ownerId?: string; // Added for tracking channel ownership
+  createdAt?: Date; // Added for sorting channels
+  lastActive?: Date; // Added for activity tracking
+  type?: 'text' | 'voice' | 'video'; // Added for channel type
 }
 
 export interface Message {
