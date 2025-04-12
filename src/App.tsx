@@ -10,8 +10,8 @@ import Channels from "./pages/Channels";
 import Channel from "./pages/Channel";
 import NotFound from "./pages/NotFound";
 import { Toaster } from "@/components/ui/toaster";
-import { useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import React from "react";
 
 // Protected route component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -33,50 +33,52 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          
-          {/* Protected routes */}
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
-          <Route path="/chats" element={
-            <ProtectedRoute>
-              <Chats />
-            </ProtectedRoute>
-          } />
-          <Route path="/chats/:id" element={
-            <ProtectedRoute>
-              <Chat />
-            </ProtectedRoute>
-          } />
-          <Route path="/discover" element={
-            <ProtectedRoute>
-              <Discover />
-            </ProtectedRoute>
-          } />
-          <Route path="/channels" element={
-            <ProtectedRoute>
-              <Channels />
-            </ProtectedRoute>
-          } />
-          <Route path="/channels/:channelId" element={
-            <ProtectedRoute>
-              <Channel />
-            </ProtectedRoute>
-          } />
-          
-          {/* 404 route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Toaster />
-      </BrowserRouter>
-    </AuthProvider>
+    <React.StrictMode>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            
+            {/* Protected routes */}
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/chats" element={
+              <ProtectedRoute>
+                <Chats />
+              </ProtectedRoute>
+            } />
+            <Route path="/chats/:id" element={
+              <ProtectedRoute>
+                <Chat />
+              </ProtectedRoute>
+            } />
+            <Route path="/discover" element={
+              <ProtectedRoute>
+                <Discover />
+              </ProtectedRoute>
+            } />
+            <Route path="/channels" element={
+              <ProtectedRoute>
+                <Channels />
+              </ProtectedRoute>
+            } />
+            <Route path="/channels/:channelId" element={
+              <ProtectedRoute>
+                <Channel />
+              </ProtectedRoute>
+            } />
+            
+            {/* 404 route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Toaster />
+        </BrowserRouter>
+      </AuthProvider>
+    </React.StrictMode>
   );
 }
