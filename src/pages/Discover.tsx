@@ -8,19 +8,33 @@ import { User } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DiscoverFeed } from "@/components/discover/DiscoverFeed";
 import { DiscoverSidebar } from "@/components/discover/DiscoverSidebar";
-import { MapPin, Sliders, Users, Compass, TrendingUp, Clock } from "lucide-react";
+import { MapPin, Sliders, Users, Compass, TrendingUp, Clock, PlusCircle } from "lucide-react";
 import { LocationSelector } from "@/components/discover/LocationSelector";
 import { Button } from "@/components/ui/button";
 import { SortOptions } from "@/components/discover/SortOptions";
 import { PostCreationButton } from "@/components/discover/PostCreationButton";
+import { DiscoverHero } from "@/components/discover/DiscoverHero";
+import { DiscoverTopics } from "@/components/discover/DiscoverTopics";
+import { NearbyPeople } from "@/components/discover/NearbyPeople";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Discover() {
+  const { toast } = useToast();
   const [filteredUsers, setFilteredUsers] = useState<User[]>(USERS);
   const [activeTab, setActiveTab] = useState<string>("feed");
   const [currentLocation, setCurrentLocation] = useState<string>("Your Location (10km radius)");
   const [sortBy, setSortBy] = useState<string>("trending");
   const [isLocationSelectorOpen, setIsLocationSelectorOpen] = useState(false);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   
+  // Get time of day for greeting
+  const getTimeOfDay = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "morning";
+    if (hour < 18) return "afternoon";
+    return "evening";
+  };
+
   const handleSearch = (filters: any) => {
     // Apply filters to the users data
     let results = [...USERS];
@@ -62,34 +76,34 @@ export default function Discover() {
     
     setFilteredUsers(results);
   };
+
+  const handleTopicSelect = (topic: string) => {
+    setSelectedTopics(prev => {
+      if (prev.includes(topic)) {
+        return prev.filter(t => t !== topic);
+      } else {
+        return [...prev, topic];
+      }
+    });
+
+    toast({
+      title: `Topic ${selectedTopics.includes(topic) ? "removed" : "added"}`,
+      description: `Your feed will ${selectedTopics.includes(topic) ? "no longer" : "now"} show content related to ${topic}`,
+    });
+  };
   
   return (
     <MainLayout>
-      <div className="p-4 sm:p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold mb-1">Discover</h1>
-            <p className="text-muted-foreground">
-              Find interesting content and people nearby
-            </p>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Button 
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1"
-              onClick={() => setIsLocationSelectorOpen(true)}
-            >
-              <MapPin className="h-4 w-4" />
-              <span className="hidden sm:inline">{currentLocation}</span>
-            </Button>
-            
-            <PostCreationButton />
-          </div>
-        </div>
+      <div className="space-y-6">
+        {/* Hero Section */}
+        <DiscoverHero 
+          timeOfDay={getTimeOfDay()} 
+          location={currentLocation}
+          onLocationClick={() => setIsLocationSelectorOpen(true)}
+        />
         
-        <div>
+        {/* Main Content */}
+        <div className="px-4 sm:px-6">
           <Tabs defaultValue="feed" value={activeTab} onValueChange={setActiveTab}>
             <div className="flex justify-between items-center border-b mb-4">
               <TabsList>
@@ -105,27 +119,46 @@ export default function Discover() {
               
               <SortOptions value={sortBy} onChange={setSortBy} />
             </div>
+
+            {/* Topic filters */}
+            <DiscoverTopics 
+              selectedTopics={selectedTopics} 
+              onTopicSelect={handleTopicSelect}
+            />
             
-            <TabsContent value="feed" className="mt-0">
+            <TabsContent value="feed" className="mt-4">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                   <SearchFilters onSearch={handleSearch} className="mb-6" />
-                  <DiscoverFeed sortBy={sortBy} />
+                  
+                  {/* Nearby People Section (Mobile Only) */}
+                  <div className="block lg:hidden mb-6">
+                    <NearbyPeople />
+                  </div>
+                  
+                  <DiscoverFeed 
+                    sortBy={sortBy}
+                    topics={selectedTopics}
+                  />
                 </div>
                 
-                <DiscoverSidebar />
+                <div className="hidden lg:block">
+                  <DiscoverSidebar />
+                </div>
               </div>
             </TabsContent>
             
-            <TabsContent value="people" className="mt-0">
+            <TabsContent value="people" className="mt-4">
               <SearchFilters onSearch={handleSearch} className="mb-6" />
               
               {filteredUsers.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 dark:bg-gray-900 rounded-lg border border-dashed">
+                  <Users className="h-12 w-12 text-muted-foreground mb-2" />
                   <h3 className="text-lg font-medium mb-2">No matches found</h3>
                   <p className="text-muted-foreground max-w-md mb-6">
                     Try adjusting your search filters to find more people
                   </p>
+                  <Button variant="outline">Reset Filters</Button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -133,7 +166,10 @@ export default function Discover() {
                     <UserCard 
                       key={user.id} 
                       user={user}
-                      className={`animate-in fade-in-up stagger-${(index % 5) + 1}`}
+                      className="animate-in fade-in-up hover:shadow-md transition-all duration-300"
+                      style={{
+                        animationDelay: `${(index % 5) * 100}ms`
+                      }}
                     />
                   ))}
                 </div>
@@ -141,6 +177,11 @@ export default function Discover() {
             </TabsContent>
           </Tabs>
         </div>
+      </div>
+
+      {/* Floating Post Creation Button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <PostCreationButton />
       </div>
       
       <LocationSelector 
