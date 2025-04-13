@@ -8,7 +8,7 @@ type AuthContextType = {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password?: string) => Promise<{ error: any; data?: any }>;
   signUp: (email: string, password: string, userData: any) => Promise<{ error: any; data: any }>;
   signOut: () => Promise<void>;
 };
@@ -188,9 +188,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [toast]);
 
-  const signIn = async (email: string, password: string) => {
-    console.log("SignIn function called with email:", email);
+  const signIn = async (email: string, password?: string) => {
+    console.log("SignIn function called");
     try {
+      // Check if this is a Google sign-in request
+      if (email === 'google') {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin + '/chats'
+          }
+        });
+        
+        return { data, error };
+      }
+
+      // Regular email/password sign-in
+      if (!password) {
+        return { error: new Error('Password is required for email login') };
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
       console.log("SignIn result:", error ? `Error: ${error.message}` : "Success", data?.user?.email);
@@ -220,7 +237,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(data.user);
       }
       
-      return { error };
+      return { error, data };
     } catch (error) {
       console.error("SignIn exception:", error);
       return { error };

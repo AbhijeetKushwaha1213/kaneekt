@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe, Users, UserCheck, Image as ImageIcon, X } from "lucide-react";
+import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe, Users, UserCheck, Image as ImageIcon, X, Mic } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,7 @@ export default function Profile() {
         createdAt: user.created_at
       });
     }
+    
     
     const storedUserData = localStorage.getItem("user");
     if (storedUserData) {
@@ -124,6 +125,7 @@ export default function Profile() {
           isPublic: true,
           type: "post"
         },
+        
         {
           id: "p2",
           content: "Organizing a philosophy discussion meetup this Saturday at Golden Gate Park. The topic will be 'Ethics in AI'. Join us!",
@@ -149,6 +151,7 @@ export default function Profile() {
       localStorage.setItem("userPosts", JSON.stringify(defaultPosts));
     }
   }, [user]);
+  
   
   const handleSaveBio = () => {
     setEditingBio(false);
@@ -372,6 +375,10 @@ export default function Profile() {
     return null;
   };
   
+  const handleLoginPage = () => {
+    navigate('/auth');
+  };
+  
   return (
     <MainLayout>
       <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-8">
@@ -414,33 +421,17 @@ export default function Profile() {
           </div>
           
           <div className="absolute right-4 bottom-4 md:bottom-6 flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="bg-background/80 backdrop-blur-sm"
-              onClick={handleOpenEditProfile}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Edit Profile
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="bg-background/80 backdrop-blur-sm"
-              onClick={handleTogglePrivacy}
-            >
-              {isPrivate ? (
-                <>
-                  <Lock className="h-4 w-4 mr-2" />
-                  Private
-                </>
-              ) : (
-                <>
-                  <Globe className="h-4 w-4 mr-2" />
-                  Public
-                </>
-              )}
-            </Button>
+            {/* Sign In button if user is not logged in */}
+            {!user && (
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={handleLoginPage}
+                className="bg-background/80 backdrop-blur-sm"
+              >
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
         
@@ -472,34 +463,62 @@ export default function Profile() {
               )}
             </div>
           </div>
-          
-          <div className="flex mt-4 md:mt-0 gap-3">
-            <Button 
-              variant={isFollowing ? "secondary" : "default"} 
-              size="sm"
-              onClick={handleFollow}
-            >
-              {isFollowing ? (
-                <>
-                  <UserCheck className="h-4 w-4 mr-2" />
-                  Following
-                </>
-              ) : (
-                <>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Follow
-                </>
-              )}
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleMessage}
-            >
-              <MessagesSquare className="h-4 w-4 mr-2" />
-              Message
-            </Button>
-          </div>
+        </div>
+        
+        {/* Follow and Message buttons first */}
+        <div className="flex flex-wrap gap-3">
+          <Button 
+            variant={isFollowing ? "secondary" : "default"} 
+            size="sm"
+            onClick={handleFollow}
+          >
+            {isFollowing ? (
+              <>
+                <UserCheck className="h-4 w-4 mr-2" />
+                Following
+              </>
+            ) : (
+              <>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Follow
+              </>
+            )}
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleMessage}
+          >
+            <MessagesSquare className="h-4 w-4 mr-2" />
+            Message
+          </Button>
+
+          {/* Edit Profile and Public/Private buttons now below */}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleOpenEditProfile}
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Edit Profile
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleTogglePrivacy}
+          >
+            {isPrivate ? (
+              <>
+                <Lock className="h-4 w-4 mr-2" />
+                Private
+              </>
+            ) : (
+              <>
+                <Globe className="h-4 w-4 mr-2" />
+                Public
+              </>
+            )}
+          </Button>
         </div>
         
         <div className="flex border rounded-lg divide-x">
@@ -664,6 +683,7 @@ export default function Profile() {
             )}
           </TabsContent>
           
+          
           <TabsContent value="events" className="mt-2 space-y-4">
             {posts.filter(post => post.type === 'event').length > 0 ? (
               posts
@@ -769,6 +789,7 @@ export default function Profile() {
         </div>
       </div>
 
+      
       <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -870,78 +891,4 @@ export default function Profile() {
             />
             
             {postImageUrl ? (
-              <div className="relative">
-                <img 
-                  src={postImageUrl} 
-                  alt="Post preview" 
-                  className="w-full h-auto max-h-60 rounded-md object-contain bg-accent/10"
-                />
-                <Button 
-                  variant="destructive" 
-                  size="icon" 
-                  className="absolute top-2 right-2 h-8 w-8 rounded-full"
-                  onClick={handleRemovePostImage}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div>
-                <Button 
-                  variant="outline" 
-                  className="w-full h-16 border-dashed flex flex-col gap-1"
-                  onClick={() => postFileInputRef.current?.click()}
-                >
-                  <ImageIcon className="h-5 w-5" />
-                  <span className="text-xs">Add Photo</span>
-                </Button>
-                <input 
-                  ref={postFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePostImageChange}
-                />
-              </div>
-            )}
-            
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="post-privacy" className="text-sm font-medium">
-                Privacy:
-              </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn("gap-2", !isPostPublic && "bg-secondary text-secondary-foreground")}
-                onClick={() => setIsPostPublic(false)}
-              >
-                <Lock className="h-3.5 w-3.5" />
-                Private
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn("gap-2", isPostPublic && "bg-secondary text-secondary-foreground")}
-                onClick={() => setIsPostPublic(true)}
-              >
-                <Globe className="h-3.5 w-3.5" />
-                Public
-              </Button>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreatePostOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreatePost}>
-              Post
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </MainLayout>
-  );
-}
+              <div className="relative

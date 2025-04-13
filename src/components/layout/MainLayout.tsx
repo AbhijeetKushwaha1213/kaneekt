@@ -1,142 +1,159 @@
 
-import { useState } from "react";
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { 
-  MessageSquare, 
-  Search, 
-  Hash, 
-  User, 
-  Menu, 
-  X, 
-  Home,
-  Bell
-} from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Home, MessageSquare, Search, Bell, Users, Settings, LogOut, Mic, User } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarImage, AvatarFallback, ChannelAvatar } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
-export function MainLayout({ children }: MainLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export const MainLayout = ({ children }: MainLayoutProps) => {
   const location = useLocation();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
-  const navigation = [
-    { name: "Home", href: "/", icon: Home },
-    { name: "Chats", href: "/chats", icon: MessageSquare },
-    { name: "Discover", href: "/discover", icon: Search },
-    { name: "Channels", href: "/channels", icon: Hash },
-    { name: "Profile", href: "/profile", icon: User },
-  ];
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
   };
+
+  const navItems = [
+    {
+      icon: Home,
+      label: "Home",
+      href: "/discover",
+      active: location.pathname === "/discover",
+    },
+    {
+      icon: MessageSquare,
+      label: "Chats",
+      href: "/chats",
+      active: location.pathname === "/chats" || location.pathname.startsWith("/chats/"),
+    },
+    {
+      icon: Users,
+      label: "Channels",
+      href: "/channels",
+      active: location.pathname === "/channels" || location.pathname.startsWith("/channels/"),
+    },
+    {
+      icon: Search,
+      label: "Discover",
+      href: "/discover",
+      active: location.pathname === "/discover",
+    },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Mobile header */}
-      <header className="lg:hidden border-b py-3 px-4 bg-background/80 backdrop-blur-md fixed top-0 w-full z-50">
-        <div className="flex justify-between items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="lg:hidden"
-            aria-label="Toggle menu"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <h1 className="text-lg font-medium">syncterest</h1>
-          <div className="flex items-center space-x-2">
+      <header className="border-b py-4 bg-background">
+        <div className="container flex items-center justify-between px-4 relative">
+          <Link to="/" className="text-xl font-bold">syncterest</Link>
+          
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="relative"
               aria-label="Notifications"
             >
               <Bell className="h-5 w-5" />
+              <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full" />
             </Button>
-            <Avatar className="h-8 w-8">
-              <AvatarImage src="/placeholder.svg" alt="User" />
-              <AvatarFallback>U</AvatarFallback>
-            </Avatar>
+            
+            {/* Channel avatar icon */}
+            <ChannelAvatar className="h-8 w-8">
+              <AvatarImage src="/placeholder.svg" alt="Current channel" />
+              <AvatarFallback>CH</AvatarFallback>
+            </ChannelAvatar>
+            
+            {/* Voice chat button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              aria-label="Voice chat"
+            >
+              <Mic className="h-5 w-5" />
+            </Button>
+            
+            {user ? (
+              <Link to="/profile">
+                <Avatar className="h-8 w-8 cursor-pointer">
+                  <AvatarImage src={user.user_metadata?.avatar_url || "/placeholder.svg"} alt={user.user_metadata?.name || "Profile"} />
+                  <AvatarFallback>{(user.user_metadata?.name || user.email || "U").charAt(0)}</AvatarFallback>
+                </Avatar>
+              </Link>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
       </header>
-
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <nav
-        className={cn(
-          "fixed top-0 bottom-0 left-0 w-64 bg-background z-50 border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <div className="flex items-center justify-between h-14 px-4 border-b">
-          <h1 className="text-lg font-medium">syncterest</h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="lg:hidden"
-            aria-label="Close menu"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-        <div className="flex flex-col h-[calc(100%-3.5rem)] p-4">
-          <div className="space-y-1 flex-1">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
+      
+      <div className="flex flex-1">
+        <aside className="hidden md:flex w-16 flex-col items-center pt-6 pb-10 border-r bg-background">
+          {navItems.map((item) => (
+            <Link to={item.href} key={item.label}>
+              <Button
+                variant="ghost"
+                size="icon"
                 className={cn(
-                  "flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                  location.pathname === item.href
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-muted"
+                  "mb-4",
+                  item.active ? "bg-accent text-accent-foreground" : ""
                 )}
-                onClick={() => setSidebarOpen(false)}
+                aria-label={item.label}
               >
-                <item.icon className="h-5 w-5 mr-3 flex-shrink-0" />
-                {item.name}
-              </Link>
-            ))}
+                <item.icon className="h-5 w-5" />
+              </Button>
+            </Link>
+          ))}
+          <div className="mt-auto">
+            <Link to="/profile">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "mb-4",
+                  location.pathname === "/profile" ? "bg-accent text-accent-foreground" : ""
+                )}
+                aria-label="Profile"
+              >
+                <User className="h-5 w-5" />
+              </Button>
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mb-4"
+              aria-label="Settings"
+              onClick={() => navigate("/settings")}
+            >
+              <Settings className="h-5 w-5" />
+            </Button>
+            {user && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="mb-4 text-red-500"
+                aria-label="Sign Out"
+                onClick={handleSignOut}
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            )}
           </div>
-          <div className="pt-4 border-t mt-auto">
-            <div className="flex items-center">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src="/placeholder.svg" alt="User" />
-                <AvatarFallback>U</AvatarFallback>
-              </Avatar>
-              <div className="ml-3">
-                <p className="text-sm font-medium">John Doe</p>
-                <p className="text-xs text-muted-foreground">View Profile</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main content */}
-      <main className={cn(
-        "flex-1 lg:pl-64 pt-[3.5rem] lg:pt-0",
-        "transition-all duration-300 ease-in-out"
-      )}>
-        <div className="h-full mx-auto max-w-7xl">
-          {children}
-        </div>
-      </main>
+        </aside>
+        
+        <main className="flex-1 overflow-auto bg-background">{children}</main>
+      </div>
     </div>
   );
-}
+};
