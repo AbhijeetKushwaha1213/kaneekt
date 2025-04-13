@@ -1,5 +1,6 @@
+
 import { useState, useEffect, useRef } from "react";
-import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe, Users, UserCheck, Image as ImageIcon, X, Mic } from "lucide-react";
+import { Camera, Edit, MapPin, Calendar, Plus, Settings, UserPlus, MessagesSquare, Lock, Globe, Users, UserCheck, Image as ImageIcon, X, Mic, Google } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,6 @@ export default function Profile() {
         createdAt: user.created_at
       });
     }
-    
     
     const storedUserData = localStorage.getItem("user");
     if (storedUserData) {
@@ -125,7 +125,6 @@ export default function Profile() {
           isPublic: true,
           type: "post"
         },
-        
         {
           id: "p2",
           content: "Organizing a philosophy discussion meetup this Saturday at Golden Gate Park. The topic will be 'Ethics in AI'. Join us!",
@@ -423,14 +422,25 @@ export default function Profile() {
           <div className="absolute right-4 bottom-4 md:bottom-6 flex items-center gap-2">
             {/* Sign In button if user is not logged in */}
             {!user && (
-              <Button 
-                variant="default" 
-                size="sm" 
-                onClick={handleLoginPage}
-                className="bg-background/80 backdrop-blur-sm"
-              >
-                Sign In
-              </Button>
+              <>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={handleLoginPage}
+                  className="bg-background/80 backdrop-blur-sm"
+                >
+                  Sign In
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleLoginPage}
+                  className="bg-background/80 backdrop-blur-sm"
+                >
+                  <Google className="h-4 w-4 mr-2" />
+                  Login with Google
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -683,7 +693,6 @@ export default function Profile() {
             )}
           </TabsContent>
           
-          
           <TabsContent value="events" className="mt-2 space-y-4">
             {posts.filter(post => post.type === 'event').length > 0 ? (
               posts
@@ -789,7 +798,6 @@ export default function Profile() {
         </div>
       </div>
 
-      
       <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -891,4 +899,75 @@ export default function Profile() {
             />
             
             {postImageUrl ? (
-              <div className="relative
+              <div className="relative">
+                <img 
+                  src={postImageUrl} 
+                  alt="Post preview" 
+                  className="rounded-md max-h-60 w-auto" 
+                />
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 h-8 w-8 rounded-full"
+                  onClick={handleRemovePostImage}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <Button
+                  variant="outline"
+                  className="w-full py-8 border-dashed flex flex-col items-center justify-center"
+                  onClick={() => postFileInputRef.current?.click()}
+                >
+                  <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground" />
+                  <span className="text-muted-foreground">Add an image</span>
+                </Button>
+                <input 
+                  ref={postFileInputRef} 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handlePostImageChange} 
+                />
+              </div>
+            )}
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant={isPostPublic ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsPostPublic(true)}
+                >
+                  <Globe className="h-4 w-4 mr-2" />
+                  Public
+                </Button>
+                <Button
+                  type="button"
+                  variant={!isPostPublic ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsPostPublic(false)}
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  Private
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreatePostOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreatePost}>
+              Publish
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </MainLayout>
+  );
+}
