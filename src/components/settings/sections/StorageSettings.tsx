@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { HardDrive, Image, MessageSquare, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export function StorageSettings() {
   const { toast } = useToast();
@@ -87,7 +88,7 @@ export function StorageSettings() {
                   {storageData.media} MB
                 </span>
               </div>
-              <Progress value={mediaPercentage} className="h-1 bg-blue-100" indicatorClassName="bg-blue-500" />
+              <Progress value={mediaPercentage} className={cn("h-1", "bg-blue-100")} />
             </div>
             
             <div>
@@ -100,7 +101,7 @@ export function StorageSettings() {
                   {storageData.messages} MB
                 </span>
               </div>
-              <Progress value={messagesPercentage} className="h-1 bg-green-100" indicatorClassName="bg-green-500" />
+              <Progress value={messagesPercentage} className={cn("h-1", "bg-green-100")} />
             </div>
             
             <div>
@@ -113,7 +114,7 @@ export function StorageSettings() {
                   {storageData.other} MB
                 </span>
               </div>
-              <Progress value={otherPercentage} className="h-1 bg-amber-100" indicatorClassName="bg-amber-500" />
+              <Progress value={otherPercentage} className={cn("h-1", "bg-amber-100")} />
             </div>
           </div>
         </CardContent>

@@ -13,7 +13,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Google, Mail, Camera } from "lucide-react";
+import { Mail, Camera, LucideGoogle } from "lucide-react";
 import { Profile } from "@/types/supabase";
 
 interface ProfileFormValues {
@@ -102,11 +102,8 @@ export function AccountSettings() {
       
       // Create bucket if it doesn't exist
       if (!avatarBucket) {
-        const { error } = await supabase.rpc('create_storage_bucket', {
-          name: 'avatars',
-          public: true,
-          file_size_limit: 5242880 // 5MB
-        });
+        const { error } = await supabase.storage
+          .createBucket('avatars', { public: true });
         
         if (error) {
           toast({
@@ -395,7 +392,7 @@ export function AccountSettings() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Google className="h-6 w-6 text-red-500" />
+                  <LucideGoogle className="h-6 w-6 text-red-500" />
                   <div>
                     <p className="font-medium">Google</p>
                     <p className="text-sm text-muted-foreground">
