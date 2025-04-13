@@ -11,7 +11,7 @@ export default function Chats() {
   return (
     <MainLayout>
       <div className={cn(
-        "h-[calc(100vh-3.5rem)] lg:h-screen flex",
+        "h-[calc(100vh-7.5rem)] lg:h-[calc(100vh-3.5rem)] flex",
         isSpecificChat ? "hidden md:flex" : "flex"
       )}>
         {/* Conversations sidebar */}
@@ -34,6 +34,9 @@ export default function Chats() {
           </div>
         )}
       </div>
+      
+      {/* Add padding at the bottom to account for mobile navigation */}
+      <div className="md:hidden h-16"></div>
     </MainLayout>
   );
 }

@@ -99,7 +99,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       </header>
       
       <div className="flex flex-1">
-        <aside className="hidden md:flex w-16 flex-col items-center pt-6 pb-10 border-r bg-background">
+        {/* Fixed sidebar navigation - always visible regardless of route */}
+        <aside className="w-16 flex flex-col items-center pt-6 pb-10 border-r bg-background fixed left-0 top-[4.5rem] bottom-0 z-10">
           {navItems.map((item) => (
             <Link to={item.href} key={item.label}>
               <Button
@@ -152,7 +153,28 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
           </div>
         </aside>
         
-        <main className="flex-1 overflow-auto bg-background">{children}</main>
+        {/* Main content with padding to account for fixed sidebar */}
+        <main className="flex-1 overflow-auto bg-background ml-16">{children}</main>
+      </div>
+      
+      {/* Mobile navigation menu at the bottom of the screen */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background z-20">
+        <div className="flex justify-around py-2">
+          {navItems.map((item) => (
+            <Link to={item.href} key={item.label}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  item.active ? "text-primary" : "text-muted-foreground"
+                )}
+                aria-label={item.label}
+              >
+                <item.icon className="h-5 w-5" />
+              </Button>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );
