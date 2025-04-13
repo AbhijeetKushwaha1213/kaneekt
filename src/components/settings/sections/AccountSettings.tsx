@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +12,27 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Camera, LucideGoogle } from "lucide-react";
+import { Mail, Camera } from "lucide-react";
 import { Profile } from "@/types/supabase";
+
+const GoogleIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="lucide lucide-google"
+  >
+    <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
+    <path d="M17.5 12h-11" />
+    <path d="M12 6.5v11" />
+  </svg>
+);
 
 interface ProfileFormValues {
   name: string;
@@ -46,7 +64,6 @@ export function AccountSettings() {
     },
   });
 
-  // Fetch profile data
   useEffect(() => {
     async function loadProfile() {
       if (!user) return;
@@ -83,7 +100,6 @@ export function AccountSettings() {
     loadProfile();
   }, [user, form]);
 
-  // Handle avatar upload
   async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
     try {
       setUploading(true);
@@ -96,11 +112,9 @@ export function AccountSettings() {
       const fileExt = file.name.split(".").pop();
       const filePath = `${user?.id}-${Date.now()}.${fileExt}`;
       
-      // Check if storage buckets exist
       const { data: buckets } = await supabase.storage.listBuckets();
       const avatarBucket = buckets?.find(bucket => bucket.name === "avatars");
       
-      // Create bucket if it doesn't exist
       if (!avatarBucket) {
         const { error } = await supabase.storage
           .createBucket('avatars', { public: true });
@@ -115,7 +129,6 @@ export function AccountSettings() {
         }
       }
       
-      // Upload file
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(filePath, file);
@@ -129,7 +142,6 @@ export function AccountSettings() {
         return;
       }
       
-      // Get public URL
       const { data } = supabase.storage
         .from("avatars")
         .getPublicUrl(filePath);
@@ -138,7 +150,6 @@ export function AccountSettings() {
         setAvatarUrl(data.publicUrl);
         form.setValue("avatar", data.publicUrl);
         
-        // Update profile avatar immediately
         await supabase
           .from("profiles")
           .update({ avatar: data.publicUrl })
@@ -161,14 +172,12 @@ export function AccountSettings() {
     }
   }
 
-  // Handle form submission
   async function onSubmit(data: ProfileFormValues) {
     if (!user) return;
     
     try {
       setLoading(true);
       
-      // Update profile information
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -195,7 +204,6 @@ export function AccountSettings() {
         description: "Your profile has been updated successfully",
       });
       
-      // Refresh profile data
       const { data: updatedProfile } = await supabase
         .from("profiles")
         .select("*")
@@ -226,7 +234,6 @@ export function AccountSettings() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Avatar Section */}
           <Card>
             <CardHeader>
               <CardTitle>Profile Picture</CardTitle>
@@ -267,7 +274,6 @@ export function AccountSettings() {
             </CardContent>
           </Card>
 
-          {/* Personal Information Section */}
           <Card>
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
@@ -336,7 +342,6 @@ export function AccountSettings() {
             </CardContent>
           </Card>
 
-          {/* Contact Information Section */}
           <Card>
             <CardHeader>
               <CardTitle>Contact Information</CardTitle>
@@ -381,7 +386,6 @@ export function AccountSettings() {
             </CardContent>
           </Card>
 
-          {/* Connected Accounts Section */}
           <Card>
             <CardHeader>
               <CardTitle>Connected Accounts</CardTitle>
@@ -392,7 +396,7 @@ export function AccountSettings() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <LucideGoogle className="h-6 w-6 text-red-500" />
+                  <GoogleIcon />
                   <div>
                     <p className="font-medium">Google</p>
                     <p className="text-sm text-muted-foreground">
