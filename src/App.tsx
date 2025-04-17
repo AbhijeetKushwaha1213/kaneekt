@@ -14,12 +14,13 @@ import Discover from "./pages/Discover";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index";
 
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/" element={<Discover />} />
+        <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />

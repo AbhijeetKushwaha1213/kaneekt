@@ -21,9 +21,10 @@ interface UserCardProps {
     distance?: number;
   };
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export function UserCard({ user, className }: UserCardProps) {
+export function UserCard({ user, className, style }: UserCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const { toast } = useToast();
 
@@ -46,6 +47,7 @@ export function UserCard({ user, className }: UserCardProps) {
           isHovered && "scale-[1.02]",
           className
         )}
+        style={style}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
