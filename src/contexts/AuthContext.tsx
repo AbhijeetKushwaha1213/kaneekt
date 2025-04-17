@@ -11,6 +11,7 @@ type AuthContextType = {
   signIn: (email: string, password?: string) => Promise<{ error: any; data?: any }>;
   signUp: (email: string, password: string, userData: any) => Promise<{ error: any; data: any }>;
   signOut: () => Promise<void>;
+  createStorageBucket: (bucketName: string) => Promise<{ error: any; data?: any }>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,7 +27,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log("Auth state changed:", event, session?.user?.email);
         
         // Update state with session data
@@ -83,6 +84,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   console.error("Error updating existing profile", error);
                 }
               }
+
+              // Ensure storage buckets are available for user uploads
+              // We create these outside the auth state change listener to avoid deadlocks
+              setTimeout(async () => {
+                try {
+                  // Check if avatars bucket exists, create if needed
+                  const { data: buckets } = await supabase.storage.listBuckets();
+                  if (!buckets?.find(bucket => bucket.name === 'avatars')) {
+                    await createStorageBucket('avatars');
+                  }
+                  
+                  // Check if posts bucket exists, create if needed
+                  if (!buckets?.find(bucket => bucket.name === 'posts')) {
+                    await createStorageBucket('posts');
+                  }
+                } catch (error) {
+                  console.error("Error checking/creating storage buckets", error);
+                }
+              }, 0);
             } catch (error) {
               console.error("Error saving user data to localStorage", error);
             }
@@ -187,6 +207,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       subscription.unsubscribe();
     };
   }, [toast]);
+
+  const createStorageBucket = async (bucketName: string) => {
+    try {
+      // First, check if the bucket already exists
+      const { data: existingBuckets } = await supabase.storage.listBuckets();
+      if (existingBuckets?.find(bucket => bucket.name === bucketName)) {
+        return { error: null, data: { bucketName, message: 'Bucket already exists' } };
+      }
+
+      // Create the bucket with public access
+      const { data, error } = await supabase.storage.createBucket(bucketName, {
+        public: true,
+        fileSizeLimit: 5242880 // 5MB limit
+      });
+
+      // Add RLS policies to allow authenticated users to upload files
+      if (!error) {
+        console.log(`Bucket ${bucketName} created successfully`);
+      } else {
+        console.error(`Error creating ${bucketName} bucket:`, error);
+      }
+
+      return { data, error };
+    } catch (error) {
+      console.error(`Unexpected error creating ${bucketName} bucket:`, error);
+      return { error };
+    }
+  };
 
   const signIn = async (email: string, password?: string) => {
     console.log("SignIn function called");
@@ -293,7 +341,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ session, user, loading, signIn, signUp, signOut, createStorageBucket }}>
       {children}
     </AuthContext.Provider>
   );

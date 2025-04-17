@@ -1,6 +1,7 @@
 
-import { UserCheck, UserPlus, MessagesSquare, Settings, Lock, Globe } from "lucide-react";
+import { UserPlus, MessageSquare, Lock, Unlock, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 interface ProfileActionsProps {
   isFollowing: boolean;
@@ -9,6 +10,7 @@ interface ProfileActionsProps {
   handleMessage: () => void;
   handleOpenEditProfile: () => void;
   handleTogglePrivacy: () => void;
+  isLoading?: boolean;
 }
 
 export function ProfileActions({
@@ -17,61 +19,55 @@ export function ProfileActions({
   handleFollow,
   handleMessage,
   handleOpenEditProfile,
-  handleTogglePrivacy
+  handleTogglePrivacy,
+  isLoading
 }: ProfileActionsProps) {
   return (
-    <div className="flex flex-wrap gap-3">
-      <Button 
-        variant={isFollowing ? "secondary" : "default"} 
-        size="sm"
+    <div className="flex flex-wrap gap-2">
+      <Button
+        variant={isFollowing ? "outline" : "default"}
         onClick={handleFollow}
+        disabled={isLoading}
       >
-        {isFollowing ? (
-          <>
-            <UserCheck className="h-4 w-4 mr-2" />
-            Following
-          </>
-        ) : (
-          <>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Follow
-          </>
-        )}
+        <UserPlus className="h-4 w-4 mr-2" />
+        {isFollowing ? "Following" : "Follow"}
       </Button>
+      
       <Button 
-        variant="outline" 
-        size="sm"
+        variant="secondary"
         onClick={handleMessage}
+        disabled={isLoading}
       >
-        <MessagesSquare className="h-4 w-4 mr-2" />
+        <MessageSquare className="h-4 w-4 mr-2" />
         Message
       </Button>
-
+      
       <Button 
-        variant="outline" 
-        size="sm"
+        variant="outline"
         onClick={handleOpenEditProfile}
+        disabled={isLoading}
       >
-        <Settings className="h-4 w-4 mr-2" />
+        <Edit className="h-4 w-4 mr-2" />
         Edit Profile
       </Button>
-      <Button 
-        variant="outline" 
-        size="sm"
-        onClick={handleTogglePrivacy}
-      >
-        {isPrivate ? (
-          <>
-            <Lock className="h-4 w-4 mr-2" />
-            Private
-          </>
-        ) : (
-          <>
-            <Globe className="h-4 w-4 mr-2" />
-            Public
-          </>
-        )}
-      </Button>
+      
+      <div className="ml-auto flex items-center space-x-2">
+        <Switch
+          checked={isPrivate}
+          onCheckedChange={handleTogglePrivacy}
+          disabled={isLoading}
+        />
+        <div className="flex items-center">
+          {isPrivate ? (
+            <Lock className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+          ) : (
+            <Unlock className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+          )}
+          <span className="text-sm text-muted-foreground">
+            {isPrivate ? "Private" : "Public"} Account
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
