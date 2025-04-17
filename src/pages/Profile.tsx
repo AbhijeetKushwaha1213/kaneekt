@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -10,7 +9,6 @@ import { AuthUser, User } from "@/types";
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 
-// Import refactored components
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { ProfileInfo } from "@/components/profile/ProfileInfo";
 import { ProfileActions } from "@/components/profile/ProfileActions";
@@ -47,7 +45,6 @@ export default function Profile() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Load user data and posts
   useEffect(() => {
     const fetchUserData = async () => {
       if (user) {
@@ -62,7 +59,6 @@ export default function Profile() {
         });
 
         try {
-          // Try to load profile from Supabase
           const { data: profileData } = await supabase
             .from('profiles')
             .select('*')
@@ -70,7 +66,22 @@ export default function Profile() {
             .single();
             
           if (profileData) {
-            setProfileData(profileData);
+            let age = 0;
+            if (profileData.dob) {
+              const birthDate = new Date(profileData.dob);
+              const today = new Date();
+              age = today.getFullYear() - birthDate.getFullYear();
+              const monthDiff = today.getMonth() - birthDate.getMonth();
+              if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+              }
+            }
+            
+            setProfileData({
+              ...profileData,
+              age: age
+            } as User);
+            
             setBio(profileData.bio || bio);
             setInterests(profileData.interests || interests);
             setIsPrivate(profileData.is_private || isPrivate);
@@ -86,7 +97,6 @@ export default function Profile() {
             });
           }
 
-          // Try to load posts from Supabase
           const { data: postsData } = await supabase
             .from('posts')
             .select('*')
@@ -96,7 +106,6 @@ export default function Profile() {
           if (postsData && postsData.length > 0) {
             setPosts(postsData);
           } else {
-            // Fall back to local storage
             loadLocalStorageData();
           }
         } catch (error) {
@@ -108,7 +117,6 @@ export default function Profile() {
       }
     };
     
-    // Function to load data from local storage
     const loadLocalStorageData = () => {
       const storedUserData = localStorage.getItem("user");
       if (storedUserData) {
@@ -124,7 +132,22 @@ export default function Profile() {
       if (storedProfileData) {
         try {
           const parsedProfile = JSON.parse(storedProfileData);
-          setProfileData(parsedProfile);
+          
+          let age = 0;
+          if (parsedProfile.dob) {
+            const birthDate = new Date(parsedProfile.dob);
+            const today = new Date();
+            age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+              age--;
+            }
+          }
+          
+          setProfileData({
+            ...parsedProfile,
+            age: parsedProfile.age || age
+          });
           
           if (parsedProfile.bio) {
             setBio(parsedProfile.bio);
@@ -217,7 +240,6 @@ export default function Profile() {
       }
     }
     
-    // Also update local storage
     if (profileData) {
       const updatedProfile = { ...profileData, isPrivate: !isPrivate };
       localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
@@ -286,19 +308,16 @@ export default function Profile() {
       
       try {
         if (user) {
-          // First check if avatars bucket exists
           const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
           
           if (bucketsError) {
             throw bucketsError;
           }
           
-          // Create bucket if it doesn't exist
           if (!buckets?.find(b => b.name === 'avatars')) {
             await supabase.storage.createBucket('avatars', { public: true });
           }
           
-          // Upload the file
           const filePath = `${user.id}/${uuidv4()}`;
           const { data, error } = await supabase.storage
             .from('avatars')
@@ -308,22 +327,18 @@ export default function Profile() {
             throw error;
           }
           
-          // Get public URL
           const { data: publicUrl } = supabase.storage
             .from('avatars')
             .getPublicUrl(filePath);
             
           if (publicUrl) {
-            // Update profile in Supabase
             await supabase
               .from('profiles')
               .update({ avatar: publicUrl.publicUrl })
               .eq('id', user.id);
             
-            // Update local state
             setAvatarUrl(publicUrl.publicUrl);
             
-            // Update local storage for backup
             if (profileData) {
               const updatedProfile = { ...profileData, avatar: publicUrl.publicUrl };
               localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
@@ -336,7 +351,6 @@ export default function Profile() {
               setUserData(updatedUser);
             }
           } else {
-            // Fallback to local URL if no public URL available
             const imageUrl = URL.createObjectURL(file);
             setAvatarUrl(imageUrl);
             
@@ -353,7 +367,6 @@ export default function Profile() {
             }
           }
         } else {
-          // Fallback for when not logged in with Supabase
           const imageUrl = URL.createObjectURL(file);
           setAvatarUrl(imageUrl);
           
@@ -415,7 +428,6 @@ export default function Profile() {
       };
 
       if (user) {
-        // Update profile in Supabase
         await supabase
           .from('profiles')
           .update({
@@ -431,7 +443,6 @@ export default function Profile() {
           .eq('id', user.id);
       }
       
-      // Also update local storage
       localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
       setProfileData(updatedProfile);
       
@@ -494,18 +505,14 @@ export default function Profile() {
       const postId = `p-${uuidv4()}`;
       let imageUrl = postImageUrl;
       
-      // Upload image if there is one and user is logged in
       if (postImage && user) {
         try {
-          // Check if posts bucket exists
           const { data: buckets } = await supabase.storage.listBuckets();
           
-          // Create bucket if it doesn't exist
           if (!buckets?.find(b => b.name === 'posts')) {
             await supabase.storage.createBucket('posts', { public: true });
           }
           
-          // Upload the image
           const filePath = `${user.id}/${postId}`;
           const { data, error } = await supabase.storage
             .from('posts')
@@ -515,7 +522,6 @@ export default function Profile() {
             throw error;
           }
           
-          // Get public URL
           const { data: publicUrl } = supabase.storage
             .from('posts')
             .getPublicUrl(filePath);
@@ -539,7 +545,6 @@ export default function Profile() {
         type: "post"
       };
       
-      // Save to Supabase if logged in
       if (user) {
         await supabase
           .from('posts')
@@ -555,7 +560,6 @@ export default function Profile() {
           });
       }
       
-      // Also save to local storage for backup
       const updatedPosts = [newPost, ...posts];
       setPosts(updatedPosts);
       localStorage.setItem("userPosts", JSON.stringify(updatedPosts));
@@ -598,7 +602,6 @@ export default function Profile() {
   return (
     <MainLayout>
       <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-8">
-        {/* Profile Header */}
         <ProfileHeader
           avatarUrl={avatarUrl}
           userData={userData}
@@ -609,7 +612,6 @@ export default function Profile() {
           isLoading={isLoading}
         />
         
-        {/* Profile Info */}
         <ProfileInfo
           userData={userData}
           profileData={profileData}
@@ -617,7 +619,6 @@ export default function Profile() {
           getAge={getAge}
         />
         
-        {/* Profile Actions */}
         <ProfileActions
           isFollowing={isFollowing}
           isPrivate={isPrivate}
@@ -628,14 +629,12 @@ export default function Profile() {
           isLoading={isLoading}
         />
         
-        {/* Profile Stats */}
         <ProfileStats
           postsCount={posts.length}
           followers={profileData?.followers}
           following={profileData?.following}
         />
         
-        {/* About Section */}
         <AboutSection
           bio={bio}
           setBio={setBio}
@@ -643,10 +642,8 @@ export default function Profile() {
           setProfileData={setProfileData}
         />
         
-        {/* Interests Section */}
         <InterestsSection interests={interests} />
         
-        {/* Activity Tabs */}
         <ActivityTabs
           posts={posts}
           userData={userData}
@@ -659,7 +656,6 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Edit Profile Dialog */}
       <EditProfileDialog
         open={editProfileOpen}
         onOpenChange={setEditProfileOpen}
@@ -668,7 +664,6 @@ export default function Profile() {
         handleSaveProfile={handleSaveProfile}
       />
 
-      {/* Create Post Dialog */}
       <CreatePostDialog
         open={createPostOpen}
         onOpenChange={setCreatePostOpen}

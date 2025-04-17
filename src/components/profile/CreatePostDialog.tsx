@@ -16,6 +16,7 @@ interface CreatePostDialogProps {
   setPostImageUrl: (url: string | null) => void;
   setPostImage: (file: File | null) => void;
   handleCreatePost: () => void;
+  isLoading?: boolean; // Add the isLoading prop to the interface
 }
 
 export function CreatePostDialog({
@@ -28,7 +29,8 @@ export function CreatePostDialog({
   postImageUrl,
   setPostImageUrl,
   setPostImage,
-  handleCreatePost
+  handleCreatePost,
+  isLoading
 }: CreatePostDialogProps) {
   const postFileInputRef = useRef<HTMLInputElement>(null);
   
@@ -64,6 +66,7 @@ export function CreatePostDialog({
             value={postContent}
             onChange={(e) => setPostContent(e.target.value)}
             className="min-h-[120px]"
+            disabled={isLoading}
           />
           
           {postImageUrl ? (
@@ -78,6 +81,7 @@ export function CreatePostDialog({
                 size="icon"
                 className="absolute top-2 right-2 h-8 w-8 rounded-full"
                 onClick={handleRemovePostImage}
+                disabled={isLoading}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -88,6 +92,7 @@ export function CreatePostDialog({
                 variant="outline"
                 className="w-full py-8 border-dashed flex flex-col items-center justify-center"
                 onClick={() => postFileInputRef.current?.click()}
+                disabled={isLoading}
               >
                 <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground" />
                 <span className="text-muted-foreground">Add an image</span>
@@ -98,6 +103,7 @@ export function CreatePostDialog({
                 accept="image/*" 
                 className="hidden" 
                 onChange={handlePostImageChange} 
+                disabled={isLoading}
               />
             </div>
           )}
@@ -109,6 +115,7 @@ export function CreatePostDialog({
                 variant={isPostPublic ? "default" : "outline"}
                 size="sm"
                 onClick={() => setIsPostPublic(true)}
+                disabled={isLoading}
               >
                 <Globe className="h-4 w-4 mr-2" />
                 Public
@@ -118,6 +125,7 @@ export function CreatePostDialog({
                 variant={!isPostPublic ? "default" : "outline"}
                 size="sm"
                 onClick={() => setIsPostPublic(false)}
+                disabled={isLoading}
               >
                 <Lock className="h-4 w-4 mr-2" />
                 Private
@@ -127,10 +135,10 @@ export function CreatePostDialog({
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleCreatePost}>
+          <Button onClick={handleCreatePost} disabled={isLoading}>
             Publish
           </Button>
         </DialogFooter>
