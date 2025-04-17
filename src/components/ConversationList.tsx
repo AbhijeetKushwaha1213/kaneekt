@@ -238,9 +238,9 @@ export function ConversationList() {
               <li key={conversation.id}
                 onTouchStart={() => handleTouchStart(conversation.id)}
                 onTouchEnd={handleTouchEnd}
+                onTouchStartCapture={(e) => handleSwipeStart(e, conversation.id)}
                 onTouchMove={(e) => conversation.id === swipingId && handleSwipeMove(e)}
-                onTouchStart={(e) => handleSwipeStart(e, conversation.id)}
-                onTouchEnd={handleSwipeEnd}
+                onTouchEndCapture={handleSwipeEnd}
               >
                 <Link
                   to={`/chats/${conversation.id}`}
@@ -292,7 +292,7 @@ export function ConversationList() {
                       </p>
                       
                       <div className="flex items-center gap-1">
-                        {getMessageStatusIcon(conversation.lastMessage.status)}
+                        {/* Message status icon - not using lastMessage.status since it doesn't exist in the type */}
                         
                         {(conversation.unreadCount && conversation.unreadCount > 0) && (
                           <span className="h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">

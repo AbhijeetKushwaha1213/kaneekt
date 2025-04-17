@@ -111,7 +111,7 @@ export function MessageAttachmentUploader({
           };
           
           // Convert location to a JSON file
-          const locationBlob = new Blob([JSON.stringify(locationData)], { type: 'application/json' });
+          const locationBlob = new Blob([JSON.stringify(locationData)]);
           const locationFile = new File([locationBlob], 'location.json', { type: 'application/json' });
           
           onAttachmentSelect(locationFile, 'location');

@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { 
@@ -9,6 +8,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { ChatMessage } from "@/components/ui/chat-message";
 import { useToast } from "@/hooks/use-toast";
 import { Message, AuthUser, Reaction } from "@/types";
@@ -409,7 +409,7 @@ export default function Chat() {
           avatar: partner.avatar
         },
         isCurrentUser: false,
-        status: 'read'
+        status: 'read' as 'read' // Type assertion to fix TS error
       },
       {
         id: `m2-${uuidv4()}`,
@@ -421,7 +421,7 @@ export default function Chat() {
           avatar: currentUser.avatar
         },
         isCurrentUser: true,
-        status: 'read'
+        status: 'read' as 'read'
       },
       {
         id: `m3-${uuidv4()}`,
@@ -433,7 +433,7 @@ export default function Chat() {
           avatar: partner.avatar
         },
         isCurrentUser: false,
-        status: 'read'
+        status: 'read' as 'read'
       },
       {
         id: `m4-${uuidv4()}`,
@@ -445,7 +445,7 @@ export default function Chat() {
           avatar: currentUser.avatar
         },
         isCurrentUser: true,
-        status: 'read'
+        status: 'read' as 'read'
       },
       {
         id: `m5-${uuidv4()}`,
@@ -457,7 +457,7 @@ export default function Chat() {
           avatar: partner.avatar
         },
         isCurrentUser: false,
-        status: 'read'
+        status: 'read' as 'read'
       }
     ];
   };
@@ -702,7 +702,7 @@ export default function Chat() {
         avatar: chatPartner.avatar
       },
       isCurrentUser: false,
-      status: 'delivered'
+      status: 'delivered' as 'delivered'
     };
     
     // If disappearing messages are enabled, add expiry
@@ -770,7 +770,7 @@ export default function Chat() {
         avatar: currentUser.avatar || "/placeholder.svg"
       },
       isCurrentUser: true,
-      status: 'sent',
+      status: 'sent' as 'sent',
       ...(replyingTo && {
         replyTo: {
           id: replyingTo.id,
@@ -823,7 +823,7 @@ export default function Chat() {
     setTimeout(() => {
       // Update to delivered status
       const deliveredMessages = updatedMessages.map(msg => 
-        msg.id === message.id ? { ...msg, status: 'delivered' as const } : msg
+        msg.id === message.id ? { ...msg, status: 'delivered' as 'delivered' } : msg
       );
       setMessages(deliveredMessages);
       
@@ -836,7 +836,7 @@ export default function Chat() {
       // Later update to read status (when recipient "sees" the message)
       setTimeout(() => {
         const readMessages = deliveredMessages.map(msg => 
-          msg.id === message.id ? { ...msg, status: 'read' as const } : msg
+          msg.id === message.id ? { ...msg, status: 'read' as 'read' } : msg
         );
         setMessages(readMessages);
         
@@ -1032,7 +1032,7 @@ export default function Chat() {
           avatar: "/placeholder.svg"
         },
         isCurrentUser: true,
-        status: 'sent'
+        status: 'sent' as 'sent'
       });
     }
     

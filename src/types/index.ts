@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -44,7 +45,7 @@ export interface Message {
   type?: 'text' | 'image' | 'video' | 'voice' | 'file' | 'location';
   mediaUrl?: string;
   reactions?: Reaction[];
-  status?: 'sent' | 'delivered' | 'read';
+  status?: 'sent' | 'delivered' | 'read' | string;
   attachment?: {
     type: 'image' | 'document' | 'video' | 'voice' | 'location';
     url: string;
@@ -84,6 +85,7 @@ export interface Conversation {
     timestamp: Date;
     unread: boolean;
     type?: 'text' | 'image' | 'video' | 'voice' | 'file' | 'location';
+    status?: 'sent' | 'delivered' | 'read';
   };
   isApproved?: boolean;
   isPinned?: boolean;
