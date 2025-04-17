@@ -59,6 +59,7 @@ export function MessageAttachmentUploader({
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
         const fileName = `voice-message-${Date.now()}.wav`;
+        // Fix: Create a File object correctly
         const audioFile = new File([audioBlob], fileName, { type: 'audio/wav' });
         onAttachmentSelect(audioFile, 'voice');
         
@@ -111,7 +112,8 @@ export function MessageAttachmentUploader({
           };
           
           // Convert location to a JSON file
-          const locationBlob = new Blob([JSON.stringify(locationData)]);
+          const locationBlob = new Blob([JSON.stringify(locationData)], { type: 'application/json' });
+          // Fix: Create a File object correctly
           const locationFile = new File([locationBlob], 'location.json', { type: 'application/json' });
           
           onAttachmentSelect(locationFile, 'location');
