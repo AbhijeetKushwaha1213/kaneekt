@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Paperclip, X, Image as ImageIcon, File, Mic, MapPin } from 'lucide-react';
@@ -59,11 +58,15 @@ export function MessageAttachmentUploader({
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
         const fileName = `voice-message-${Date.now()}.wav`;
-        // Create a File from Blob correctly with only the required arguments
-        const audioFile = new File([audioBlob], fileName);
+        
+        const audioFile = new Blob([audioBlob], { type: 'audio/wav' }) as unknown as File;
+        Object.defineProperty(audioFile, 'name', {
+          writable: false,
+          value: fileName
+        });
+        
         onAttachmentSelect(audioFile, 'voice');
         
-        // Stop all audio tracks
         stream.getAudioTracks().forEach(track => track.stop());
       };
       
@@ -111,10 +114,13 @@ export function MessageAttachmentUploader({
             timestamp: new Date().toISOString()
           };
           
-          // Convert location to a JSON file
           const locationBlob = new Blob([JSON.stringify(locationData)], { type: 'application/json' });
-          // Create a File from Blob correctly with only the required arguments
-          const locationFile = new File([locationBlob], 'location.json');
+          
+          const locationFile = new Blob([locationBlob], { type: 'application/json' }) as unknown as File;
+          Object.defineProperty(locationFile, 'name', {
+            writable: false,
+            value: 'location.json'
+          });
           
           onAttachmentSelect(locationFile, 'location');
           
@@ -259,7 +265,6 @@ export function MessageAttachmentUploader({
         </Popover>
       )}
       
-      {/* Hidden file inputs */}
       <input 
         type="file"
         ref={imageInputRef}
