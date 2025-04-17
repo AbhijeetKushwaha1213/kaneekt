@@ -41,20 +41,31 @@ export interface Message {
     avatar?: string;
   };
   isCurrentUser: boolean;
-  type?: 'text' | 'image' | 'video' | 'voice';
+  type?: 'text' | 'image' | 'video' | 'voice' | 'file' | 'location';
   mediaUrl?: string;
   reactions?: Reaction[];
   status?: 'sent' | 'delivered' | 'read';
   attachment?: {
-    type: 'image' | 'document';
+    type: 'image' | 'document' | 'video' | 'voice' | 'location';
     url: string;
     name: string;
   };
+  replyTo?: {
+    id: string;
+    content: string;
+    sender: {
+      id: string;
+      name: string;
+    };
+  };
+  isStarred?: boolean;
+  disappearAt?: Date;
 }
 
 export interface Reaction {
   emoji: string;
   userId: string;
+  userName?: string;
 }
 
 export interface Conversation {
@@ -63,14 +74,34 @@ export interface Conversation {
     id: string;
     name: string;
     avatar?: string;
+    isOnline?: boolean;
+    lastSeen?: Date;
+    isTyping?: boolean;
   };
   lastMessage: {
     id: string;
     content: string;
     timestamp: Date;
     unread: boolean;
+    type?: 'text' | 'image' | 'video' | 'voice' | 'file' | 'location';
   };
   isApproved?: boolean;
+  isPinned?: boolean;
+  isMuted?: boolean;
+  isArchived?: boolean;
+  theme?: string;
+  unreadCount?: number;
+}
+
+export interface GroupConversation extends Conversation {
+  isGroup: true;
+  participants: {
+    id: string;
+    name: string;
+    avatar?: string;
+    role: 'admin' | 'member';
+  }[];
+  description?: string;
 }
 
 export interface Post {
