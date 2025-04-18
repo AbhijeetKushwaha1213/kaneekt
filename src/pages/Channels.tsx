@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { SearchFilters } from "@/components/ui/search-filters";
 import { EnhancedChannelCard } from "@/components/ui/enhanced-channel-card";
@@ -28,7 +27,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// Channel categories
 const CHANNEL_CATEGORIES = [
   "Gaming",
   "Technology",
@@ -44,7 +42,6 @@ const CHANNEL_CATEGORIES = [
   "Other"
 ];
 
-// Interest tags for filtering
 const INTEREST_TAGS = [
   { id: "trending", label: "Trending", icon: <TrendingUp className="h-3.5 w-3.5 mr-1" /> },
   { id: "gaming", label: "Gaming", icon: <Gamepad className="h-3.5 w-3.5 mr-1" /> },
@@ -67,7 +64,7 @@ export default function Channels() {
     tags: [],
     isPrivate: false,
     type: 'text',
-    ownerId: "user-1", // Assuming current user id
+    ownerId: "user-1",
     category: "Other",
     visibility: "public"
   });
@@ -82,19 +79,15 @@ export default function Channels() {
   const [joinedChannels, setJoinedChannels] = useState<string[]>([]);
   const { toast } = useToast();
   
-  // Load channels from localStorage on component mount
   useEffect(() => {
     const savedChannels = localStorage.getItem('userChannels');
     if (savedChannels) {
       const parsedChannels = JSON.parse(savedChannels);
       setMyChannels(parsedChannels);
-      // Add user created channels to joined channels
       setJoinedChannels(parsedChannels.map((channel: Channel) => channel.id));
-      // Merge with the existing channels
       setFilteredChannels([...parsedChannels, ...CHANNELS]);
     }
     
-    // Load saved preferences
     const saved = localStorage.getItem('savedChannels');
     if (saved) setSavedChannels(JSON.parse(saved));
     
@@ -110,10 +103,8 @@ export default function Channels() {
   }, []);
 
   const handleSearch = (filters: any) => {
-    // Apply filters to the channels data
     let results = [...CHANNELS, ...myChannels];
     
-    // Filter by search query
     if (filters.query) {
       const query = filters.query.toLowerCase();
       results = results.filter(
@@ -126,7 +117,6 @@ export default function Channels() {
       );
     }
     
-    // Filter by interests/tags
     if (filters.interests && filters.interests.length > 0) {
       results = results.filter(
         channel => filters.interests.some((interest: string) => 
@@ -163,7 +153,6 @@ export default function Channels() {
     if (activeInterests.length === 0) return channels;
     
     return channels.filter(channel => 
-      // If channel has any of the active interest tags
       channel.tags.some(tag => 
         activeInterests.includes(tag.toLowerCase())
       )
@@ -195,7 +184,6 @@ export default function Channels() {
   };
 
   const handleCreateChannel = () => {
-    // Validate form
     if (!newChannel.name || !newChannel.description || !newChannel.tags?.length) {
       toast({
         title: "Missing information",
@@ -205,43 +193,36 @@ export default function Channels() {
       return;
     }
 
-    // Create a new channel
     const createdChannel: Channel = {
       id: `c${new Date().getTime()}`,
       name: newChannel.name,
       description: newChannel.description,
-      members: 1, // Current user
+      members: 1,
       tags: newChannel.tags || [],
       isPrivate: newChannel.visibility === "private" || newChannel.visibility === "invite",
       inviteOnly: newChannel.visibility === "invite",
-      ownerId: "user-1", // Assuming current user id
+      ownerId: "user-1",
       createdAt: new Date(),
       type: newChannel.type || 'text',
       category: newChannel.category || "Other"
     };
 
-    // Add to myChannels list
     const updatedMyChannels = [...myChannels, createdChannel];
     setMyChannels(updatedMyChannels);
     
-    // Save to localStorage for persistence
     localStorage.setItem('userChannels', JSON.stringify(updatedMyChannels));
 
-    // Add to joined channels
     const updatedJoinedChannels = [...joinedChannels, createdChannel.id];
     setJoinedChannels(updatedJoinedChannels);
     localStorage.setItem('joinedChannels', JSON.stringify(updatedJoinedChannels));
 
-    // Update filtered channels to include the new one
     setFilteredChannels([createdChannel, ...filteredChannels]);
 
-    // Show success message
     toast({
       title: "Channel created!",
       description: `Your channel "${createdChannel.name}" has been created successfully.`
     });
 
-    // Reset form and close dialog
     setNewChannel({
       name: "",
       description: "",
@@ -254,34 +235,27 @@ export default function Channels() {
     });
     setIsCreatingChannel(false);
     
-    // Navigate to the new channel
     navigate(`/channels/${createdChannel.id}`);
   };
 
   const handleDeleteChannel = (channelId: string) => {
-    // Filter out the deleted channel
     const updatedMyChannels = myChannels.filter(channel => channel.id !== channelId);
     setMyChannels(updatedMyChannels);
     
-    // Update filtered channels
     setFilteredChannels(filteredChannels.filter(channel => channel.id !== channelId));
     
-    // Update localStorage
     localStorage.setItem('userChannels', JSON.stringify(updatedMyChannels));
     
-    // Remove from joined channels
     const updatedJoinedChannels = joinedChannels.filter(id => id !== channelId);
     setJoinedChannels(updatedJoinedChannels);
     localStorage.setItem('joinedChannels', JSON.stringify(updatedJoinedChannels));
     
-    // Remove from saved channels if needed
     if (savedChannels.includes(channelId)) {
       const updatedSavedChannels = savedChannels.filter(id => id !== channelId);
       setSavedChannels(updatedSavedChannels);
       localStorage.setItem('savedChannels', JSON.stringify(updatedSavedChannels));
     }
     
-    // Remove from muted channels if needed
     if (mutedChannels.includes(channelId)) {
       const updatedMutedChannels = mutedChannels.filter(id => id !== channelId);
       setMutedChannels(updatedMutedChannels);
@@ -296,7 +270,6 @@ export default function Channels() {
   
   const handleJoinChannel = (channelId: string) => {
     if (joinedChannels.includes(channelId)) {
-      // Leave channel
       const updatedJoinedChannels = joinedChannels.filter(id => id !== channelId);
       setJoinedChannels(updatedJoinedChannels);
       localStorage.setItem('joinedChannels', JSON.stringify(updatedJoinedChannels));
@@ -306,7 +279,6 @@ export default function Channels() {
         description: "You've left the channel successfully."
       });
     } else {
-      // Join channel
       const updatedJoinedChannels = [...joinedChannels, channelId];
       setJoinedChannels(updatedJoinedChannels);
       localStorage.setItem('joinedChannels', JSON.stringify(updatedJoinedChannels));
@@ -320,7 +292,6 @@ export default function Channels() {
   
   const handleSaveChannel = (channelId: string) => {
     if (savedChannels.includes(channelId)) {
-      // Unsave channel
       const updatedSavedChannels = savedChannels.filter(id => id !== channelId);
       setSavedChannels(updatedSavedChannels);
       localStorage.setItem('savedChannels', JSON.stringify(updatedSavedChannels));
@@ -330,7 +301,6 @@ export default function Channels() {
         description: "Channel removed from your saved list."
       });
     } else {
-      // Save channel
       const updatedSavedChannels = [...savedChannels, channelId];
       setSavedChannels(updatedSavedChannels);
       localStorage.setItem('savedChannels', JSON.stringify(updatedSavedChannels));
@@ -344,7 +314,6 @@ export default function Channels() {
   
   const handleMuteChannel = (channelId: string) => {
     if (mutedChannels.includes(channelId)) {
-      // Unmute channel
       const updatedMutedChannels = mutedChannels.filter(id => id !== channelId);
       setMutedChannels(updatedMutedChannels);
       localStorage.setItem('mutedChannels', JSON.stringify(updatedMutedChannels));
@@ -354,7 +323,6 @@ export default function Channels() {
         description: "You'll now receive notifications from this channel."
       });
     } else {
-      // Mute channel
       const updatedMutedChannels = [...mutedChannels, channelId];
       setMutedChannels(updatedMutedChannels);
       localStorage.setItem('mutedChannels', JSON.stringify(updatedMutedChannels));
@@ -391,10 +359,8 @@ export default function Channels() {
   );
   
   const renderFeaturedChannel = () => {
-    // Show featured channel only on "all" tab
     if (activeTab !== "all" || activeInterests.length > 0) return null;
     
-    // Use first channel as featured (in real app would be based on activity/popularity)
     const featuredChannel = CHANNELS[0];
     
     return (
@@ -495,6 +461,15 @@ export default function Channels() {
         Public
       </Badge>
     );
+  };
+  
+  const renderLastActivityText = (channel: Channel) => {
+    return channel.lastActivity ? (
+      <div className="flex items-center text-xs text-muted-foreground">
+        <Clock className="h-3 w-3 mr-1" />
+        Active {formatDistanceToNow(channel.lastActivity, { addSuffix: true })}
+      </div>
+    ) : null;
   };
   
   const displayedChannels = getDisplayedChannels();
@@ -734,10 +709,8 @@ export default function Channels() {
           renderNoChannelsFound()
         ) : (
           <TabsContent value={activeTab} className="mt-0 space-y-6">
-            {/* Featured Channel (only shown on "all" tab) */}
             {renderFeaturedChannel()}
             
-            {/* Grid or List View of Channels */}
             <div className={
               viewMode === "grid" 
                 ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
