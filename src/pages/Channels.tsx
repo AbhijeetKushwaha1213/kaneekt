@@ -10,7 +10,8 @@ import {
   Plus, Lock, Globe, Server, ChevronDown, Hash, 
   Users, User, Settings, Trash2, Filter, 
   TrendingUp, Gamepad, BookOpen, MapPin, Compass,
-  Star, Bookmark, Flame, Search, LayoutGrid, LayoutList
+  Star, Bookmark, Flame, Search, LayoutGrid, LayoutList,
+  Clock
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
