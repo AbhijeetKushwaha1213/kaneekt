@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -20,31 +21,145 @@ import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { CreatePostDialog } from "@/components/profile/CreatePostDialog";
 
 export default function Profile() {
-  const [bio, setBio] = useState("Philosophy enthusiast and tech professional. I enjoy deep conversations about consciousness, ethics, and the future of AI. Always up for a good debate or collaborative projects.");
-  const [interests, setInterests] = useState([
-    "Philosophy", "Technology", "Ethics", "Artificial Intelligence", 
-    "Psychology", "Climate Change", "Literature"
-  ]);
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  // Initial state declarations - group related states together
+  const [profileState, setProfileState] = useState({
+    bio: "Philosophy enthusiast and tech professional. I enjoy deep conversations about consciousness, ethics, and the future of AI. Always up for a good debate or collaborative projects.",
+    interests: [
+      "Philosophy", "Technology", "Ethics", "Artificial Intelligence", 
+      "Psychology", "Climate Change", "Literature"
+    ],
+    isPrivate: false,
+    isFollowing: false
+  });
+  
+  const [dialogState, setDialogState] = useState({
+    editProfileOpen: false,
+    createPostOpen: false
+  });
+  
   const [editProfileData, setEditProfileData] = useState<Partial<User>>({});
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  
-  const [createPostOpen, setCreatePostOpen] = useState(false);
-  const [postContent, setPostContent] = useState("");
-  const [postImage, setPostImage] = useState<File | null>(null);
-  const [postImageUrl, setPostImageUrl] = useState<string | null>(null);
-  const [isPostPublic, setIsPostPublic] = useState(true);
-  
   const [userData, setUserData] = useState<AuthUser | null>(null);
   const [profileData, setProfileData] = useState<User | null>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   
+  // Post creation state
+  const [postContent, setPostContent] = useState("");
+  const [postImage, setPostImage] = useState<File | null>(null);
+  const [postImageUrl, setPostImageUrl] = useState<string | null>(null);
+  const [isPostPublic, setIsPostPublic] = useState(true);
+  
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // Destructure for ease of use
+  const { bio, interests, isPrivate, isFollowing } = profileState;
+  const { editProfileOpen, createPostOpen } = dialogState;
+  
+  // Memoized handlers to prevent unnecessary rerenders
+  const handleTogglePrivacy = useCallback(async () => {
+    const newIsPrivate = !isPrivate;
+    setProfileState(prev => ({ ...prev, isPrivate: newIsPrivate }));
+    
+    if (user) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ is_private: newIsPrivate })
+          .eq('id', user.id);
+      } catch (error) {
+        console.error("Error updating privacy setting:", error);
+      }
+    }
+    
+    if (profileData) {
+      const updatedProfile = { ...profileData, isPrivate: newIsPrivate };
+      localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
+    }
+    
+    toast({
+      title: newIsPrivate ? "Profile is now private" : "Profile is now public",
+      description: newIsPrivate 
+        ? "Only approved followers can now see your posts and activity." 
+        : "Everyone can now see your posts and activity."
+    });
+  }, [isPrivate, user, profileData, toast]);
+
+  const handleFollow = useCallback(() => {
+    const newIsFollowing = !isFollowing;
+    setProfileState(prev => ({ ...prev, isFollowing: newIsFollowing }));
+    
+    toast({
+      title: newIsFollowing ? "Following" : "Unfollowed",
+      description: newIsFollowing 
+        ? "You're now following this user. You'll see their updates in your feed." 
+        : "You are no longer following this user."
+    });
+  }, [isFollowing, toast]);
+  
+  const handleOpenEditProfile = useCallback(() => {
+    if (profileData) {
+      setEditProfileData({
+        name: profileData.name,
+        location: profileData.location,
+        gender: profileData.gender,
+        dob: profileData.dob,
+        bio: profileData.bio,
+        interests: profileData.interests
+      });
+    }
+    setDialogState(prev => ({ ...prev, editProfileOpen: true }));
+  }, [profileData]);
+  
+  const handleCreatePostClick = useCallback(() => {
+    setPostContent("");
+    setPostImage(null);
+    setPostImageUrl(null);
+    setIsPostPublic(true);
+    setDialogState(prev => ({ ...prev, createPostOpen: true }));
+  }, []);
+  
+  const handleMessage = useCallback(() => {
+    const currentUser = userData;
+    if (currentUser) {
+      let conversations = JSON.parse(localStorage.getItem("conversations") || "[]");
+      
+      const existingConvIndex = conversations.findIndex(
+        (conv: any) => conv.user.id === currentUser.id
+      );
+      
+      if (existingConvIndex === -1) {
+        const newConversation = {
+          id: `conv-${Date.now()}`,
+          user: {
+            id: currentUser.id,
+            name: currentUser.name,
+            avatar: currentUser.avatar
+          },
+          lastMessage: {
+            id: `msg-${Date.now()}`,
+            content: "Start a conversation...",
+            timestamp: new Date(),
+            unread: false
+          },
+          isApproved: true
+        };
+        
+        conversations.push(newConversation);
+        localStorage.setItem("conversations", JSON.stringify(conversations));
+      }
+    }
+    
+    navigate(`/chats/${userData?.id || 'new'}`);
+    toast({
+      title: "Chat opened",
+      description: "You can now message this user."
+    });
+  }, [userData, navigate, toast]);
+    
+  // Data fetching - optimized to prevent unnecessary rerenders
   useEffect(() => {
     const fetchUserData = async () => {
       if (user) {
@@ -82,9 +197,12 @@ export default function Profile() {
               age: age
             } as User);
             
-            setBio(profileData.bio || bio);
-            setInterests(profileData.interests || interests);
-            setIsPrivate(profileData.is_private || isPrivate);
+            setProfileState(prev => ({
+              ...prev,
+              bio: profileData.bio || prev.bio,
+              interests: profileData.interests || prev.interests,
+              isPrivate: profileData.is_private || false,
+            }));
             setAvatarUrl(profileData.avatar || null);
             
             setEditProfileData({
@@ -224,83 +342,9 @@ export default function Profile() {
     };
     
     fetchUserData();
-  }, [user, bio, interests, isPrivate]);
+  }, [user]);
   
-  const handleTogglePrivacy = async () => {
-    setIsPrivate(!isPrivate);
-    
-    if (user) {
-      try {
-        await supabase
-          .from('profiles')
-          .update({ is_private: !isPrivate })
-          .eq('id', user.id);
-      } catch (error) {
-        console.error("Error updating privacy setting:", error);
-      }
-    }
-    
-    if (profileData) {
-      const updatedProfile = { ...profileData, isPrivate: !isPrivate };
-      localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
-    }
-    
-    toast({
-      title: isPrivate ? "Profile is now public" : "Profile is now private",
-      description: isPrivate 
-        ? "Everyone can now see your posts and activity." 
-        : "Only approved followers can now see your posts and activity."
-    });
-  };
-
-  const handleFollow = () => {
-    setIsFollowing(!isFollowing);
-    toast({
-      title: isFollowing ? "Unfollowed" : "Following",
-      description: isFollowing 
-        ? "You are no longer following this user." 
-        : "You're now following this user. You'll see their updates in your feed."
-    });
-  };
-  
-  const handleMessage = () => {
-    const currentUser = userData;
-    if (currentUser) {
-      let conversations = JSON.parse(localStorage.getItem("conversations") || "[]");
-      
-      const existingConvIndex = conversations.findIndex(
-        (conv: any) => conv.user.id === currentUser.id
-      );
-      
-      if (existingConvIndex === -1) {
-        const newConversation = {
-          id: `conv-${Date.now()}`,
-          user: {
-            id: currentUser.id,
-            name: currentUser.name,
-            avatar: currentUser.avatar
-          },
-          lastMessage: {
-            id: `msg-${Date.now()}`,
-            content: "Start a conversation...",
-            timestamp: new Date(),
-            unread: false
-          },
-          isApproved: true
-        };
-        
-        conversations.push(newConversation);
-        localStorage.setItem("conversations", JSON.stringify(conversations));
-      }
-    }
-    
-    navigate(`/chats/${userData?.id || 'new'}`);
-    toast({
-      title: "Chat opened",
-      description: "You can now message this user."
-    });
-  };
-  
+  // Optimized profile photo handling
   const handleProfilePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -350,21 +394,11 @@ export default function Profile() {
               localStorage.setItem("user", JSON.stringify(updatedUser));
               setUserData(updatedUser);
             }
-          } else {
-            const imageUrl = URL.createObjectURL(file);
-            setAvatarUrl(imageUrl);
             
-            if (profileData) {
-              const updatedProfile = { ...profileData, avatar: imageUrl };
-              localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
-              setProfileData(updatedProfile);
-            }
-            
-            if (userData) {
-              const updatedUser = { ...userData, avatar: imageUrl };
-              localStorage.setItem("user", JSON.stringify(updatedUser));
-              setUserData(updatedUser);
-            }
+            toast({
+              title: "Profile photo updated",
+              description: "Your profile photo has been updated successfully."
+            });
           }
         } else {
           const imageUrl = URL.createObjectURL(file);
@@ -381,12 +415,12 @@ export default function Profile() {
             localStorage.setItem("user", JSON.stringify(updatedUser));
             setUserData(updatedUser);
           }
+          
+          toast({
+            title: "Profile photo updated",
+            description: "Your profile photo has been updated successfully."
+          });
         }
-        
-        toast({
-          title: "Profile photo updated",
-          description: "Your profile photo has been updated successfully."
-        });
       } catch (error: any) {
         console.error("Error uploading profile photo:", error);
         toast({
@@ -400,20 +434,7 @@ export default function Profile() {
     }
   };
   
-  const handleOpenEditProfile = () => {
-    if (profileData) {
-      setEditProfileData({
-        name: profileData.name,
-        location: profileData.location,
-        gender: profileData.gender,
-        dob: profileData.dob,
-        bio: profileData.bio,
-        interests: profileData.interests
-      });
-    }
-    setEditProfileOpen(true);
-  };
-
+  // Profile editing
   const handleSaveProfile = async () => {
     if (!profileData) return;
     
@@ -456,13 +477,12 @@ export default function Profile() {
         setUserData(updatedUser);
       }
       
-      if (editProfileData.bio) {
-        setBio(editProfileData.bio);
-      }
-      
-      if (editProfileData.interests) {
-        setInterests(editProfileData.interests);
-      }
+      // Update local state with new values
+      setProfileState(prev => ({
+        ...prev,
+        bio: editProfileData.bio || prev.bio,
+        interests: editProfileData.interests || prev.interests
+      }));
       
       toast({
         title: "Profile updated",
@@ -477,18 +497,11 @@ export default function Profile() {
       });
     } finally {
       setIsLoading(false);
-      setEditProfileOpen(false);
+      setDialogState(prev => ({ ...prev, editProfileOpen: false }));
     }
   };
 
-  const handleCreatePostClick = () => {
-    setPostContent("");
-    setPostImage(null);
-    setPostImageUrl(null);
-    setIsPostPublic(true);
-    setCreatePostOpen(true);
-  };
-  
+  // Create post with improved error handling
   const handleCreatePost = async () => {
     if (postContent.trim() === '') {
       toast({
@@ -552,11 +565,12 @@ export default function Profile() {
             id: postId,
             user_id: user.id,
             content: postContent,
+            image: imageUrl,
             is_public: isPostPublic,
             type: 'post',
             likes: 0,
             comments: 0,
-            // Add other fields here
+            created_at: new Date().toISOString()
           });
       }
       
@@ -564,7 +578,7 @@ export default function Profile() {
       setPosts(updatedPosts);
       localStorage.setItem("userPosts", JSON.stringify(updatedPosts));
       
-      setCreatePostOpen(false);
+      setDialogState(prev => ({ ...prev, createPostOpen: false }));
       toast({
         title: "Post created",
         description: "Your post has been published successfully."
@@ -595,9 +609,9 @@ export default function Profile() {
     return null;
   };
   
-  const handleLoginPage = () => {
+  const handleLoginPage = useCallback(() => {
     navigate('/auth');
-  };
+  }, [navigate]);
   
   return (
     <MainLayout>
@@ -637,7 +651,7 @@ export default function Profile() {
         
         <AboutSection
           bio={bio}
-          setBio={setBio}
+          setBio={(newBio) => setProfileState(prev => ({ ...prev, bio: newBio }))}
           profileData={profileData}
           setProfileData={setProfileData}
         />
@@ -658,7 +672,7 @@ export default function Profile() {
 
       <EditProfileDialog
         open={editProfileOpen}
-        onOpenChange={setEditProfileOpen}
+        onOpenChange={(open) => setDialogState(prev => ({ ...prev, editProfileOpen: open }))}
         editProfileData={editProfileData}
         setEditProfileData={setEditProfileData}
         handleSaveProfile={handleSaveProfile}
@@ -666,7 +680,7 @@ export default function Profile() {
 
       <CreatePostDialog
         open={createPostOpen}
-        onOpenChange={setCreatePostOpen}
+        onOpenChange={(open) => setDialogState(prev => ({ ...prev, createPostOpen: open }))}
         postContent={postContent}
         setPostContent={setPostContent}
         isPostPublic={isPostPublic}
