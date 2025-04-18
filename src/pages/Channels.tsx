@@ -712,31 +712,33 @@ export default function Channels() {
         {displayedChannels.length === 0 ? (
           renderNoChannelsFound()
         ) : (
-          <TabsContent value={activeTab} className="mt-0 space-y-6">
-            {renderFeaturedChannel()}
-            
-            <div className={
-              viewMode === "grid" 
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                : "space-y-3"
-            }>
-              {displayedChannels.map((channel) => (
-                <EnhancedChannelCard 
-                  key={channel.id}
-                  channel={channel}
-                  currentUserId="user-1"
-                  onDelete={channel.ownerId === "user-1" ? handleDeleteChannel : undefined}
-                  onJoin={handleJoinChannel}
-                  onSave={handleSaveChannel}
-                  onMute={handleMuteChannel}
-                  isJoined={joinedChannels.includes(channel.id)}
-                  isSaved={savedChannels.includes(channel.id)}
-                  isMuted={mutedChannels.includes(channel.id)}
-                  className={viewMode === "list" ? "h-auto" : ""}
-                />
-              ))}
-            </div>
-          </TabsContent>
+          <Tabs value={activeTab}>
+            <TabsContent value={activeTab} className="mt-0 space-y-6">
+              {renderFeaturedChannel()}
+              
+              <div className={
+                viewMode === "grid" 
+                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                  : "space-y-3"
+              }>
+                {displayedChannels.map((channel) => (
+                  <EnhancedChannelCard 
+                    key={channel.id}
+                    channel={channel}
+                    currentUserId="user-1"
+                    onDelete={channel.ownerId === "user-1" ? handleDeleteChannel : undefined}
+                    onJoin={handleJoinChannel}
+                    onSave={handleSaveChannel}
+                    onMute={handleMuteChannel}
+                    isJoined={joinedChannels.includes(channel.id)}
+                    isSaved={savedChannels.includes(channel.id)}
+                    isMuted={mutedChannels.includes(channel.id)}
+                    className={viewMode === "list" ? "h-auto" : ""}
+                  />
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </MainLayout>
