@@ -268,15 +268,15 @@ export default function Profile() {
           });
           
           if (parsedProfile.bio) {
-            setBio(parsedProfile.bio);
+            setProfileState(prev => ({ ...prev, bio: parsedProfile.bio }));
           }
           
           if (parsedProfile.interests && parsedProfile.interests.length > 0) {
-            setInterests(parsedProfile.interests);
+            setProfileState(prev => ({ ...prev, interests: parsedProfile.interests }));
           }
 
           if (parsedProfile.isPrivate !== undefined) {
-            setIsPrivate(parsedProfile.isPrivate);
+            setProfileState(prev => ({ ...prev, isPrivate: parsedProfile.isPrivate }));
           }
           
           if (parsedProfile.avatar) {
