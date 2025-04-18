@@ -12,6 +12,7 @@ import {
   Star, Bookmark, Flame, Search, LayoutGrid, LayoutList,
   Clock
 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -464,12 +465,15 @@ export default function Channels() {
   };
   
   const renderLastActivityText = (channel: Channel) => {
-    return channel.lastActivity ? (
-      <div className="flex items-center text-xs text-muted-foreground">
-        <Clock className="h-3 w-3 mr-1" />
-        Active {formatDistanceToNow(channel.lastActivity, { addSuffix: true })}
-      </div>
-    ) : null;
+    if (channel.createdAt) {
+      return (
+        <div className="flex items-center text-xs text-muted-foreground">
+          <Clock className="h-3 w-3 mr-1" />
+          Created {formatDistanceToNow(channel.createdAt, { addSuffix: true })}
+        </div>
+      );
+    }
+    return null;
   };
   
   const displayedChannels = getDisplayedChannels();

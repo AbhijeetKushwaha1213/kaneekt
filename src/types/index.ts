@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   name: string;
@@ -30,6 +29,7 @@ export interface Channel {
   type?: 'text' | 'voice' | 'video';
   category?: string;
   visibility?: 'public' | 'private' | 'invite';
+  lastActivity?: Date;
 }
 
 export interface Message {
