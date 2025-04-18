@@ -14,9 +14,7 @@ const root = createRoot(rootElement);
 
 // Render the app within React.StrictMode to catch potential problems
 root.render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>
 );

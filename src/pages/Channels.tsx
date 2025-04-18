@@ -1,12 +1,17 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { SearchFilters } from "@/components/ui/search-filters";
-import { ChannelCard } from "@/components/ui/channel-card";
+import { EnhancedChannelCard } from "@/components/ui/enhanced-channel-card";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { CHANNELS } from "@/data/mock-data";
 import { Channel } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Plus, Lock, Globe, Server, ChevronDown, Hash, Users, User, Settings, Trash2 } from "lucide-react";
+import { 
+  Plus, Lock, Globe, Server, ChevronDown, Hash, 
+  Users, User, Settings, Trash2, Filter, 
+  TrendingUp, Gamepad, BookOpen, MapPin, Compass,
+  Star, Bookmark, Flame, Search, LayoutGrid, LayoutList
+} from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +22,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // Channel categories
 const CHANNEL_CATEGORIES = [
@@ -34,6 +43,18 @@ const CHANNEL_CATEGORIES = [
   "Other"
 ];
 
+// Interest tags for filtering
+const INTEREST_TAGS = [
+  { id: "trending", label: "Trending", icon: <TrendingUp className="h-3.5 w-3.5 mr-1" /> },
+  { id: "gaming", label: "Gaming", icon: <Gamepad className="h-3.5 w-3.5 mr-1" /> },
+  { id: "learning", label: "Learning", icon: <BookOpen className="h-3.5 w-3.5 mr-1" /> },
+  { id: "local", label: "Local", icon: <MapPin className="h-3.5 w-3.5 mr-1" /> },
+  { id: "tech", label: "Tech", icon: <Server className="h-3.5 w-3.5 mr-1" /> },
+  { id: "music", label: "Music", icon: <Hash className="h-3.5 w-3.5 mr-1" /> },
+  { id: "art", label: "Art", icon: <Hash className="h-3.5 w-3.5 mr-1" /> },
+  { id: "sports", label: "Sports", icon: <Hash className="h-3.5 w-3.5 mr-1" /> },
+];
+
 export default function Channels() {
   const navigate = useNavigate();
   const [filteredChannels, setFilteredChannels] = useState<Channel[]>(CHANNELS);
@@ -45,13 +66,19 @@ export default function Channels() {
     tags: [],
     isPrivate: false,
     type: 'text',
-    ownerId: "user-1", // Assuming current user id, in a real app this would come from auth context
+    ownerId: "user-1", // Assuming current user id
     category: "Other",
     visibility: "public"
   });
   const [tempTag, setTempTag] = useState("");
   const [isMyChannelsOpen, setIsMyChannelsOpen] = useState(true);
   const [isPublicChannelsOpen, setIsPublicChannelsOpen] = useState(true);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [activeTab, setActiveTab] = useState("all");
+  const [activeInterests, setActiveInterests] = useState<string[]>([]);
+  const [savedChannels, setSavedChannels] = useState<string[]>([]);
+  const [mutedChannels, setMutedChannels] = useState<string[]>([]);
+  const [joinedChannels, setJoinedChannels] = useState<string[]>([]);
   const { toast } = useToast();
   
   // Load channels from localStorage on component mount
@@ -60,9 +87,25 @@ export default function Channels() {
     if (savedChannels) {
       const parsedChannels = JSON.parse(savedChannels);
       setMyChannels(parsedChannels);
+      // Add user created channels to joined channels
+      setJoinedChannels(parsedChannels.map((channel: Channel) => channel.id));
       // Merge with the existing channels
       setFilteredChannels([...parsedChannels, ...CHANNELS]);
     }
+    
+    // Load saved preferences
+    const saved = localStorage.getItem('savedChannels');
+    if (saved) setSavedChannels(JSON.parse(saved));
+    
+    const muted = localStorage.getItem('mutedChannels');
+    if (muted) setMutedChannels(JSON.parse(muted));
+    
+    const joined = localStorage.getItem('joinedChannels');
+    if (joined) {
+      const parsed = JSON.parse(joined);
+      setJoinedChannels(prev => [...new Set([...prev, ...parsed])]);
+    }
+    
   }, []);
 
   const handleSearch = (filters: any) => {
@@ -92,6 +135,45 @@ export default function Channels() {
     }
     
     setFilteredChannels(results);
+  };
+
+  const filterChannelsByTab = (channels: Channel[]) => {
+    switch (activeTab) {
+      case "my":
+        return channels.filter(channel => joinedChannels.includes(channel.id));
+      case "private":
+        return channels.filter(channel => channel.isPrivate);
+      case "popular":
+        return [...channels].sort((a, b) => b.members - a.members);
+      case "recent":
+        return [...channels].sort((a, b) => {
+          if (!a.createdAt) return 1;
+          if (!b.createdAt) return -1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+      case "saved":
+        return channels.filter(channel => savedChannels.includes(channel.id));
+      default:
+        return channels;
+    }
+  };
+
+  const filterChannelsByInterests = (channels: Channel[]) => {
+    if (activeInterests.length === 0) return channels;
+    
+    return channels.filter(channel => 
+      // If channel has any of the active interest tags
+      channel.tags.some(tag => 
+        activeInterests.includes(tag.toLowerCase())
+      )
+    );
+  };
+
+  const getDisplayedChannels = () => {
+    let result = filteredChannels;
+    result = filterChannelsByTab(result);
+    result = filterChannelsByInterests(result);
+    return result;
   };
 
   const handleAddTag = () => {
@@ -144,6 +226,11 @@ export default function Channels() {
     // Save to localStorage for persistence
     localStorage.setItem('userChannels', JSON.stringify(updatedMyChannels));
 
+    // Add to joined channels
+    const updatedJoinedChannels = [...joinedChannels, createdChannel.id];
+    setJoinedChannels(updatedJoinedChannels);
+    localStorage.setItem('joinedChannels', JSON.stringify(updatedJoinedChannels));
+
     // Update filtered channels to include the new one
     setFilteredChannels([createdChannel, ...filteredChannels]);
 
@@ -181,20 +268,240 @@ export default function Channels() {
     // Update localStorage
     localStorage.setItem('userChannels', JSON.stringify(updatedMyChannels));
     
+    // Remove from joined channels
+    const updatedJoinedChannels = joinedChannels.filter(id => id !== channelId);
+    setJoinedChannels(updatedJoinedChannels);
+    localStorage.setItem('joinedChannels', JSON.stringify(updatedJoinedChannels));
+    
+    // Remove from saved channels if needed
+    if (savedChannels.includes(channelId)) {
+      const updatedSavedChannels = savedChannels.filter(id => id !== channelId);
+      setSavedChannels(updatedSavedChannels);
+      localStorage.setItem('savedChannels', JSON.stringify(updatedSavedChannels));
+    }
+    
+    // Remove from muted channels if needed
+    if (mutedChannels.includes(channelId)) {
+      const updatedMutedChannels = mutedChannels.filter(id => id !== channelId);
+      setMutedChannels(updatedMutedChannels);
+      localStorage.setItem('mutedChannels', JSON.stringify(updatedMutedChannels));
+    }
+    
     toast({
       title: "Channel deleted",
       description: "Your channel has been deleted successfully."
     });
   };
   
-  const handleChannelClick = (channelId: string) => {
-    navigate(`/channels/${channelId}`);
+  const handleJoinChannel = (channelId: string) => {
+    if (joinedChannels.includes(channelId)) {
+      // Leave channel
+      const updatedJoinedChannels = joinedChannels.filter(id => id !== channelId);
+      setJoinedChannels(updatedJoinedChannels);
+      localStorage.setItem('joinedChannels', JSON.stringify(updatedJoinedChannels));
+      
+      toast({
+        title: "Left channel",
+        description: "You've left the channel successfully."
+      });
+    } else {
+      // Join channel
+      const updatedJoinedChannels = [...joinedChannels, channelId];
+      setJoinedChannels(updatedJoinedChannels);
+      localStorage.setItem('joinedChannels', JSON.stringify(updatedJoinedChannels));
+      
+      toast({
+        title: "Joined channel",
+        description: "You've joined the channel successfully."
+      });
+    }
   };
+  
+  const handleSaveChannel = (channelId: string) => {
+    if (savedChannels.includes(channelId)) {
+      // Unsave channel
+      const updatedSavedChannels = savedChannels.filter(id => id !== channelId);
+      setSavedChannels(updatedSavedChannels);
+      localStorage.setItem('savedChannels', JSON.stringify(updatedSavedChannels));
+      
+      toast({
+        title: "Unsaved channel",
+        description: "Channel removed from your saved list."
+      });
+    } else {
+      // Save channel
+      const updatedSavedChannels = [...savedChannels, channelId];
+      setSavedChannels(updatedSavedChannels);
+      localStorage.setItem('savedChannels', JSON.stringify(updatedSavedChannels));
+      
+      toast({
+        title: "Saved channel",
+        description: "Channel added to your saved list."
+      });
+    }
+  };
+  
+  const handleMuteChannel = (channelId: string) => {
+    if (mutedChannels.includes(channelId)) {
+      // Unmute channel
+      const updatedMutedChannels = mutedChannels.filter(id => id !== channelId);
+      setMutedChannels(updatedMutedChannels);
+      localStorage.setItem('mutedChannels', JSON.stringify(updatedMutedChannels));
+      
+      toast({
+        title: "Unmuted channel",
+        description: "You'll now receive notifications from this channel."
+      });
+    } else {
+      // Mute channel
+      const updatedMutedChannels = [...mutedChannels, channelId];
+      setMutedChannels(updatedMutedChannels);
+      localStorage.setItem('mutedChannels', JSON.stringify(updatedMutedChannels));
+      
+      toast({
+        title: "Muted channel",
+        description: "You won't receive notifications from this channel."
+      });
+    }
+  };
+  
+  const toggleInterestFilter = (interest: string) => {
+    if (activeInterests.includes(interest)) {
+      setActiveInterests(activeInterests.filter(i => i !== interest));
+    } else {
+      setActiveInterests([...activeInterests, interest]);
+    }
+  };
+  
+  const renderNoChannelsFound = () => (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="bg-muted/50 rounded-full p-6 mb-4">
+        <Compass className="h-12 w-12 text-muted-foreground" />
+      </div>
+      <h3 className="text-xl font-medium mb-2">No channels found</h3>
+      <p className="text-muted-foreground max-w-md mb-6">
+        Try adjusting your search filters or create a new channel to get started
+      </p>
+      <Button onClick={() => setIsCreatingChannel(true)} size="lg">
+        <Plus className="h-4 w-4 mr-2" />
+        Create Channel
+      </Button>
+    </div>
+  );
+  
+  const renderFeaturedChannel = () => {
+    // Show featured channel only on "all" tab
+    if (activeTab !== "all" || activeInterests.length > 0) return null;
+    
+    // Use first channel as featured (in real app would be based on activity/popularity)
+    const featuredChannel = CHANNELS[0];
+    
+    return (
+      <Card className="col-span-full mb-4 overflow-hidden">
+        <div className="flex flex-col md:flex-row">
+          <div className="w-full md:w-2/3 p-6">
+            <div className="flex items-center mb-4">
+              <Badge className="bg-amber-500 text-white mr-2">Featured Channel</Badge>
+              {getPrivacyBadge(featuredChannel)}
+            </div>
+            <h2 className="text-2xl font-bold mb-2">{featuredChannel.name}</h2>
+            <p className="text-muted-foreground mb-4">{featuredChannel.description}</p>
+            
+            <div className="flex flex-wrap gap-2 mb-6">
+              {featuredChannel.tags.map(tag => (
+                <InterestBadge key={tag} label={tag} />
+              ))}
+            </div>
+            
+            <div className="flex items-center mb-4">
+              <div className="flex -space-x-2 mr-4">
+                <Avatar className="border-2 border-background">
+                  <AvatarImage src="https://i.pravatar.cc/150?u=1" />
+                  <AvatarFallback>U1</AvatarFallback>
+                </Avatar>
+                <Avatar className="border-2 border-background">
+                  <AvatarImage src="https://i.pravatar.cc/150?u=2" />
+                  <AvatarFallback>U2</AvatarFallback>
+                </Avatar>
+                <Avatar className="border-2 border-background">
+                  <AvatarImage src="https://i.pravatar.cc/150?u=3" />
+                  <AvatarFallback>U3</AvatarFallback>
+                </Avatar>
+                {featuredChannel.members > 3 && (
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-xs font-medium border-2 border-background">
+                    +{featuredChannel.members - 3}
+                  </div>
+                )}
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {featuredChannel.members} members
+              </span>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button onClick={() => handleJoinChannel(featuredChannel.id)}>
+                {joinedChannels.includes(featuredChannel.id) ? "View Channel" : "Join Channel"}
+              </Button>
+              <Button variant="outline" onClick={() => handleSaveChannel(featuredChannel.id)}>
+                {savedChannels.includes(featuredChannel.id) ? (
+                  <>
+                    <Star className="h-4 w-4 mr-2 fill-amber-500 text-amber-500" />
+                    Saved
+                  </>
+                ) : (
+                  <>
+                    <Star className="h-4 w-4 mr-2" />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+          <div className="md:w-1/3 bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-10 text-white">
+            <div className="text-center">
+              <Flame className="h-16 w-16 mx-auto mb-4" />
+              <div className="text-lg font-medium">Most Active Today</div>
+              <div className="text-sm opacity-80">Join {featuredChannel.members} others in the conversation</div>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  };
+  
+  const getPrivacyBadge = (channel: Channel) => {
+    if (channel.inviteOnly) {
+      return (
+        <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">
+          <User className="h-3 w-3 mr-1" />
+          Invite Only
+        </Badge>
+      );
+    }
+    
+    if (channel.isPrivate) {
+      return (
+        <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+          <Lock className="h-3 w-3 mr-1" />
+          Private
+        </Badge>
+      );
+    }
+    
+    return (
+      <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+        <Globe className="h-3 w-3 mr-1" />
+        Public
+      </Badge>
+    );
+  };
+  
+  const displayedChannels = getDisplayedChannels();
   
   return (
     <MainLayout>
       <div className="p-4 sm:p-6 space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold mb-1">Interest Channels</h1>
             <p className="text-muted-foreground">
@@ -203,7 +510,7 @@ export default function Channels() {
           </div>
           <Dialog open={isCreatingChannel} onOpenChange={setIsCreatingChannel}>
             <DialogTrigger asChild>
-              <Button size="sm" className="hidden sm:flex">
+              <Button size="sm" className="shadow-sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Channel
               </Button>
@@ -347,196 +654,112 @@ export default function Channels() {
           </Dialog>
         </div>
         
-        <SearchFilters onSearch={handleSearch} />
+        <div className="bg-card shadow-sm rounded-lg p-4">
+          <SearchFilters onSearch={handleSearch} />
+        </div>
         
-        {filteredChannels.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <h3 className="text-lg font-medium mb-2">No channels found</h3>
-            <p className="text-muted-foreground max-w-md mb-6">
-              Try adjusting your search filters or create a new channel
-            </p>
-            <Button onClick={() => setIsCreatingChannel(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Channel
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
+          <Tabs 
+            value={activeTab} 
+            onValueChange={setActiveTab}
+            className="w-full sm:w-auto"
+          >
+            <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:flex sm:flex-row">
+              <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Globe className="h-4 w-4 mr-2" />
+                All
+              </TabsTrigger>
+              <TabsTrigger value="my" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Users className="h-4 w-4 mr-2" />
+                My Channels
+              </TabsTrigger>
+              <TabsTrigger value="private" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Lock className="h-4 w-4 mr-2" />
+                Private
+              </TabsTrigger>
+              <TabsTrigger value="popular" className="hidden sm:flex data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Popular
+              </TabsTrigger>
+              <TabsTrigger value="recent" className="hidden sm:flex data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Clock className="h-4 w-4 mr-2" />
+                Recent
+              </TabsTrigger>
+              <TabsTrigger value="saved" className="hidden sm:flex data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Star className="h-4 w-4 mr-2" />
+                Saved
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          <div className="flex items-center">
+            <Button 
+              variant={viewMode === "grid" ? "default" : "outline"} 
+              size="sm" 
+              className="rounded-r-none"
+              onClick={() => setViewMode("grid")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant={viewMode === "list" ? "default" : "outline"} 
+              size="sm" 
+              className="rounded-l-none"
+              onClick={() => setViewMode("list")}
+            >
+              <LayoutList className="h-4 w-4" />
             </Button>
           </div>
-        ) : (
-          <>
-            <div className="flex space-x-4 overflow-x-auto pb-2 -mx-4 px-4">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="rounded-full flex items-center whitespace-nowrap"
-              >
-                <Globe className="h-4 w-4 mr-2" />
-                All Channels
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="rounded-full flex items-center whitespace-nowrap"
-              >
-                <Lock className="h-4 w-4 mr-2" />
-                Private Channels
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="rounded-full whitespace-nowrap"
-              >
-                My Channels
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="rounded-full whitespace-nowrap"
-              >
-                Most Popular
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="rounded-full whitespace-nowrap"
-              >
-                Recently Added
-              </Button>
-            </div>
-            
-            {/* Discord-like server/channel listing */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Sidebar with categories */}
-              <div className="lg:col-span-3 border rounded-lg p-3 space-y-2">
-                {/* My Channels Section */}
-                <Collapsible open={isMyChannelsOpen} onOpenChange={setIsMyChannelsOpen}>
-                  <CollapsibleTrigger className="flex w-full justify-between items-center px-2 py-1.5 hover:bg-muted rounded">
-                    <div className="flex items-center">
-                      <Server className="h-4 w-4 mr-2" />
-                      <span className="text-sm font-medium">MY CHANNELS</span>
-                    </div>
-                    <ChevronDown className="h-4 w-4" />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-1 pl-2 mt-1">
-                    {myChannels.length === 0 ? (
-                      <p className="text-xs text-muted-foreground px-2 py-1">
-                        No channels created yet
-                      </p>
-                    ) : (
-                      myChannels.map(channel => (
-                        <div 
-                          key={channel.id} 
-                          className="flex justify-between items-center px-2 py-1 hover:bg-muted rounded text-sm group cursor-pointer"
-                          onClick={() => handleChannelClick(channel.id)}
-                        >
-                          <div className="flex items-center overflow-hidden">
-                            {channel.type === 'text' ? (
-                              <Hash className="h-4 w-4 mr-1.5 shrink-0" />
-                            ) : (
-                              <Users className="h-4 w-4 mr-1.5 shrink-0" />
-                            )}
-                            <span className="truncate">{channel.name}</span>
-                          </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteChannel(channel.id);
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                    <div className="px-2 py-1">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="w-full justify-start text-xs h-7"
-                        onClick={() => setIsCreatingChannel(true)}
-                      >
-                        <Plus className="h-3.5 w-3.5 mr-1" />
-                        Create Channel
-                      </Button>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-                
-                {/* Public Channels Section */}
-                <Collapsible open={isPublicChannelsOpen} onOpenChange={setIsPublicChannelsOpen}>
-                  <CollapsibleTrigger className="flex w-full justify-between items-center px-2 py-1.5 hover:bg-muted rounded">
-                    <div className="flex items-center">
-                      <Globe className="h-4 w-4 mr-2" />
-                      <span className="text-sm font-medium">PUBLIC CHANNELS</span>
-                    </div>
-                    <ChevronDown className="h-4 w-4" />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-1 pl-2 mt-1">
-                    {CHANNELS.slice(0, 5).map(channel => (
-                      <div 
-                        key={channel.id} 
-                        className="flex items-center px-2 py-1 hover:bg-muted rounded text-sm cursor-pointer"
-                        onClick={() => handleChannelClick(channel.id)}
-                      >
-                        {channel.type === 'voice' ? (
-                          <Users className="h-4 w-4 mr-1.5" />
-                        ) : (
-                          <Hash className="h-4 w-4 mr-1.5" />
-                        )}
-                        <span className="truncate">{channel.name}</span>
-                      </div>
-                    ))}
-                    <div className="px-2 py-1 text-xs text-muted-foreground">
-                      + {CHANNELS.length - 5} more channels
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-                
-                {/* Categories Section */}
-                <div className="pt-2">
-                  <h3 className="text-xs font-medium text-muted-foreground px-2 py-1">CATEGORIES</h3>
-                  <div className="space-y-1 mt-1 pl-2">
-                    {CHANNEL_CATEGORIES.slice(0, 6).map(category => (
-                      <div key={category} className="flex items-center px-2 py-1 hover:bg-muted rounded text-sm cursor-pointer">
-                        <span className="truncate">{category}</span>
-                      </div>
-                    ))}
-                    <div className="px-2 py-1 text-xs text-muted-foreground">
-                      + more categories
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Main content with channel cards */}
-              <div className="lg:col-span-9">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {filteredChannels.map((channel, index) => (
-                    <div 
-                      key={channel.id}
-                      className="cursor-pointer"
-                      onClick={() => handleChannelClick(channel.id)}
-                    >
-                      <ChannelCard 
-                        channel={channel}
-                        onDelete={channel.ownerId === "user-1" ? handleDeleteChannel : undefined}
-                        className={`animate-in fade-in-up stagger-${(index % 5) + 1}`}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-        
-        <div className="flex justify-center sm:hidden mt-8">
-          <Button onClick={() => setIsCreatingChannel(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Channel
-          </Button>
         </div>
+        
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+          {INTEREST_TAGS.map((interest) => (
+            <Button
+              key={interest.id}
+              variant={activeInterests.includes(interest.id) ? "default" : "outline"}
+              size="sm"
+              className={`rounded-full whitespace-nowrap ${
+                activeInterests.includes(interest.id) ? "bg-primary text-primary-foreground" : ""
+              }`}
+              onClick={() => toggleInterestFilter(interest.id)}
+            >
+              {interest.icon}
+              {interest.label}
+            </Button>
+          ))}
+        </div>
+        
+        {displayedChannels.length === 0 ? (
+          renderNoChannelsFound()
+        ) : (
+          <TabsContent value={activeTab} className="mt-0 space-y-6">
+            {/* Featured Channel (only shown on "all" tab) */}
+            {renderFeaturedChannel()}
+            
+            {/* Grid or List View of Channels */}
+            <div className={
+              viewMode === "grid" 
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                : "space-y-3"
+            }>
+              {displayedChannels.map((channel) => (
+                <EnhancedChannelCard 
+                  key={channel.id}
+                  channel={channel}
+                  currentUserId="user-1"
+                  onDelete={channel.ownerId === "user-1" ? handleDeleteChannel : undefined}
+                  onJoin={handleJoinChannel}
+                  onSave={handleSaveChannel}
+                  onMute={handleMuteChannel}
+                  isJoined={joinedChannels.includes(channel.id)}
+                  isSaved={savedChannels.includes(channel.id)}
+                  isMuted={mutedChannels.includes(channel.id)}
+                  className={viewMode === "list" ? "h-auto" : ""}
+                />
+              ))}
+            </div>
+          </TabsContent>
+        )}
       </div>
     </MainLayout>
   );
