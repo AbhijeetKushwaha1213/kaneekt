@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { SearchFilters } from "@/components/ui/search-filters";
 import { UserCard } from "@/components/ui/user-card";
 import { MainLayout } from "@/components/layout/MainLayout";

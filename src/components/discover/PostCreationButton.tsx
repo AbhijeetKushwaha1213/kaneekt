@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Image, MapPin, Globe, Users, Lock } from "lucide-react";
 import { 
@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { InterestBadge } from "@/components/ui/interest-badge";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 export function PostCreationButton() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);

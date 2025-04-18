@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ export function LocationSelector({ isOpen, onClose, onSelectLocation }: Location
     } else if (locationInput) {
       onSelectLocation(`${locationInput} (${radiusValue[0]}km radius)`);
     }
+    onClose();
   };
 
   return (
