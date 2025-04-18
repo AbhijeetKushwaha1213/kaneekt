@@ -1,8 +1,7 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
-import { auth, db } from "../firebaseConfig";
+import { createAccount } from "../auth";
 
 const SignUp: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -14,15 +13,18 @@ const SignUp: React.FC = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      await setDoc(doc(db, "users", user.uid), {
+      const profileData = {
         username,
         email
-      });
-      navigate("/profile");
-    } catch (err) {
-      setError("Error creating account. Please try again.");
+      };
+      
+      const result = await createAccount(email, password, profileData);
+      if (result.userCreated) {
+        navigate("/profile");
+      }
+    } catch (err: any) {
+      setError("Error creating account: " + err.message);
+      console.error("Signup error:", err);
     }
   };
 
