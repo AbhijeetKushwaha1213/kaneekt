@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -57,7 +56,7 @@ export default function Profile() {
   // Destructure for ease of use
   const { bio, interests, isPrivate, isFollowing } = profileState;
   const { editProfileOpen, createPostOpen } = dialogState;
-  
+
   // Memoized handlers to prevent unnecessary rerenders
   const handleTogglePrivacy = useCallback(async () => {
     const newIsPrivate = !isPrivate;
@@ -352,55 +351,77 @@ export default function Profile() {
       
       try {
         if (user) {
+          // First check if avatars bucket exists
           const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
           
           if (bucketsError) {
             throw bucketsError;
           }
           
+          // Create bucket if it doesn't exist
           if (!buckets?.find(b => b.name === 'avatars')) {
-            await supabase.storage.createBucket('avatars', { public: true });
+            const { error: createError } = await supabase.storage.createBucket('avatars', { 
+              public: true,
+              fileSizeLimit: 5242880 // 5MB
+            });
+            if (createError) throw createError;
           }
           
-          const filePath = `${user.id}/${uuidv4()}`;
-          const { data, error } = await supabase.storage
+          // Generate a unique filename
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}.${fileExt}`;
+          const filePath = `${user.id}/${fileName}`;
+          
+          // Upload the file to Supabase storage
+          const { error: uploadError } = await supabase.storage
             .from('avatars')
-            .upload(filePath, file);
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: true
+            });
             
-          if (error) {
-            throw error;
+          if (uploadError) {
+            throw uploadError;
           }
           
-          const { data: publicUrl } = supabase.storage
+          // Get the public URL
+          const { data: publicUrlData } = supabase.storage
             .from('avatars')
             .getPublicUrl(filePath);
             
-          if (publicUrl) {
-            await supabase
-              .from('profiles')
-              .update({ avatar: publicUrl.publicUrl })
-              .eq('id', user.id);
-            
-            setAvatarUrl(publicUrl.publicUrl);
-            
-            if (profileData) {
-              const updatedProfile = { ...profileData, avatar: publicUrl.publicUrl };
-              localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
-              setProfileData(updatedProfile);
-            }
-            
-            if (userData) {
-              const updatedUser = { ...userData, avatar: publicUrl.publicUrl };
-              localStorage.setItem("user", JSON.stringify(updatedUser));
-              setUserData(updatedUser);
-            }
-            
-            toast({
-              title: "Profile photo updated",
-              description: "Your profile photo has been updated successfully."
-            });
+          if (!publicUrlData) {
+            throw new Error('Failed to get public URL');
           }
+          
+          const avatarUrl = publicUrlData.publicUrl;
+          
+          // Update profile in database
+          await supabase
+            .from('profiles')
+            .update({ avatar: avatarUrl })
+            .eq('id', user.id);
+          
+          setAvatarUrl(avatarUrl);
+          
+          // Update local storage
+          if (profileData) {
+            const updatedProfile = { ...profileData, avatar: avatarUrl };
+            localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
+            setProfileData(updatedProfile);
+          }
+          
+          if (userData) {
+            const updatedUser = { ...userData, avatar: avatarUrl };
+            localStorage.setItem("user", JSON.stringify(updatedUser));
+            setUserData(updatedUser);
+          }
+          
+          toast({
+            title: "Profile photo updated",
+            description: "Your profile photo has been updated successfully."
+          });
         } else {
+          // Fallback to local storage if user is not authenticated
           const imageUrl = URL.createObjectURL(file);
           setAvatarUrl(imageUrl);
           

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,19 +84,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
               }
 
-              // Ensure storage buckets are available for user uploads
-              // We create these outside the auth state change listener to avoid deadlocks
+              // Ensure storage buckets are available for user uploads - using a more reliable method
               setTimeout(async () => {
                 try {
                   // Check if avatars bucket exists, create if needed
                   const { data: buckets } = await supabase.storage.listBuckets();
+                  
                   if (!buckets?.find(bucket => bucket.name === 'avatars')) {
-                    await createStorageBucket('avatars');
+                    const { error } = await supabase.storage.createBucket('avatars', {
+                      public: true,
+                      fileSizeLimit: 5242880 // 5MB
+                    });
+                    
+                    if (error) {
+                      console.error("Error creating avatars bucket:", error);
+                    } else {
+                      console.log("Created avatars bucket successfully");
+                    }
                   }
                   
                   // Check if posts bucket exists, create if needed
                   if (!buckets?.find(bucket => bucket.name === 'posts')) {
-                    await createStorageBucket('posts');
+                    const { error } = await supabase.storage.createBucket('posts', {
+                      public: true,
+                      fileSizeLimit: 5242880 // 5MB
+                    });
+                    
+                    if (error) {
+                      console.error("Error creating posts bucket:", error);
+                    } else {
+                      console.log("Created posts bucket successfully");
+                    }
                   }
                 } catch (error) {
                   console.error("Error checking/creating storage buckets", error);

@@ -25,6 +25,7 @@ export function ProfileHeader({
   isLoading
 }: ProfileHeaderProps) {
   const isCurrentUser = !!user;
+  const displayAvatar = avatarUrl || profileData?.avatar || userData?.avatar || "/placeholder.svg";
   
   return (
     <div className="flex justify-between items-start">
@@ -32,7 +33,7 @@ export function ProfileHeader({
         <div className="relative">
           <Avatar className="h-24 w-24 border-2 border-background">
             <AvatarImage 
-              src={avatarUrl || profileData?.avatar || "/placeholder.svg"}
+              src={displayAvatar}
               alt={profileData?.name || userData?.name || "User"}
             />
             <AvatarFallback>
