@@ -4,6 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AuthUser, User } from "@/types";
 import { Button } from "@/components/ui/button";
 import { User as SupabaseUser } from "@supabase/supabase-js";
+import { isImageUrlValid } from "@/utils/imageUtils";
+import { useEffect, useState } from "react";
 
 interface ProfileHeaderProps {
   avatarUrl: string | null;
@@ -25,7 +27,23 @@ export function ProfileHeader({
   isLoading
 }: ProfileHeaderProps) {
   const isCurrentUser = !!user;
-  const displayAvatar = avatarUrl || profileData?.avatar || userData?.avatar || "/placeholder.svg";
+  const [displayAvatar, setDisplayAvatar] = useState<string>("/placeholder.svg");
+  
+  useEffect(() => {
+    const loadAvatar = async () => {
+      const avatarToUse = avatarUrl || profileData?.avatar || userData?.avatar || "/placeholder.svg";
+      
+      // Verify if the avatar URL is valid
+      if (avatarToUse !== "/placeholder.svg") {
+        const isValid = await isImageUrlValid(avatarToUse);
+        setDisplayAvatar(isValid ? avatarToUse : "/placeholder.svg");
+      } else {
+        setDisplayAvatar("/placeholder.svg");
+      }
+    };
+    
+    loadAvatar();
+  }, [avatarUrl, profileData?.avatar, userData?.avatar]);
   
   return (
     <div className="flex justify-between items-start">

@@ -351,55 +351,36 @@ export default function Profile() {
       
       try {
         if (user) {
-          // First check if avatars bucket exists
-          const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-          
-          if (bucketsError) {
-            throw bucketsError;
-          }
-          
-          // Create bucket if it doesn't exist
-          if (!buckets?.find(b => b.name === 'avatars')) {
-            const { error: createError } = await supabase.storage.createBucket('avatars', { 
-              public: true,
-              fileSizeLimit: 5242880 // 5MB
-            });
-            if (createError) throw createError;
-          }
-          
           // Generate a unique filename
           const fileExt = file.name.split('.').pop();
           const fileName = `${Date.now()}.${fileExt}`;
           const filePath = `${user.id}/${fileName}`;
           
+          // Import utilities for storage operations
+          const { ensureBucketExists, uploadFileToStorage } = await import('@/utils/imageUtils');
+          
+          // Ensure the avatars bucket exists
+          await ensureBucketExists(supabase, 'avatars');
+          
           // Upload the file to Supabase storage
-          const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(filePath, file, {
-              cacheControl: '3600',
-              upsert: true
+          const avatarUrl = await uploadFileToStorage(supabase, 'avatars', filePath, file);
+          
+          if (!avatarUrl) {
+            throw new Error('Failed to upload image');
+          }
+          
+          // Update profile in database - use upsert to create if it doesn't exist
+          const { error: upsertError } = await supabase
+            .from('profiles')
+            .upsert({ 
+              id: user.id,
+              avatar: avatarUrl,
+              updated_at: new Date().toISOString()
             });
             
-          if (uploadError) {
-            throw uploadError;
+          if (upsertError) {
+            throw upsertError;
           }
-          
-          // Get the public URL
-          const { data: publicUrlData } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
-            
-          if (!publicUrlData) {
-            throw new Error('Failed to get public URL');
-          }
-          
-          const avatarUrl = publicUrlData.publicUrl;
-          
-          // Update profile in database
-          await supabase
-            .from('profiles')
-            .update({ avatar: avatarUrl })
-            .eq('id', user.id);
           
           setAvatarUrl(avatarUrl);
           
