@@ -18,7 +18,9 @@ const root = createRoot(rootElement);
 
 // Render the app within BrowserRouter
 root.render(
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>
+  <React.StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>
 );
