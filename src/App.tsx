@@ -6,6 +6,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import Auth from "./pages/Auth";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
+import Onboarding from "./pages/Onboarding";
 import Chats from "./pages/Chats";
 import Chat from "./pages/Chat";
 import Channels from "./pages/Channels";
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/auth" element={<Auth />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/chats" element={<Chats />} />
           <Route path="/chats/:id" element={<Chat />} />
           <Route path="/channels" element={<Channels />} />

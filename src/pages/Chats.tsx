@@ -9,6 +9,7 @@ import { Plus } from "lucide-react";
 import { GroupChatDialog } from "@/components/ui/group-chat-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function Chats() {
   const location = useLocation();
@@ -16,6 +17,7 @@ export default function Chats() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const isMobile = useIsMobile();
   
   const handleCreateGroup = (groupData: any) => {
     // Store the group in localStorage
@@ -60,13 +62,17 @@ export default function Chats() {
   return (
     <MainLayout>
       <div className={cn(
-        "h-[calc(100vh-7.5rem)] lg:h-[calc(100vh-3.5rem)] flex",
-        isSpecificChat ? "hidden md:flex" : "flex"
+        "h-[calc(100vh-7.5rem)]",
+        isMobile ? 
+          (isSpecificChat ? "hidden" : "flex") : 
+          "lg:h-[calc(100vh-3.5rem)] flex"
       )}>
         {/* Conversations sidebar */}
         <div className={cn(
           "border-r relative",
-          isSpecificChat ? "hidden md:block md:w-80 lg:w-96" : "w-full md:w-80 lg:w-96"
+          isMobile ? 
+            "w-full" : 
+            (isSpecificChat ? "hidden md:block md:w-80 lg:w-96" : "w-full md:w-80 lg:w-96")
         )}>
           <ConversationList />
           
@@ -84,7 +90,7 @@ export default function Chats() {
         </div>
         
         {/* Empty state for chat when no conversation is selected */}
-        {!isSpecificChat && (
+        {!isSpecificChat && !isMobile && (
           <div className="flex-1 hidden md:flex flex-col items-center justify-center p-4 bg-accent/10">
             <div className="text-center max-w-md">
               <h2 className="text-xl font-medium mb-2">Select a conversation</h2>

@@ -27,6 +27,42 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
     try {
       // If we have a valid Supabase connection and user ID
       if (userId) {
+        // Check if conversation exists
+        let conversationIdToUse = conversationId;
+        
+        if (!conversationId.startsWith('group-')) {
+          // For one-on-one chats, we need to check if a conversation exists in Supabase
+          const { data: existingConv } = await supabase
+            .from('conversations')
+            .select('id')
+            .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
+            .eq(userId === existingConv?.user1_id ? 'user2_id' : 'user1_id', conversationId)
+            .maybeSingle();
+            
+          if (!existingConv) {
+            // Create a new conversation
+            const { data: newConv, error: convError } = await supabase
+              .from('conversations')
+              .insert({
+                user1_id: userId,
+                user2_id: conversationId
+              })
+              .select('id')
+              .single();
+              
+            if (convError) {
+              console.error("Error creating conversation:", convError);
+              throw convError;
+            }
+            
+            if (newConv) {
+              conversationIdToUse = newConv.id;
+            }
+          } else {
+            conversationIdToUse = existingConv.id;
+          }
+        }
+        
         const messageId = `msg-${uuidv4()}`;
         
         // Try to insert the message to Supabase
@@ -35,7 +71,7 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
           .insert({
             id: messageId,
             content: message,
-            conversation_id: conversationId,
+            conversation_id: conversationIdToUse,
             sender_id: userId,
             is_read: false
           });

@@ -1,12 +1,12 @@
 
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home, MessageSquare, Search, Bell, Users, Settings, LogOut, Mic, User } from "lucide-react";
+import { Home, MessageSquare, Bell, Users, Settings, LogOut, Mic, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarImage, AvatarFallback, ChannelAvatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -16,6 +16,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const handleSignOut = async () => {
     await signOut();
@@ -40,13 +41,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       label: "Channels",
       href: "/channels",
       active: location.pathname === "/channels" || location.pathname.startsWith("/channels/"),
-    },
-    {
-      icon: Search,
-      label: "Discover",
-      href: "/discover",
-      active: location.pathname === "/discover",
-    },
+    }
   ];
 
   return (
@@ -99,83 +94,125 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       </header>
       
       <div className="flex flex-1">
-        {/* Fixed sidebar navigation - always visible regardless of route */}
-        <aside className="w-16 flex flex-col items-center pt-6 pb-10 border-r bg-background fixed left-0 top-[4.5rem] bottom-0 z-10">
-          {navItems.map((item) => (
-            <Link to={item.href} key={item.label}>
+        {/* Fixed sidebar navigation - only visible on desktop */}
+        {!isMobile && (
+          <aside className="w-16 flex flex-col items-center pt-6 pb-10 border-r bg-background fixed left-0 top-[4.5rem] bottom-0 z-10">
+            {navItems.map((item) => (
+              <Link to={item.href} key={item.label}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "mb-4",
+                    item.active ? "bg-accent text-accent-foreground" : ""
+                  )}
+                  aria-label={item.label}
+                >
+                  <item.icon className="h-5 w-5" />
+                </Button>
+              </Link>
+            ))}
+            <div className="mt-auto">
+              <Link to="/profile">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "mb-4",
+                    location.pathname === "/profile" ? "bg-accent text-accent-foreground" : ""
+                  )}
+                  aria-label="Profile"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="mb-4"
+                aria-label="Settings"
+                onClick={() => navigate("/settings")}
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+              {user && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mb-4 text-red-500"
+                  aria-label="Sign Out"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          </aside>
+        )}
+        
+        {/* Main content with padding to account for fixed sidebar on desktop */}
+        <main className={cn("flex-1 overflow-auto bg-background", !isMobile && "ml-16")}>{children}</main>
+      </div>
+      
+      {/* Mobile navigation menu at the bottom of the screen - only visible on mobile */}
+      {isMobile && (
+        <div className="fixed bottom-0 left-0 right-0 border-t bg-background z-20">
+          <div className="flex justify-around py-2">
+            <Link to="/discover">
               <Button
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "mb-4",
-                  item.active ? "bg-accent text-accent-foreground" : ""
+                  location.pathname === "/discover" ? "text-primary" : "text-muted-foreground"
                 )}
-                aria-label={item.label}
+                aria-label="Home"
               >
-                <item.icon className="h-5 w-5" />
+                <Home className="h-5 w-5" />
               </Button>
             </Link>
-          ))}
-          <div className="mt-auto">
+            <Link to="/chats">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  location.pathname === "/chats" || location.pathname.startsWith("/chats/") 
+                    ? "text-primary" 
+                    : "text-muted-foreground"
+                )}
+                aria-label="Chats"
+              >
+                <MessageSquare className="h-5 w-5" />
+              </Button>
+            </Link>
+            <Link to="/channels">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  location.pathname === "/channels" || location.pathname.startsWith("/channels/") 
+                    ? "text-primary" 
+                    : "text-muted-foreground"
+                )}
+                aria-label="Channels"
+              >
+                <Users className="h-5 w-5" />
+              </Button>
+            </Link>
             <Link to="/profile">
               <Button
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "mb-4",
-                  location.pathname === "/profile" ? "bg-accent text-accent-foreground" : ""
+                  location.pathname === "/profile" ? "text-primary" : "text-muted-foreground"
                 )}
                 aria-label="Profile"
               >
                 <User className="h-5 w-5" />
               </Button>
             </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="mb-4"
-              aria-label="Settings"
-              onClick={() => navigate("/settings")}
-            >
-              <Settings className="h-5 w-5" />
-            </Button>
-            {user && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="mb-4 text-red-500"
-                aria-label="Sign Out"
-                onClick={handleSignOut}
-              >
-                <LogOut className="h-5 w-5" />
-              </Button>
-            )}
           </div>
-        </aside>
-        
-        {/* Main content with padding to account for fixed sidebar */}
-        <main className="flex-1 overflow-auto bg-background ml-16">{children}</main>
-      </div>
-      
-      {/* Mobile navigation menu at the bottom of the screen */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background z-20">
-        <div className="flex justify-around py-2">
-          {navItems.map((item) => (
-            <Link to={item.href} key={item.label}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  item.active ? "text-primary" : "text-muted-foreground"
-                )}
-                aria-label={item.label}
-              >
-                <item.icon className="h-5 w-5" />
-              </Button>
-            </Link>
-          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 };

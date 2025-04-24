@@ -1,5 +1,4 @@
-
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useNavigate } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -16,214 +15,51 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-
+  const navigate = useNavigate();
+  
   useEffect(() => {
-    console.log("Setting up auth state listener");
-    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state changed:", event, session?.user?.email);
-        
-        // Update state with session data
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
+        // If user just signed in, check if they need to complete onboarding
         if (event === 'SIGNED_IN') {
-          console.log("User signed in event triggered");
-          
-          // Save the user to localStorage for persistence
-          if (session?.user) {
-            try {
-              const userData = {
-                id: session.user.id,
-                name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || "User",
-                email: session.user.email,
-                username: session.user.user_metadata?.username || session.user.email?.split('@')[0] || "user",
-                avatar: session.user.user_metadata?.avatar_url || "/placeholder.svg",
-                isLoggedIn: true,
-                createdAt: session.user.created_at
-              };
-              
-              localStorage.setItem("user", JSON.stringify(userData));
-              
-              // Initialize a user profile if it doesn't exist
-              const storedProfile = localStorage.getItem("userProfile");
-              if (!storedProfile) {
-                const userProfile = {
-                  id: session.user.id,
-                  name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || "User",
-                  username: session.user.user_metadata?.username || session.user.email?.split('@')[0] || "user",
-                  avatar: session.user.user_metadata?.avatar_url || "/placeholder.svg",
-                  bio: "I'm new here!",
-                  location: "",
-                  followers: 0,
-                  following: 0,
-                  interests: [],
-                  isPrivate: false
-                };
-                localStorage.setItem("userProfile", JSON.stringify(userProfile));
-              } else {
-                // Update the existing profile with current user data while keeping other user settings
-                try {
-                  const existingProfile = JSON.parse(storedProfile);
-                  const updatedProfile = {
-                    ...existingProfile,
-                    id: session.user.id,
-                    name: session.user.user_metadata?.name || existingProfile.name,
-                    email: session.user.email || existingProfile.email,
-                    username: session.user.user_metadata?.username || existingProfile.username,
-                  };
-                  localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
-                } catch (error) {
-                  console.error("Error updating existing profile", error);
-                }
-              }
-
-              // Ensure storage buckets are available for user uploads - using a more reliable method
-              setTimeout(async () => {
-                try {
-                  // Check if avatars bucket exists, create if needed
-                  const { data: buckets } = await supabase.storage.listBuckets();
+          setTimeout(async () => {
+            if (session?.user) {
+              try {
+                const { data, error } = await supabase
+                  .from('profiles')
+                  .select('name')
+                  .eq('id', session.user.id)
+                  .maybeSingle();
                   
-                  if (!buckets?.find(bucket => bucket.name === 'avatars')) {
-                    const { error } = await supabase.storage.createBucket('avatars', {
-                      public: true,
-                      fileSizeLimit: 5242880 // 5MB
-                    });
-                    
-                    if (error) {
-                      console.error("Error creating avatars bucket:", error);
-                    } else {
-                      console.log("Created avatars bucket successfully");
-                    }
-                  }
-                  
-                  // Check if posts bucket exists, create if needed
-                  if (!buckets?.find(bucket => bucket.name === 'posts')) {
-                    const { error } = await supabase.storage.createBucket('posts', {
-                      public: true,
-                      fileSizeLimit: 5242880 // 5MB
-                    });
-                    
-                    if (error) {
-                      console.error("Error creating posts bucket:", error);
-                    } else {
-                      console.log("Created posts bucket successfully");
-                    }
-                  }
-                } catch (error) {
-                  console.error("Error checking/creating storage buckets", error);
+                if (!data?.name) {
+                  navigate('/onboarding');
                 }
-              }, 0);
-            } catch (error) {
-              console.error("Error saving user data to localStorage", error);
-            }
-          }
-          
-          toast({
-            title: "Welcome back!",
-            description: "You have successfully signed in.",
-          });
-        } else if (event === 'SIGNED_OUT') {
-          console.log("User signed out event triggered");
-          
-          // Do NOT remove user data on signout to maintain persistence
-          // Just update the isLoggedIn status
-          try {
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-              const parsedUser = JSON.parse(storedUser);
-              parsedUser.isLoggedIn = false;
-              localStorage.setItem("user", JSON.stringify(parsedUser));
-            }
-          } catch (error) {
-            console.error("Error updating user login status", error);
-          }
-          
-          toast({
-            title: "Signed out",
-            description: "You have been signed out.",
-          });
-        } else if (event === 'USER_UPDATED') {
-          console.log("User updated event triggered");
-          
-          // Update localStorage user data when user is updated
-          if (session?.user) {
-            try {
-              const storedUser = localStorage.getItem("user");
-              if (storedUser) {
-                const parsedUser = JSON.parse(storedUser);
-                const updatedUser = {
-                  ...parsedUser,
-                  name: session.user.user_metadata?.name || parsedUser.name,
-                  email: session.user.email || parsedUser.email,
-                  avatar: session.user.user_metadata?.avatar_url || parsedUser.avatar
-                };
-                localStorage.setItem("user", JSON.stringify(updatedUser));
+              } catch (error) {
+                console.error("Error checking for user profile:", error);
               }
-              
-              // Also update profile data
-              const storedProfile = localStorage.getItem("userProfile");
-              if (storedProfile) {
-                const parsedProfile = JSON.parse(storedProfile);
-                const updatedProfile = {
-                  ...parsedProfile,
-                  name: session.user.user_metadata?.name || parsedProfile.name,
-                  avatar: session.user.user_metadata?.avatar_url || parsedProfile.avatar
-                };
-                localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
-              }
-            } catch (error) {
-              console.error("Error updating user data in localStorage", error);
             }
-          }
+          }, 0);
         }
       }
     );
 
     // THEN check for existing session
-    console.log("Checking for existing session");
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log("Existing session check result:", session ? "Session found" : "No session found");
-      if (session?.user) {
-        console.log("User from session:", session.user.email);
-        
-        // Save the user to localStorage for persistence
-        try {
-          const userData = {
-            id: session.user.id,
-            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || "User",
-            email: session.user.email,
-            username: session.user.user_metadata?.username || session.user.email?.split('@')[0] || "user",
-            avatar: session.user.user_metadata?.avatar_url || "/placeholder.svg",
-            isLoggedIn: true,
-            createdAt: session.user.created_at
-          };
-          
-          localStorage.setItem("user", JSON.stringify(userData));
-        } catch (error) {
-          console.error("Error saving user data to localStorage", error);
-        }
-      }
-      
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-    }).catch(error => {
-      console.error("Error getting session:", error);
-      setLoading(false);
     });
 
-    return () => {
-      console.log("Cleaning up auth listener");
-      subscription.unsubscribe();
-    };
-  }, []);
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const createStorageBucket = async (bucketName: string) => {
     try {
@@ -358,11 +194,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, loading, signIn, signUp, signOut, createStorageBucket }}>
+    <AuthContext.Provider value={{ user, signIn, signUp, signOut, loading }}>
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
