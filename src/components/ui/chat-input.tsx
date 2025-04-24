@@ -37,7 +37,7 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
             .select('id')
             .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
             .eq(
-              userId === (existingConv?.user1_id || null) ? 'user2_id' : 'user1_id', 
+              userId === existingConv?.user1_id ? 'user2_id' : 'user1_id', 
               conversationId
             )
             .maybeSingle();

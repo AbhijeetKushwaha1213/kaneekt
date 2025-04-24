@@ -141,8 +141,17 @@ export default function Chat() {
               messages.map((message) => (
                 <ChatMessage 
                   key={message.id} 
-                  message={message} 
-                  sent={message.sender_id === user?.id} 
+                  message={{
+                    id: message.id,
+                    content: message.content,
+                    timestamp: new Date(message.created_at || Date.now()),
+                    sender: {
+                      id: message.sender_id,
+                      name: message.sender_id === user?.id ? "You" : "User",
+                      avatar: "/placeholder.svg"
+                    },
+                    isCurrentUser: message.sender_id === user?.id
+                  }}
                 />
               ))
             ) : (
