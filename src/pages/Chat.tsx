@@ -1,201 +1,173 @@
 
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { ChatInput } from "@/components/ui/chat-input";
 import { ChatMessage } from "@/components/ui/chat-message";
+import { ChatInput } from "@/components/ui/chat-input";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function Chat() {
   const { id } = useParams<{ id: string }>();
-  const [messages, setMessages] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [conversationData, setConversationData] = useState<any>(null);
-  const [chatPartner, setChatPartner] = useState<any>(null);
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const [messages, setMessages] = useState<any[]>([]);
+  const [conversationName, setConversationName] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    const fetchConversationAndMessages = async () => {
-      if (!id || !user) return;
+    if (!id) return;
+    
+    const loadMessages = async () => {
+      setIsLoading(true);
       
       try {
-        setLoading(true);
+        // Get conversation data first
+        const conversations = JSON.parse(localStorage.getItem("conversations") || "[]");
+        const conversationData = conversations.find((c: any) => c.id === id);
         
-        // Check if it's a group chat
-        const isGroupChat = id.startsWith('group-');
-        
-        // Try to fetch from Supabase first
-        if (!isGroupChat) {
-          // Try to get the conversation
-          const { data: conversationData, error: convError } = await supabase
-            .from('conversations')
-            .select('*')
-            .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
-            .eq(user.id === conversationData?.user1_id ? 'user2_id' : 'user1_id', id)
-            .maybeSingle();
+        if (conversationData) {
+          setConversationName(conversationData.user.name || "Chat");
           
-          if (conversationData) {
-            setConversationData(conversationData);
-            
-            // Fetch messages for this conversation
-            const { data: messagesData, error: msgError } = await supabase
+          // Try to load messages from Supabase first
+          if (user) {
+            const { data, error } = await supabase
               .from('messages')
               .select('*')
-              .eq('conversation_id', conversationData.id)
+              .eq('conversation_id', id)
               .order('created_at', { ascending: true });
               
-            if (!msgError && messagesData) {
-              setMessages(messagesData);
+            if (data && !error) {
+              setMessages(data);
             } else {
-              console.error("Error fetching messages:", msgError);
-              loadFromLocalStorage();
+              console.error("Error loading messages from Supabase:", error);
+              // Fall back to local storage
+              loadMessagesFromLocalStorage();
             }
           } else {
-            // No conversation found in Supabase, check localStorage
-            loadFromLocalStorage();
+            // No authenticated user, use local storage
+            loadMessagesFromLocalStorage();
           }
-        } else {
-          // For group chats, check localStorage
-          loadFromLocalStorage();
         }
       } catch (error) {
-        console.error("Error fetching conversation:", error);
-        loadFromLocalStorage();
+        console.error("Error loading messages:", error);
+        loadMessagesFromLocalStorage();
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
     
-    const loadFromLocalStorage = () => {
+    const loadMessagesFromLocalStorage = () => {
       try {
-        // Get conversation data
-        const storedConversations = JSON.parse(localStorage.getItem("conversations") || "[]");
-        const conversation = storedConversations.find((c: any) => c.id === id);
-        
-        if (conversation) {
-          setConversationData(conversation);
-          
-          // If it's a group chat, set up the group chat info
-          if (id?.startsWith('group-')) {
-            setChatPartner({
-              name: conversation.user.name,
-              avatar: conversation.user.avatar || "/placeholder.svg",
-              isGroup: true,
-              participants: conversation.participants || []
-            });
-          } else {
-            // For one-on-one chats, set up the partner info
-            setChatPartner({
-              id: conversation.user.id,
-              name: conversation.user.name,
-              avatar: conversation.user.avatar || "/placeholder.svg"
-            });
-          }
-          
-          // Get messages for this conversation
-          const storedMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-          const conversationMessages = storedMessages.filter((m: any) => m.conversation_id === id);
-          setMessages(conversationMessages);
-        }
+        // Load from local storage
+        const allStoredMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+        const filteredMessages = allStoredMessages.filter(
+          (m: any) => m.conversation_id === id
+        );
+        setMessages(filteredMessages);
       } catch (error) {
-        console.error("Error loading data from localStorage:", error);
+        console.error("Error loading messages from local storage:", error);
+        setMessages([]);
       }
     };
     
-    fetchConversationAndMessages();
+    loadMessages();
+    
+    // Subscribe to new messages if using Supabase
+    if (user) {
+      const channel = supabase
+        .channel(`conversation:${id}`)
+        .on('postgres_changes', 
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'messages',
+            filter: `conversation_id=eq.${id}` 
+          }, 
+          (payload) => {
+            setMessages(current => [...current, payload.new]);
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [id, user]);
 
-  // Function to handle when a new message is sent
-  const handleMessageSent = async () => {
-    // Refetch messages from Supabase if we have a connection
-    if (user && conversationData) {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationData.id)
-        .order('created_at', { ascending: true });
-        
-      if (!error && data) {
-        setMessages(data);
-        return;
-      }
-    }
-    
-    // Fallback to localStorage if needed
-    const storedMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-    const conversationMessages = storedMessages.filter((m: any) => m.conversation_id === id);
-    setMessages(conversationMessages);
+  const handleMessageSent = () => {
+    // Reload messages after sending
+    const allStoredMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+    const filteredMessages = allStoredMessages.filter(
+      (m: any) => m.conversation_id === id
+    );
+    setMessages(filteredMessages);
   };
 
   return (
     <MainLayout>
-      <div className="flex flex-col h-[calc(100vh-7.5rem)] lg:h-[calc(100vh-3.5rem)]">
-        {/* Chat Header */}
-        <div className="px-4 py-2 border-b flex items-center">
-          {/* Back button */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="mr-2"
-            asChild
-          >
-            <Link to="/chats">
+      <div className="h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)] flex">
+        <div className="flex-1 flex flex-col">
+          {/* Chat header */}
+          <div className="border-b p-4 flex items-center">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="mr-2 md:hidden"
+              onClick={() => navigate('/chats')}
+            >
               <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          
-          <div className="flex items-center">
-            <div className="h-10 w-10 rounded-full bg-accent mr-3 flex-shrink-0">
-              <img 
-                src={chatPartner?.avatar || "/placeholder.svg"} 
-                alt={chatPartner?.name || "Chat"} 
-                className="h-10 w-10 rounded-full object-cover" 
-              />
-            </div>
+            </Button>
             <div>
-              <h2 className="text-lg font-semibold">{chatPartner?.name || "Chat"}</h2>
-              {chatPartner?.isGroup && (
-                <p className="text-xs text-muted-foreground">
-                  {chatPartner?.participants?.length || 0} Participants
-                </p>
-              )}
-              {!chatPartner?.isGroup && (
-                <p className="text-xs text-muted-foreground">Online</p>
-              )}
+              <h2 className="font-medium">{conversationName}</h2>
+              <p className="text-xs text-muted-foreground">
+                {isLoading ? "Loading..." : `${messages.length} messages`}
+              </p>
             </div>
           </div>
-        </div>
-        
-        {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 && !loading ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-4">
-              <p className="text-muted-foreground mb-2">No messages yet</p>
-              <p className="text-sm">Start the conversation by sending a message below</p>
-            </div>
-          ) : (
-            messages.map((message) => (
-              <ChatMessage 
-                key={message.id} 
-                message={message}
-                isSent={message.sender_id === user?.id}
-              />
-            ))
-          )}
-        </div>
-        
-        {/* Message Input */}
-        <div className="p-4 border-t">
-          <ChatInput 
-            conversationId={id || ""}
-            userId={user?.id || ""}
-            onMessageSent={handleMessageSent}
-          />
+          
+          {/* Messages area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {isLoading ? (
+              <div className="text-center py-10">
+                <p className="text-muted-foreground">Loading messages...</p>
+              </div>
+            ) : messages.length > 0 ? (
+              messages.map((message) => (
+                <ChatMessage 
+                  key={message.id} 
+                  message={message} 
+                  sent={message.sender_id === user?.id} 
+                />
+              ))
+            ) : (
+              <div className="text-center py-10">
+                <p className="text-muted-foreground">No messages yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Send a message to start the conversation
+                </p>
+              </div>
+            )}
+          </div>
+          
+          {/* Chat input */}
+          <div className="border-t p-4">
+            <ChatInput 
+              conversationId={id || ""} 
+              userId={user?.id || "anonymous"} 
+              onMessageSent={handleMessageSent} 
+            />
+          </div>
         </div>
       </div>
+      
+      {/* Add padding at the bottom to account for mobile navigation */}
+      <div className="md:hidden h-16"></div>
     </MainLayout>
   );
 }
