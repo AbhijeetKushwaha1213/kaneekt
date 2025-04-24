@@ -1,4 +1,3 @@
-
 import React, { useState, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,10 +35,7 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
             .from('conversations')
             .select('id')
             .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
-            .eq(
-              userId === data?.user1_id ? 'user2_id' : 'user1_id', 
-              conversationId
-            )
+            .eq('user2_id', conversationId)
             .maybeSingle();
             
           if (data) {
@@ -172,4 +168,3 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
     </form>
   );
 }
-
