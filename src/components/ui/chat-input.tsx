@@ -32,18 +32,20 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
         
         if (!conversationId.startsWith('group-')) {
           // For one-on-one chats, we need to check if a conversation exists in Supabase
-          const { data: existingConv } = await supabase
+          const { data, error } = await supabase
             .from('conversations')
             .select('id')
             .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
             .eq(
-              userId === existingConv?.user1_id ? 'user2_id' : 'user1_id', 
+              userId === data?.user1_id ? 'user2_id' : 'user1_id', 
               conversationId
             )
             .maybeSingle();
             
-          if (!existingConv) {
-            // Create a new conversation
+          if (data) {
+            conversationIdToUse = data.id;
+          } else {
+            // Create a new conversation if it doesn't exist
             const { data: newConv, error: convError } = await supabase
               .from('conversations')
               .insert({
@@ -61,8 +63,6 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
             if (newConv) {
               conversationIdToUse = newConv.id;
             }
-          } else {
-            conversationIdToUse = existingConv.id;
           }
         }
         
@@ -172,3 +172,4 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
     </form>
   );
 }
+
