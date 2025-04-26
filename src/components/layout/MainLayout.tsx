@@ -78,12 +78,25 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
             </Button>
             
             {user ? (
-              <Link to="/profile">
-                <Avatar className="h-8 w-8 cursor-pointer">
-                  <AvatarImage src={user.user_metadata?.avatar_url || "/placeholder.svg"} alt={user.user_metadata?.name || "Profile"} />
-                  <AvatarFallback>{(user.user_metadata?.name || user.email || "U").charAt(0)}</AvatarFallback>
-                </Avatar>
-              </Link>
+              <>
+                {/* Settings icon in header - visible on all screen sizes */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Settings"
+                  onClick={() => navigate("/settings")}
+                >
+                  <Settings className="h-5 w-5" />
+                </Button>
+                
+                {/* Profile avatar */}
+                <Link to="/profile">
+                  <Avatar className="h-8 w-8 cursor-pointer">
+                    <AvatarImage src={user.user_metadata?.avatar_url || "/placeholder.svg"} alt={user.user_metadata?.name || "Profile"} />
+                    <AvatarFallback>{(user.user_metadata?.name || user.email || "U").charAt(0)}</AvatarFallback>
+                  </Avatar>
+                </Link>
+              </>
             ) : (
               <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>
                 Sign In
@@ -126,10 +139,14 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                   <User className="h-5 w-5" />
                 </Button>
               </Link>
+              {/* Settings icon in sidebar only for desktop/tablet */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="mb-4"
+                className={cn(
+                  "mb-4",
+                  location.pathname === "/settings" ? "bg-accent text-accent-foreground" : ""
+                )}
                 aria-label="Settings"
                 onClick={() => navigate("/settings")}
               >
@@ -208,6 +225,18 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                 aria-label="Profile"
               >
                 <User className="h-5 w-5" />
+              </Button>
+            </Link>
+            <Link to="/settings">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  location.pathname === "/settings" ? "text-primary" : "text-muted-foreground"
+                )}
+                aria-label="Settings"
+              >
+                <Settings className="h-5 w-5" />
               </Button>
             </Link>
           </div>

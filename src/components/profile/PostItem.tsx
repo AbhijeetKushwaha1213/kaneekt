@@ -24,6 +24,11 @@ interface PostItemProps {
 }
 
 export function PostItem({ post, userData, avatarUrl }: PostItemProps) {
+  const isVideo = post.image && 
+    (post.image.includes('.mp4') || 
+     post.image.includes('.webm') || 
+     post.image.includes('video'));
+
   return (
     <Card key={post.id} className="overflow-hidden">
       <CardContent className="p-4">
@@ -46,15 +51,23 @@ export function PostItem({ post, userData, avatarUrl }: PostItemProps) {
               </Badge>
             </div>
             
-            <p className="mt-2">{post.content}</p>
+            {post.content && <p className="mt-2">{post.content}</p>}
             
             {post.image && (
               <div className="mt-3">
-                <img 
-                  src={post.image} 
-                  alt="Post image" 
-                  className="rounded-md max-h-80 w-auto" 
-                />
+                {isVideo ? (
+                  <video 
+                    src={post.image} 
+                    controls
+                    className="rounded-md max-h-80 w-auto" 
+                  />
+                ) : (
+                  <img 
+                    src={post.image} 
+                    alt="Post image" 
+                    className="rounded-md max-h-80 w-auto" 
+                  />
+                )}
               </div>
             )}
             

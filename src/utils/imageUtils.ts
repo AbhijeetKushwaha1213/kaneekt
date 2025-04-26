@@ -12,6 +12,11 @@ import { Capacitor } from '@capacitor/core';
 export const isImageUrlValid = (url: string): Promise<boolean> => {
   if (!url) return Promise.resolve(false);
   
+  // If URL is blob or data URL, consider it valid
+  if (url.startsWith('blob:') || url.startsWith('data:')) {
+    return Promise.resolve(true);
+  }
+  
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(true);
@@ -51,7 +56,7 @@ export const ensureBucketExists = async (supabase: any, bucketName: string): Pro
     if (!buckets?.find((b: any) => b.name === bucketName)) {
       const { error: createError } = await supabase.storage.createBucket(bucketName, { 
         public: true,
-        fileSizeLimit: 5242880 // 5MB
+        fileSizeLimit: 10485760 // 10MB
       });
       
       if (createError) {
@@ -109,6 +114,24 @@ export const uploadFileToStorage = async (
     console.error(`Error in uploadFileToStorage:`, error);
     return null;
   }
+};
+
+/**
+ * Determines if a file is an image based on its MIME type
+ * @param file The file to check
+ * @returns boolean indicating if the file is an image
+ */
+export const isImageFile = (file: File): boolean => {
+  return file.type.startsWith('image/');
+};
+
+/**
+ * Determines if a file is a video based on its MIME type
+ * @param file The file to check
+ * @returns boolean indicating if the file is a video
+ */
+export const isVideoFile = (file: File): boolean => {
+  return file.type.startsWith('video/');
 };
 
 /**

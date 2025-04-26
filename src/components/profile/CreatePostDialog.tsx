@@ -4,6 +4,7 @@ import { ImageIcon, X, Globe, Lock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface CreatePostDialogProps {
   open: boolean;
@@ -16,7 +17,7 @@ interface CreatePostDialogProps {
   setPostImageUrl: (url: string | null) => void;
   setPostImage: (file: File | null) => void;
   handleCreatePost: () => void;
-  isLoading?: boolean; // Add the isLoading prop to the interface
+  isLoading?: boolean;
 }
 
 export function CreatePostDialog({
@@ -33,10 +34,33 @@ export function CreatePostDialog({
   isLoading
 }: CreatePostDialogProps) {
   const postFileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
   const handlePostImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      // Validate file type
+      const fileType = file.type;
+      if (!fileType.startsWith('image/') && !fileType.startsWith('video/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload an image or video file",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please upload a file smaller than 10MB",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       setPostImage(file);
       setPostImageUrl(URL.createObjectURL(file));
     }
@@ -71,11 +95,19 @@ export function CreatePostDialog({
           
           {postImageUrl ? (
             <div className="relative">
-              <img 
-                src={postImageUrl} 
-                alt="Post preview" 
-                className="rounded-md max-h-60 w-auto" 
-              />
+              {postImageUrl.includes('video') ? (
+                <video 
+                  src={postImageUrl} 
+                  controls 
+                  className="rounded-md max-h-60 w-auto" 
+                />
+              ) : (
+                <img 
+                  src={postImageUrl} 
+                  alt="Post preview" 
+                  className="rounded-md max-h-60 w-auto" 
+                />
+              )}
               <Button
                 variant="destructive"
                 size="icon"
@@ -95,12 +127,12 @@ export function CreatePostDialog({
                 disabled={isLoading}
               >
                 <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground" />
-                <span className="text-muted-foreground">Add an image</span>
+                <span className="text-muted-foreground">Add an image or video</span>
               </Button>
               <input 
                 ref={postFileInputRef} 
                 type="file" 
-                accept="image/*" 
+                accept="image/*, video/*" 
                 className="hidden" 
                 onChange={handlePostImageChange} 
                 disabled={isLoading}
@@ -138,8 +170,11 @@ export function CreatePostDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleCreatePost} disabled={isLoading}>
-            Publish
+          <Button 
+            onClick={handleCreatePost} 
+            disabled={isLoading || (!postContent.trim() && !postImageUrl)}
+          >
+            {isLoading ? "Publishing..." : "Publish"}
           </Button>
         </DialogFooter>
       </DialogContent>

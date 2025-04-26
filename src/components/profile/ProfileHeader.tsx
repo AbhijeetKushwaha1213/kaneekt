@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { isImageUrlValid } from "@/utils/imageUtils";
 import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProfileHeaderProps {
   avatarUrl: string | null;
@@ -28,6 +29,8 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const isCurrentUser = !!user;
   const [displayAvatar, setDisplayAvatar] = useState<string>("/placeholder.svg");
+  const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
   
   useEffect(() => {
     const loadAvatar = async () => {
@@ -44,6 +47,47 @@ export function ProfileHeader({
     
     loadAvatar();
   }, [avatarUrl, profileData?.avatar, userData?.avatar]);
+  
+  const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload an image file",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please upload an image smaller than 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Show loading indicator
+      setUploading(true);
+      
+      // Create a temporary preview
+      const previewUrl = URL.createObjectURL(file);
+      setDisplayAvatar(previewUrl);
+      
+      // Call the parent handler to actually process the upload
+      handleProfilePhotoChange(e);
+      
+      // Clean up when done
+      setTimeout(() => {
+        setUploading(false);
+      }, 1000);
+    }
+  };
   
   return (
     <div className="flex justify-between items-start">
@@ -62,15 +106,19 @@ export function ProfileHeader({
           {isCurrentUser && (
             <label 
               htmlFor="avatar-upload"
-              className="absolute bottom-0 right-0 rounded-full bg-primary hover:bg-primary/90 h-8 w-8 flex items-center justify-center cursor-pointer border-2 border-background"
+              className={`absolute bottom-0 right-0 rounded-full ${uploading ? 'bg-gray-400' : 'bg-primary hover:bg-primary/90'} h-8 w-8 flex items-center justify-center cursor-pointer border-2 border-background`}
             >
-              <Camera className="h-4 w-4 text-primary-foreground" />
+              {uploading ? (
+                <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-white animate-spin" />
+              ) : (
+                <Camera className="h-4 w-4 text-primary-foreground" />
+              )}
               <input
                 id="avatar-upload"
                 type="file"
                 accept="image/*"
-                onChange={handleProfilePhotoChange}
-                disabled={isLoading}
+                onChange={handleProfileImageUpload}
+                disabled={isLoading || uploading}
                 className="hidden"
               />
             </label>
