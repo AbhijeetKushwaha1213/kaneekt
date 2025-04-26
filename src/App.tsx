@@ -19,26 +19,24 @@ import Index from "./pages/Index";
 
 export default function App() {
   return (
-    <React.StrictMode>
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/chats" element={<Chats />} />
-          <Route path="/chats/:id" element={<Chat />} />
-          <Route path="/channels" element={<Channels />} />
-          <Route path="/channels/:id" element={<Channel />} />
-          <Route path="/discover" element={<Discover />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/profile/:id" element={<Profile />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Toaster />
-      </AuthProvider>
-    </React.StrictMode>
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/chats" element={<Chats />} />
+        <Route path="/chats/:id" element={<Chat />} />
+        <Route path="/channels" element={<Channels />} />
+        <Route path="/channels/:id" element={<Channel />} />
+        <Route path="/discover" element={<Discover />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/:id" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <Toaster />
+    </AuthProvider>
   );
 }
