@@ -11,6 +11,7 @@ import Chats from "./pages/Chats";
 import Chat from "./pages/Chat";
 import Channels from "./pages/Channels";
 import Channel from "./pages/Channel";
+import EnhancedChannel from "./pages/EnhancedChannel";
 import Discover from "./pages/Discover";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/chats/:id" element={<Chat />} />
         <Route path="/channels" element={<Channels />} />
         <Route path="/channels/:id" element={<Channel />} />
+        <Route path="/enhanced-channels/:id" element={<EnhancedChannel />} />
         <Route path="/discover" element={<Discover />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/:id" element={<Profile />} />
