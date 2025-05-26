@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Mail, Camera } from "lucide-react";
 import { Profile } from "@/types/supabase";
 import { v4 as uuidv4 } from 'uuid';
+import { uploadFileToStorage } from "@/utils/imageUtils";
 
 const GoogleIcon = () => (
   <svg
@@ -115,77 +116,46 @@ export function AccountSettings() {
       const fileName = `${uuidv4()}.${fileExt}`;
       const filePath = `${user?.id}/${fileName}`;
       
-      // Check if bucket exists and create if needed
-      const { data: buckets } = await supabase.storage.listBuckets();
-      if (!buckets?.find(bucket => bucket.name === "avatars")) {
-        const { error } = await supabase.storage.createBucket('avatars', { 
-          public: true,
-          fileSizeLimit: 5242880 // 5MB
-        });
-        
-        if (error) {
-          toast({
-            title: "Error creating storage bucket",
-            description: error.message,
-            variant: "destructive",
-          });
-          return;
-        }
-      }
+      // Upload using the utility function
+      const publicUrl = await uploadFileToStorage(supabase, 'avatars', filePath, file);
       
-      // Upload the file
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-      
-      if (uploadError) {
+      if (!publicUrl) {
         toast({
           title: "Upload failed",
-          description: uploadError.message,
+          description: "There was an error uploading your avatar.",
           variant: "destructive",
         });
         return;
       }
       
-      // Get public URL
-      const { data } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath);
+      setAvatarUrl(publicUrl);
+      form.setValue("avatar", publicUrl);
       
-      if (data) {
-        const publicUrl = data.publicUrl;
-        setAvatarUrl(publicUrl);
-        form.setValue("avatar", publicUrl);
-        
-        // Update profile in database
-        await supabase
-          .from("profiles")
-          .update({ avatar: publicUrl })
-          .eq("id", user?.id);
-        
-        // Update localStorage
-        const userProfile = localStorage.getItem("userProfile");
-        if (userProfile) {
-          const parsedProfile = JSON.parse(userProfile);
-          parsedProfile.avatar = publicUrl;
-          localStorage.setItem("userProfile", JSON.stringify(parsedProfile));
-        }
-        
-        const userData = localStorage.getItem("user");
-        if (userData) {
-          const parsedUser = JSON.parse(userData);
-          parsedUser.avatar = publicUrl;
-          localStorage.setItem("user", JSON.stringify(parsedUser));
-        }
-        
-        toast({
-          title: "Success",
-          description: "Avatar updated successfully",
-        });
+      // Update profile in database
+      await supabase
+        .from("profiles")
+        .update({ avatar: publicUrl })
+        .eq("id", user?.id);
+      
+      // Update localStorage
+      const userProfile = localStorage.getItem("userProfile");
+      if (userProfile) {
+        const parsedProfile = JSON.parse(userProfile);
+        parsedProfile.avatar = publicUrl;
+        localStorage.setItem("userProfile", JSON.stringify(parsedProfile));
       }
+      
+      const userData = localStorage.getItem("user");
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        parsedUser.avatar = publicUrl;
+        localStorage.setItem("user", JSON.stringify(parsedUser));
+      }
+      
+      toast({
+        title: "Success",
+        description: "Avatar updated successfully",
+      });
     } catch (error) {
       console.error("Error uploading avatar:", error);
       toast({

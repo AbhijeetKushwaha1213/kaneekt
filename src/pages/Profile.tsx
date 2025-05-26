@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -8,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthUser, User } from "@/types";
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
+import { uploadFileToStorage } from "@/utils/imageUtils";
 
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { ProfileInfo } from "@/components/profile/ProfileInfo";
@@ -345,48 +345,19 @@ export default function Profile() {
         const fileName = `${Date.now()}.${fileExt}`;
         const filePath = `${user.id}/${fileName}`;
         
-        // Create avatars bucket if it doesn't exist
-        const { data: buckets } = await supabase.storage.listBuckets();
-        if (!buckets?.find(bucket => bucket.name === 'avatars')) {
-          const { error: bucketError } = await supabase.storage.createBucket('avatars', {
-            public: true,
-            fileSizeLimit: 5242880 // 5MB limit
-          });
-          
-          if (bucketError) {
-            throw new Error(`Failed to create avatars bucket: ${bucketError.message}`);
-          }
-        }
+        // Upload using the utility function which handles bucket creation
+        const uploadedUrl = await uploadFileToStorage(supabase, 'avatars', filePath, file);
         
-        // Upload the file to Supabase storage
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: true
-          });
-          
-        if (uploadError) {
-          throw new Error(`Upload failed: ${uploadError.message}`);
+        if (!uploadedUrl) {
+          throw new Error('Failed to upload image');
         }
-        
-        // Get public URL
-        const { data: publicUrlData } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(filePath);
-          
-        if (!publicUrlData?.publicUrl) {
-          throw new Error('Failed to get public URL');
-        }
-        
-        const avatarUrl = publicUrlData.publicUrl;
         
         // Update profile in database
         const { error: updateError } = await supabase
           .from('profiles')
           .upsert({ 
             id: user.id,
-            avatar: avatarUrl,
+            avatar: uploadedUrl,
             updated_at: new Date().toISOString()
           });
           
@@ -395,17 +366,17 @@ export default function Profile() {
           // Continue anyway as the file was uploaded successfully
         }
         
-        setAvatarUrl(avatarUrl);
+        setAvatarUrl(uploadedUrl);
         
         // Update local state and storage
         if (profileData) {
-          const updatedProfile = { ...profileData, avatar: avatarUrl };
+          const updatedProfile = { ...profileData, avatar: uploadedUrl };
           localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
           setProfileData(updatedProfile);
         }
         
         if (userData) {
-          const updatedUser = { ...userData, avatar: avatarUrl };
+          const updatedUser = { ...userData, avatar: uploadedUrl };
           localStorage.setItem("user", JSON.stringify(updatedUser));
           setUserData(updatedUser);
         }
@@ -541,30 +512,11 @@ export default function Profile() {
       
       if (postImage && user) {
         try {
-          // Create posts bucket if it doesn't exist
-          const { data: buckets } = await supabase.storage.listBuckets();
-          if (!buckets?.find(b => b.name === 'posts')) {
-            await supabase.storage.createBucket('posts', { 
-              public: true,
-              fileSizeLimit: 10485760 // 10MB
-            });
-          }
-          
           const filePath = `${user.id}/${postId}`;
-          const { data, error } = await supabase.storage
-            .from('posts')
-            .upload(filePath, postImage);
-            
-          if (error) {
-            console.error("Error uploading post image:", error);
-          } else {
-            const { data: publicUrl } = supabase.storage
-              .from('posts')
-              .getPublicUrl(filePath);
-              
-            if (publicUrl) {
-              imageUrl = publicUrl.publicUrl;
-            }
+          imageUrl = await uploadFileToStorage(supabase, 'posts', filePath, postImage);
+          
+          if (!imageUrl) {
+            console.error("Error uploading post image");
           }
         } catch (imageError) {
           console.error("Error uploading post image:", imageError);
