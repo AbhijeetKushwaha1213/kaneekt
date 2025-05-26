@@ -24,37 +24,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    // Set up auth state listener FIRST
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         
-        // If user just signed in, check if they need to complete onboarding
-        if (event === 'SIGNED_IN') {
+        // Handle different auth events
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log('User signed in, checking profile...');
+          // Use setTimeout to avoid blocking the auth state change
           setTimeout(async () => {
-            if (session?.user) {
-              try {
-                const { data, error } = await supabase
-                  .from('profiles')
-                  .select('name')
-                  .eq('id', session.user.id)
-                  .maybeSingle();
-                  
-                if (!data?.name) {
-                  navigate('/onboarding');
-                }
-              } catch (error) {
-                console.error("Error checking for user profile:", error);
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('name')
+                .eq('id', session.user.id)
+                .maybeSingle();
+                
+              if (!profile?.name) {
+                console.log('Profile incomplete, redirecting to onboarding');
+                navigate('/onboarding');
+              } else {
+                console.log('Profile complete, redirecting to chats');
+                navigate('/chats');
               }
+            } catch (error) {
+              console.error("Error checking profile:", error);
+              navigate('/chats'); // Fallback to chats
             }
-          }, 0);
+          }, 100);
+        } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
+          navigate('/auth');
         }
       }
     );
 
-    // THEN check for existing session
+    // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -65,19 +75,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const createStorageBucket = async (bucketName: string) => {
     try {
-      // First, check if the bucket already exists
       const { data: existingBuckets } = await supabase.storage.listBuckets();
       if (existingBuckets?.find(bucket => bucket.name === bucketName)) {
         return { error: null, data: { bucketName, message: 'Bucket already exists' } };
       }
 
-      // Create the bucket with public access
       const { data, error } = await supabase.storage.createBucket(bucketName, {
         public: true,
         fileSizeLimit: 5242880 // 5MB limit
       });
 
-      // Add RLS policies to allow authenticated users to upload files
       if (!error) {
         console.log(`Bucket ${bucketName} created successfully`);
       } else {
@@ -92,7 +99,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signIn = async (email: string, password?: string) => {
-    console.log("SignIn function called");
+    console.log("SignIn function called with:", email);
     try {
       // Check if this is a Google sign-in request
       if (email === 'google') {
@@ -113,31 +120,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
-      console.log("SignIn result:", error ? `Error: ${error.message}` : "Success", data?.user?.email);
+      console.log("SignIn result:", error ? `Error: ${error.message}` : "Success");
       
       if (error) {
         console.error("SignIn error details:", error);
-        
-        // Handle Supabase auth errors
-        if (error.message.includes('Email not confirmed')) {
-          toast({
-            title: "Email not confirmed",
-            description: "Please check your email to confirm your account.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Sign in failed",
-            description: error.message,
-            variant: "destructive"
-          });
-        }
-      }
-      
-      if (data?.session) {
-        // Manually update state in case the listener doesn't trigger immediately
-        setSession(data.session);
-        setUser(data.user);
+        toast({
+          title: "Sign in failed",
+          description: error.message,
+          variant: "destructive"
+        });
       }
       
       return { error, data };
@@ -160,27 +151,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       console.log("SignUp result:", error ? "Error" : "Success", data?.user?.email);
       
-      if (data?.user && !error) {
-        // Initialize a user profile
-        const userProfile = {
-          id: data.user.id,
-          name: userData.name || data.user.email?.split('@')[0] || "User",
-          username: userData.username || data.user.email?.split('@')[0] || "user",
-          avatar: userData.avatar_url || "/placeholder.svg",
-          bio: "I'm new here!",
-          location: "",
-          followers: 0,
-          following: 0,
-          interests: [],
-          isPrivate: false
-        };
-        localStorage.setItem("userProfile", JSON.stringify(userProfile));
-      }
-      
-      if (data?.session) {
-        // Manually update state in case the listener doesn't trigger immediately
-        setSession(data.session);
-        setUser(data.user);
+      if (error) {
+        toast({
+          title: "Registration error",
+          description: error.message,
+          variant: "destructive"
+        });
       }
       
       return { data, error };
@@ -192,7 +168,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     console.log("SignOut function called");
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        title: "Sign out error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   return (
