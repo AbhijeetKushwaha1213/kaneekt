@@ -4,7 +4,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AuthUser, User } from "@/types";
 import { Button } from "@/components/ui/button";
 import { User as SupabaseUser } from "@supabase/supabase-js";
-import { isImageUrlValid } from "@/utils/imageUtils";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -33,16 +32,10 @@ export function ProfileHeader({
   const { toast } = useToast();
   
   useEffect(() => {
-    const loadAvatar = async () => {
+    const loadAvatar = () => {
       const avatarToUse = avatarUrl || profileData?.avatar || userData?.avatar || "/placeholder.svg";
-      
-      // Verify if the avatar URL is valid
-      if (avatarToUse !== "/placeholder.svg") {
-        const isValid = await isImageUrlValid(avatarToUse);
-        setDisplayAvatar(isValid ? avatarToUse : "/placeholder.svg");
-      } else {
-        setDisplayAvatar("/placeholder.svg");
-      }
+      console.log("Loading avatar:", avatarToUse);
+      setDisplayAvatar(avatarToUse);
     };
     
     loadAvatar();
@@ -85,8 +78,13 @@ export function ProfileHeader({
       // Clean up when done
       setTimeout(() => {
         setUploading(false);
-      }, 1000);
+      }, 2000);
     }
+  };
+  
+  const handleImageError = () => {
+    console.log("Avatar image failed to load, using placeholder");
+    setDisplayAvatar("/placeholder.svg");
   };
   
   return (
@@ -97,6 +95,7 @@ export function ProfileHeader({
             <AvatarImage 
               src={displayAvatar}
               alt={profileData?.name || userData?.name || "User"}
+              onError={handleImageError}
             />
             <AvatarFallback>
               {(profileData?.name?.[0] || userData?.name?.[0] || "U").toUpperCase()}
@@ -106,9 +105,9 @@ export function ProfileHeader({
           {isCurrentUser && (
             <label 
               htmlFor="avatar-upload"
-              className={`absolute bottom-0 right-0 rounded-full ${uploading ? 'bg-gray-400' : 'bg-primary hover:bg-primary/90'} h-8 w-8 flex items-center justify-center cursor-pointer border-2 border-background`}
+              className={`absolute bottom-0 right-0 rounded-full ${uploading || isLoading ? 'bg-gray-400' : 'bg-primary hover:bg-primary/90'} h-8 w-8 flex items-center justify-center cursor-pointer border-2 border-background transition-colors`}
             >
-              {uploading ? (
+              {uploading || isLoading ? (
                 <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-white animate-spin" />
               ) : (
                 <Camera className="h-4 w-4 text-primary-foreground" />
