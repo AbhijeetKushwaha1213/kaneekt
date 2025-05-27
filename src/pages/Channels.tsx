@@ -10,12 +10,14 @@ import { GroupChatDialog } from "@/components/ui/group-chat-dialog";
 import { CHANNELS } from "@/data/mock-data";
 import { Channel } from "@/types";
 import { PlusCircle, Search } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Channels() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [isGroupChatDialogOpen, setIsGroupChatDialogOpen] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const userChannelsString = localStorage.getItem("userChannels");
@@ -138,6 +140,8 @@ export default function Channels() {
         <GroupChatDialog 
           open={isGroupChatDialogOpen} 
           onOpenChange={setIsGroupChatDialogOpen}
+          onGroupCreate={handleChannelCreated}
+          currentUser={user}
         />
       </div>
     </MainLayout>
