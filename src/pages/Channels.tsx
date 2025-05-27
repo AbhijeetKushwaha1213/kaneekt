@@ -147,7 +147,7 @@ export default function Channels() {
                     <EnhancedChannelCard channel={channel} />
                     {channel.isJoined && (
                       <div className="mt-3 flex gap-2">
-                        <Link to={`/enhanced-channels/${channel.id}`} className="flex-1">
+                        <Link to={`/channels/${channel.id}`} className="flex-1">
                           <Button variant="default" className="w-full">
                             View Channel
                           </Button>

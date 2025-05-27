@@ -30,7 +30,7 @@ export default function App() {
         <Route path="/chats" element={<Chats />} />
         <Route path="/chats/:id" element={<Chat />} />
         <Route path="/channels" element={<Channels />} />
-        <Route path="/channels/:id" element={<Channel />} />
+        <Route path="/channels/:id" element={<EnhancedChannel />} />
         <Route path="/enhanced-channels/:id" element={<EnhancedChannel />} />
         <Route path="/discover" element={<Discover />} />
         <Route path="/profile" element={<Profile />} />
