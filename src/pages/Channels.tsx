@@ -51,14 +51,41 @@ export default function Channels() {
     }
   });
 
-  const handleChannelCreated = (newChannel: Channel) => {
-    const channelWithJoinedStatus = {
-      ...newChannel,
+  const handleChannelCreated = (groupData: {
+    id: string;
+    name: string;
+    description: string;
+    participants: {
+      id: string;
+      name: string;
+      avatar?: string;
+      role: 'admin' | 'member';
+    }[];
+  }) => {
+    // Convert the groupData to Channel format
+    const newChannel: Channel = {
+      id: groupData.id,
+      name: groupData.name,
+      description: groupData.description,
+      members: groupData.participants.length,
+      tags: [], // Default empty tags
+      isPrivate: false, // Default to public
       isJoined: true
     };
-    setChannels(prev => [...prev, channelWithJoinedStatus]);
+    
+    setChannels(prev => [...prev, newChannel]);
     setIsGroupChatDialogOpen(false);
   };
+
+  // Convert User to AuthUser format
+  const authUser = user ? {
+    id: user.id,
+    email: user.email || '',
+    username: user.user_metadata?.username || user.email?.split('@')[0] || '',
+    name: user.user_metadata?.name || user.email?.split('@')[0] || '',
+    avatar: user.user_metadata?.avatar_url,
+    isLoggedIn: true
+  } : null;
 
   return (
     <MainLayout>
@@ -141,7 +168,7 @@ export default function Channels() {
           open={isGroupChatDialogOpen} 
           onOpenChange={setIsGroupChatDialogOpen}
           onGroupCreate={handleChannelCreated}
-          currentUser={user}
+          currentUser={authUser}
         />
       </div>
     </MainLayout>
