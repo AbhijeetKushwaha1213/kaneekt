@@ -20,7 +20,16 @@ export default function Channels() {
   useEffect(() => {
     const userChannelsString = localStorage.getItem("userChannels");
     const userChannels = userChannelsString ? JSON.parse(userChannelsString) : [];
-    const allChannels = [...CHANNELS, ...userChannels];
+    // Add isJoined property to channels
+    const channelsWithJoinedStatus = CHANNELS.map(channel => ({
+      ...channel,
+      isJoined: Math.random() > 0.5 // Random for demo purposes
+    }));
+    const userChannelsWithJoinedStatus = userChannels.map((channel: any) => ({
+      ...channel,
+      isJoined: true
+    }));
+    const allChannels = [...channelsWithJoinedStatus, ...userChannelsWithJoinedStatus];
     setChannels(allChannels);
   }, []);
 
@@ -39,6 +48,15 @@ export default function Channels() {
         return matchesSearch;
     }
   });
+
+  const handleChannelCreated = (newChannel: Channel) => {
+    const channelWithJoinedStatus = {
+      ...newChannel,
+      isJoined: true
+    };
+    setChannels(prev => [...prev, channelWithJoinedStatus]);
+    setIsGroupChatDialogOpen(false);
+  };
 
   return (
     <MainLayout>
@@ -120,10 +138,6 @@ export default function Channels() {
         <GroupChatDialog 
           open={isGroupChatDialogOpen} 
           onOpenChange={setIsGroupChatDialogOpen}
-          onChannelCreated={(newChannel) => {
-            setChannels(prev => [...prev, newChannel]);
-            setIsGroupChatDialogOpen(false);
-          }}
         />
       </div>
     </MainLayout>

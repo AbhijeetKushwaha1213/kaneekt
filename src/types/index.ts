@@ -24,6 +24,7 @@ export interface Channel {
   members: number;
   tags: string[];
   isPrivate: boolean;
+  isJoined?: boolean;
   inviteOnly?: boolean;
   ownerId?: string;
   createdAt?: Date;
