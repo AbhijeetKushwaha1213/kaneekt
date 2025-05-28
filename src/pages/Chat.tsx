@@ -4,8 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ChatMessage } from "@/components/ui/chat-message";
 import { ChatInput } from "@/components/ui/chat-input";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -111,26 +110,16 @@ export default function Chat() {
 
   return (
     <MainLayout>
-      <div className="h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)] flex">
+      <div className="h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)] flex flex-col">
+        {/* Enhanced page header with back navigation */}
+        <PageHeader
+          title={conversationName}
+          subtitle={isLoading ? "Loading..." : `${messages.length} messages`}
+          showBack={isMobile}
+          fallbackRoute="/chats"
+        />
+        
         <div className="flex-1 flex flex-col">
-          {/* Chat header */}
-          <div className="border-b p-4 flex items-center">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="mr-2 md:hidden"
-              onClick={() => navigate('/chats')}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h2 className="font-medium">{conversationName}</h2>
-              <p className="text-xs text-muted-foreground">
-                {isLoading ? "Loading..." : `${messages.length} messages`}
-              </p>
-            </div>
-          </div>
-          
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {isLoading ? (

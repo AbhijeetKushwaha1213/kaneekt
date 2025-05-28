@@ -25,65 +25,74 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
     
     setIsSending(true);
     try {
-      // If we have a valid Supabase connection and user ID
-      if (userId) {
-        // Check if conversation exists
-        let conversationIdToUse = conversationId;
-        
-        if (!conversationId.startsWith('group-')) {
-          // For one-on-one chats, we need to check if a conversation exists in Supabase
-          const { data, error } = await supabase
-            .from('conversations')
-            .select('id')
-            .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
-            .eq('user2_id', conversationId)
-            .maybeSingle();
-            
-          if (data) {
-            conversationIdToUse = data.id;
-          } else {
-            // Create a new conversation if it doesn't exist
-            const { data: newConv, error: convError } = await supabase
+      // Check if this is a channel message (starts with "channel_")
+      const isChannelMessage = conversationId.startsWith('channel_');
+      
+      if (isChannelMessage) {
+        // Handle channel messages - store in localStorage with channel-specific key
+        const channelId = conversationId.replace('channel_', '');
+        storeChannelMessage(message, channelId, userId);
+      } else {
+        // Handle direct messages
+        if (userId) {
+          // Check if conversation exists
+          let conversationIdToUse = conversationId;
+          
+          if (!conversationId.startsWith('group-')) {
+            // For one-on-one chats, we need to check if a conversation exists in Supabase
+            const { data, error } = await supabase
               .from('conversations')
-              .insert({
-                user1_id: userId,
-                user2_id: conversationId
-              })
               .select('id')
-              .single();
+              .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
+              .eq('user2_id', conversationId)
+              .maybeSingle();
               
-            if (convError) {
-              console.error("Error creating conversation:", convError);
-              throw convError;
-            }
-            
-            if (newConv) {
-              conversationIdToUse = newConv.id;
+            if (data) {
+              conversationIdToUse = data.id;
+            } else {
+              // Create a new conversation if it doesn't exist
+              const { data: newConv, error: convError } = await supabase
+                .from('conversations')
+                .insert({
+                  user1_id: userId,
+                  user2_id: conversationId
+                })
+                .select('id')
+                .single();
+                
+              if (convError) {
+                console.error("Error creating conversation:", convError);
+                throw convError;
+              }
+              
+              if (newConv) {
+                conversationIdToUse = newConv.id;
+              }
             }
           }
-        }
-        
-        const messageId = `msg-${uuidv4()}`;
-        
-        // Try to insert the message to Supabase
-        const { error } = await supabase
-          .from('messages')
-          .insert({
-            id: messageId,
-            content: message,
-            conversation_id: conversationIdToUse,
-            sender_id: userId,
-            is_read: false
-          });
           
-        if (error) {
-          // If Supabase insert fails, use local storage as fallback
-          console.error("Error sending message to Supabase:", error);
+          const messageId = `msg-${uuidv4()}`;
+          
+          // Try to insert the message to Supabase
+          const { error } = await supabase
+            .from('messages')
+            .insert({
+              id: messageId,
+              content: message,
+              conversation_id: conversationIdToUse,
+              sender_id: userId,
+              is_read: false
+            });
+            
+          if (error) {
+            // If Supabase insert fails, use local storage as fallback
+            console.error("Error sending message to Supabase:", error);
+            storeMessageLocally(message, conversationId, userId);
+          }
+        } else {
+          // No Supabase connection, use local storage
           storeMessageLocally(message, conversationId, userId);
         }
-      } else {
-        // No Supabase connection, use local storage
-        storeMessageLocally(message, conversationId, userId);
       }
       
       // Clear message input after sending
@@ -100,6 +109,30 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
       });
     } finally {
       setIsSending(false);
+    }
+  };
+  
+  const storeChannelMessage = (content: string, channelId: string, senderId: string) => {
+    try {
+      // Get existing channel messages or initialize empty array
+      const storedMessages = JSON.parse(localStorage.getItem(`channel_messages_${channelId}`) || "[]");
+      
+      // Add new message
+      const newMessage = {
+        id: `channel-msg-${Date.now()}`,
+        content,
+        channel_id: channelId,
+        sender_id: senderId,
+        created_at: new Date().toISOString(),
+        is_read: false
+      };
+      
+      storedMessages.push(newMessage);
+      
+      // Save back to local storage
+      localStorage.setItem(`channel_messages_${channelId}`, JSON.stringify(storedMessages));
+    } catch (error) {
+      console.error("Error storing channel message locally:", error);
     }
   };
   
