@@ -1,41 +1,45 @@
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EnhancedChannelCard } from "@/components/ui/enhanced-channel-card";
+import { ChannelActions } from "@/components/ui/channel-actions";
 import { GroupChatDialog } from "@/components/ui/group-chat-dialog";
+import { useChannelManagement } from "@/hooks/useChannelManagement";
 import { CHANNELS } from "@/data/mock-data";
 import { Channel } from "@/types";
 import { PlusCircle, Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Channels() {
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const [allChannels, setAllChannels] = useState<Channel[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [isGroupChatDialogOpen, setIsGroupChatDialogOpen] = useState(false);
   const { user } = useAuth();
+  const { 
+    joinChannel, 
+    leaveChannel, 
+    isChannelJoined, 
+    getChannelsWithJoinedStatus 
+  } = useChannelManagement();
 
   useEffect(() => {
+    // Load channels from localStorage and mock data
     const userChannelsString = localStorage.getItem("userChannels");
     const userChannels = userChannelsString ? JSON.parse(userChannelsString) : [];
-    // Add isJoined property to channels
-    const channelsWithJoinedStatus = CHANNELS.map(channel => ({
-      ...channel,
-      isJoined: Math.random() > 0.5 // Random for demo purposes
-    }));
-    const userChannelsWithJoinedStatus = userChannels.map((channel: any) => ({
-      ...channel,
-      isJoined: true
-    }));
-    const allChannels = [...channelsWithJoinedStatus, ...userChannelsWithJoinedStatus];
-    setChannels(allChannels);
+    
+    // Combine mock channels with user created channels
+    const combinedChannels = [...CHANNELS, ...userChannels];
+    setAllChannels(combinedChannels);
   }, []);
 
-  const filteredChannels = channels.filter(channel => {
+  // Get channels with joined status
+  const channelsWithStatus = getChannelsWithJoinedStatus(allChannels);
+
+  const filteredChannels = channelsWithStatus.filter(channel => {
     const matchesSearch = channel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          channel.description.toLowerCase().includes(searchQuery.toLowerCase());
     
@@ -68,12 +72,23 @@ export default function Channels() {
       name: groupData.name,
       description: groupData.description,
       members: groupData.participants.length,
-      tags: [], // Default empty tags
-      isPrivate: false, // Default to public
+      tags: [],
+      isPrivate: false,
       isJoined: true
     };
     
-    setChannels(prev => [...prev, newChannel]);
+    // Save to localStorage
+    const userChannelsString = localStorage.getItem("userChannels");
+    const userChannels = userChannelsString ? JSON.parse(userChannelsString) : [];
+    const updatedUserChannels = [...userChannels, newChannel];
+    localStorage.setItem("userChannels", JSON.stringify(updatedUserChannels));
+    
+    // Update state
+    setAllChannels(prev => [...prev, newChannel]);
+    
+    // Auto-join the created channel
+    joinChannel(newChannel.id);
+    
     setIsGroupChatDialogOpen(false);
   };
 
@@ -143,20 +158,14 @@ export default function Channels() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredChannels.map((channel) => (
-                  <div key={channel.id} className="relative">
+                  <div key={channel.id} className="space-y-4">
                     <EnhancedChannelCard channel={channel} />
-                    {channel.isJoined && (
-                      <div className="mt-3 flex gap-2">
-                        <Link to={`/channels/${channel.id}`} className="flex-1">
-                          <Button variant="default" className="w-full">
-                            View Channel
-                          </Button>
-                        </Link>
-                        <Button variant="outline" size="sm">
-                          Leave
-                        </Button>
-                      </div>
-                    )}
+                    <ChannelActions 
+                      channel={channel}
+                      isJoined={channel.isJoined || false}
+                      onJoin={joinChannel}
+                      onLeave={leaveChannel}
+                    />
                   </div>
                 ))}
               </div>
