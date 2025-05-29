@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Eye, MapPin, Activity, Lock, UserX, Bell } from "lucide-react";
+import { LocationSettings } from "@/components/location/LocationSettings";
 
 export function PrivacySettings() {
   const { user } = useAuth();
@@ -28,7 +29,7 @@ export function PrivacySettings() {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("is_private")
+          .select("is_private, location_sharing_enabled")
           .eq("id", user.id)
           .single();
         
@@ -39,7 +40,8 @@ export function PrivacySettings() {
         
         setPrivacySettings(prev => ({
           ...prev,
-          isPrivate: data.is_private || false
+          isPrivate: data.is_private || false,
+          showLocation: data.location_sharing_enabled || false
         }));
       } catch (error) {
         console.error("Error loading privacy settings:", error);
@@ -132,61 +134,8 @@ export function PrivacySettings() {
         </CardContent>
       </Card>
       
-      {/* Location Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            Location Sharing
-          </CardTitle>
-          <CardDescription>
-            Control how your location is used and displayed
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="location-discovery">Enable Location-based Discovery</Label>
-              <p className="text-sm text-muted-foreground">
-                Allow nearby users to discover your profile
-              </p>
-            </div>
-            <Switch
-              id="location-discovery"
-              checked={privacySettings.showLocation}
-              onCheckedChange={(checked) => {
-                setPrivacySettings(prev => ({ ...prev, showLocation: checked }));
-                toast({
-                  title: "Location settings updated",
-                  description: `Location-based discovery ${checked ? "enabled" : "disabled"}.`
-                });
-              }}
-            />
-          </div>
-          
-          <Separator />
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="show-location">Show Location on Profile</Label>
-              <p className="text-sm text-muted-foreground">
-                Display your general location on your profile
-              </p>
-            </div>
-            <Switch
-              id="show-location"
-              checked={privacySettings.showLocation}
-              onCheckedChange={(checked) => {
-                setPrivacySettings(prev => ({ ...prev, showLocation: checked }));
-                toast({
-                  title: "Location settings updated",
-                  description: `Location display on profile ${checked ? "enabled" : "disabled"}.`
-                });
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Location Settings - Enhanced Component */}
+      <LocationSettings />
       
       {/* Activity Status */}
       <Card>
