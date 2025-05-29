@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { UserPlus } from 'lucide-react';
+import { Heart, MessageSquare } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { calculateDistance, formatDistance } from '@/utils/distanceUtils';
+import { useToast } from '@/hooks/use-toast';
 
 interface NearbyUser {
   id: string;
@@ -21,16 +23,25 @@ interface NearbyUser {
 export function NearbyPeople() {
   const { user } = useAuth();
   const { latitude, longitude } = useGeolocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [likedUsers, setLikedUsers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Since database location features aren't available, load mock data
     loadMockUsers();
+    loadLikedUsers();
   }, [latitude, longitude, user]);
 
+  const loadLikedUsers = () => {
+    const stored = localStorage.getItem('likedUsers');
+    if (stored) {
+      setLikedUsers(new Set(JSON.parse(stored)));
+    }
+  };
+
   const loadMockUsers = () => {
-    // Mock users for demonstration when real location data isn't available
     const mockUsers = [
       {
         id: 'mock-1',
@@ -86,6 +97,42 @@ export function NearbyPeople() {
     setLoading(false);
   };
 
+  const handleProfileClick = (userId: string) => {
+    // Navigate to chat with this user
+    navigate(`/chats/${userId}`);
+  };
+
+  const handleLike = (userId: string, userName: string) => {
+    const newLikedUsers = new Set(likedUsers);
+    
+    if (likedUsers.has(userId)) {
+      newLikedUsers.delete(userId);
+      toast({
+        title: "Like removed",
+        description: `You no longer like ${userName}`,
+      });
+    } else {
+      newLikedUsers.add(userId);
+      toast({
+        title: "Like sent! 💖",
+        description: `You liked ${userName}. If they like you back, you'll be matched!`,
+      });
+      
+      // Simulate mutual match (20% chance for demo)
+      if (Math.random() < 0.2) {
+        setTimeout(() => {
+          toast({
+            title: "It's a match! 🎉",
+            description: `${userName} likes you too! You can now chat freely.`,
+          });
+        }, 1500);
+      }
+    }
+    
+    setLikedUsers(newLikedUsers);
+    localStorage.setItem('likedUsers', JSON.stringify(Array.from(newLikedUsers)));
+  };
+
   if (loading) {
     return (
       <div className="mb-6">
@@ -116,7 +163,10 @@ export function NearbyPeople() {
                     nearbyUser.id.charCodeAt(0) % 2 === 0 ? 'bg-green-500' : 'bg-amber-500'
                   } ring-2 ring-white`}></div>
                   
-                  <div className="aspect-[3/2] bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900"></div>
+                  <div 
+                    className="aspect-[3/2] bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 cursor-pointer"
+                    onClick={() => handleProfileClick(nearbyUser.id)}
+                  ></div>
                   
                   <div className="absolute -bottom-6 left-4">
                     <Avatar className="h-12 w-12 border-2 border-background">
@@ -128,7 +178,10 @@ export function NearbyPeople() {
                 
                 <CardContent className="pt-8 pb-4">
                   <div className="flex justify-between items-start">
-                    <div>
+                    <div 
+                      className="cursor-pointer flex-1"
+                      onClick={() => handleProfileClick(nearbyUser.id)}
+                    >
                       <h3 className="font-medium">{nearbyUser.name}</h3>
                       <div className="text-xs text-muted-foreground flex flex-col">
                         <span>
@@ -139,14 +192,32 @@ export function NearbyPeople() {
                         </span>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-full hover:bg-slate-100 hover:text-indigo-600"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                      <span className="sr-only">Connect</span>
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full hover:bg-rose-100 hover:text-rose-600"
+                        onClick={() => handleLike(nearbyUser.id, nearbyUser.name)}
+                      >
+                        <Heart 
+                          className={`h-4 w-4 ${
+                            likedUsers.has(nearbyUser.id) 
+                              ? 'fill-rose-500 text-rose-500' 
+                              : ''
+                          }`} 
+                        />
+                        <span className="sr-only">Like</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full hover:bg-slate-100 hover:text-indigo-600"
+                        onClick={() => handleProfileClick(nearbyUser.id)}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        <span className="sr-only">Message</span>
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

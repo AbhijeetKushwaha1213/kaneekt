@@ -1,11 +1,10 @@
 
-import React, { useState, FormEvent } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Send, Paperclip } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { v4 as uuidv4 } from 'uuid';
 
 interface ChatInputProps {
   conversationId: string;
@@ -15,190 +14,138 @@ interface ChatInputProps {
 
 export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputProps) {
   const [message, setMessage] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSendMessage = async (e?: FormEvent) => {
-    if (e) e.preventDefault();
+  // Check if this is the first message to this person
+  const checkMessageLimit = () => {
+    const allMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+    const conversationMessages = allMessages.filter(
+      (m: any) => m.conversation_id === conversationId
+    );
     
+    const userMessages = conversationMessages.filter(
+      (m: any) => m.sender_id === userId
+    );
+
+    // Check if users are matched (liked each other)
+    const matches = JSON.parse(localStorage.getItem('matches') || '[]');
+    const isMatched = matches.includes(conversationId);
+
+    return { 
+      hasReachedLimit: userMessages.length >= 1 && !isMatched,
+      isFirstMessage: userMessages.length === 0,
+      isMatched 
+    };
+  };
+
+  const handleSendMessage = async () => {
     if (!message.trim()) return;
-    
-    setIsSending(true);
+
+    const { hasReachedLimit, isFirstMessage, isMatched } = checkMessageLimit();
+
+    if (hasReachedLimit) {
+      toast({
+        title: "Message limit reached",
+        description: "You can only send one message until they respond or you both like each other",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
     try {
-      // Check if this is a channel message (starts with "channel_")
-      const isChannelMessage = conversationId.startsWith('channel_');
-      
-      if (isChannelMessage) {
-        // Handle channel messages - store in localStorage with channel-specific key
-        const channelId = conversationId.replace('channel_', '');
-        storeChannelMessage(message, channelId, userId);
-      } else {
-        // Handle direct messages
-        if (userId) {
-          // Check if conversation exists
-          let conversationIdToUse = conversationId;
-          
-          if (!conversationId.startsWith('group-')) {
-            // For one-on-one chats, we need to check if a conversation exists in Supabase
-            const { data, error } = await supabase
-              .from('conversations')
-              .select('id')
-              .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
-              .eq('user2_id', conversationId)
-              .maybeSingle();
-              
-            if (data) {
-              conversationIdToUse = data.id;
-            } else {
-              // Create a new conversation if it doesn't exist
-              const { data: newConv, error: convError } = await supabase
-                .from('conversations')
-                .insert({
-                  user1_id: userId,
-                  user2_id: conversationId
-                })
-                .select('id')
-                .single();
-                
-              if (convError) {
-                console.error("Error creating conversation:", convError);
-                throw convError;
-              }
-              
-              if (newConv) {
-                conversationIdToUse = newConv.id;
-              }
-            }
-          }
-          
-          const messageId = `msg-${uuidv4()}`;
-          
-          // Try to insert the message to Supabase
-          const { error } = await supabase
-            .from('messages')
-            .insert({
-              id: messageId,
-              content: message,
-              conversation_id: conversationIdToUse,
-              sender_id: userId,
-              is_read: false
-            });
-            
-          if (error) {
-            // If Supabase insert fails, use local storage as fallback
-            console.error("Error sending message to Supabase:", error);
-            storeMessageLocally(message, conversationId, userId);
-          }
-        } else {
-          // No Supabase connection, use local storage
-          storeMessageLocally(message, conversationId, userId);
+      const messageData = {
+        id: `msg-${Date.now()}`,
+        conversation_id: conversationId,
+        sender_id: userId,
+        content: message.trim(),
+        created_at: new Date().toISOString(),
+        is_read: false
+      };
+
+      // Try to save to Supabase first
+      if (userId !== 'anonymous') {
+        try {
+          await supabase.from('messages').insert(messageData);
+        } catch (error) {
+          console.error("Error saving to Supabase:", error);
         }
       }
-      
-      // Clear message input after sending
+
+      // Always save to localStorage as backup
+      const allMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+      allMessages.push(messageData);
+      localStorage.setItem("chatMessages", JSON.stringify(allMessages));
+
+      if (isFirstMessage) {
+        toast({
+          title: "First message sent!",
+          description: isMatched 
+            ? "You can continue chatting freely since you're matched!"
+            : "Wait for them to respond or like each other to unlock unlimited messaging",
+        });
+      }
+
       setMessage("");
-      
-      // Call the callback if provided
-      if (onMessageSent) onMessageSent();
+      onMessageSent?.();
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
-        title: "Failed to send message",
-        description: "Please try again later",
+        title: "Error sending message",
+        description: "Please try again",
         variant: "destructive"
       });
     } finally {
-      setIsSending(false);
-    }
-  };
-  
-  const storeChannelMessage = (content: string, channelId: string, senderId: string) => {
-    try {
-      // Get existing channel messages or initialize empty array
-      const storedMessages = JSON.parse(localStorage.getItem(`channel_messages_${channelId}`) || "[]");
-      
-      // Add new message
-      const newMessage = {
-        id: `channel-msg-${Date.now()}`,
-        content,
-        channel_id: channelId,
-        sender_id: senderId,
-        created_at: new Date().toISOString(),
-        is_read: false
-      };
-      
-      storedMessages.push(newMessage);
-      
-      // Save back to local storage
-      localStorage.setItem(`channel_messages_${channelId}`, JSON.stringify(storedMessages));
-    } catch (error) {
-      console.error("Error storing channel message locally:", error);
-    }
-  };
-  
-  const storeMessageLocally = (content: string, conversationId: string, senderId: string) => {
-    try {
-      // Get existing messages or initialize empty array
-      const storedMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-      
-      // Add new message
-      const newMessage = {
-        id: `local-msg-${Date.now()}`,
-        content,
-        conversation_id: conversationId,
-        sender_id: senderId,
-        created_at: new Date().toISOString(),
-        is_read: false
-      };
-      
-      storedMessages.push(newMessage);
-      
-      // Save back to local storage
-      localStorage.setItem("chatMessages", JSON.stringify(storedMessages));
-      
-      // Update conversation last message
-      const conversations = JSON.parse(localStorage.getItem("conversations") || "[]");
-      const conversationIndex = conversations.findIndex((c: any) => c.id === conversationId);
-      
-      if (conversationIndex !== -1) {
-        conversations[conversationIndex].lastMessage = {
-          id: newMessage.id,
-          content: content.length > 30 ? content.substring(0, 30) + '...' : content,
-          timestamp: new Date(),
-          unread: false
-        };
-        
-        localStorage.setItem("conversations", JSON.stringify(conversations));
-      }
-    } catch (error) {
-      console.error("Error storing message locally:", error);
+      setIsLoading(false);
     }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const { hasReachedLimit, isMatched } = checkMessageLimit();
+
   return (
-    <form onSubmit={handleSendMessage} className="flex flex-col space-y-2">
-      <div className="flex items-end space-x-2">
-        <Textarea
-          placeholder="Type your message..."
+    <div className="flex items-center space-x-2">
+      <Button variant="ghost" size="icon" className="h-10 w-10">
+        <Paperclip className="h-4 w-4" />
+      </Button>
+      
+      <div className="flex-1 flex items-center space-x-2">
+        <Input
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          className="resize-none min-h-[80px]"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSendMessage();
-            }
-          }}
+          onKeyPress={handleKeyPress}
+          placeholder={
+            hasReachedLimit 
+              ? "Like each other to unlock unlimited messaging"
+              : "Type a message..."
+          }
+          disabled={isLoading || hasReachedLimit}
+          className="flex-1"
         />
-        <Button 
-          type="submit" 
-          size="icon" 
-          className="mb-[1px]"
-          disabled={!message.trim() || isSending}
+        
+        <Button
+          onClick={handleSendMessage}
+          disabled={!message.trim() || isLoading || hasReachedLimit}
+          size="icon"
+          className="h-10 w-10"
         >
-          <Send className="h-5 w-5" />
+          <Send className="h-4 w-4" />
         </Button>
       </div>
-    </form>
+      
+      {hasReachedLimit && !isMatched && (
+        <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-amber-100 text-amber-800 text-xs px-3 py-1 rounded-full">
+          💬 One message limit - like each other to chat freely!
+        </div>
+      )}
+    </div>
   );
 }

@@ -102,6 +102,11 @@ export default function Discover() {
           onLocationClick={() => setIsLocationSelectorOpen(true)}
         />
         
+        {/* Stories Section */}
+        <div className="px-4 sm:px-6">
+          <StoriesCarousel />
+        </div>
+        
         {/* Main Content */}
         <div className="px-4 sm:px-6">
           <Tabs defaultValue="feed" value={activeTab} onValueChange={setActiveTab}>
@@ -150,6 +155,11 @@ export default function Discover() {
             
             <TabsContent value="people" className="mt-4">
               <SearchFilters onSearch={handleSearch} className="mb-6" />
+              
+              {/* Nearby People Section */}
+              <div className="mb-6">
+                <NearbyPeople />
+              </div>
               
               {filteredUsers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 dark:bg-gray-900 rounded-lg border border-dashed">

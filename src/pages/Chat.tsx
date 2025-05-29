@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -8,6 +7,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export default function Chat() {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +18,7 @@ export default function Chat() {
   const isMobile = useIsMobile();
   const [messages, setMessages] = useState<any[]>([]);
   const [conversationName, setConversationName] = useState("");
+  const [conversationUser, setConversationUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
@@ -99,25 +102,46 @@ export default function Chat() {
     }
   }, [id, user]);
 
-  const handleMessageSent = () => {
-    // Reload messages after sending
-    const allStoredMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-    const filteredMessages = allStoredMessages.filter(
-      (m: any) => m.conversation_id === id
-    );
-    setMessages(filteredMessages);
+  const handleProfileClick = () => {
+    if (conversationUser?.id) {
+      navigate(`/profile/${conversationUser.id}`);
+    }
   };
 
   return (
     <MainLayout>
       <div className="h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)] flex flex-col">
-        {/* Enhanced page header with back navigation */}
-        <PageHeader
-          title={conversationName}
-          subtitle={isLoading ? "Loading..." : `${messages.length} messages`}
-          showBack={isMobile}
-          fallbackRoute="/chats"
-        />
+        {/* Enhanced page header with clickable profile */}
+        <div className="border-b p-4">
+          <div className="flex items-center space-x-3">
+            {isMobile && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/chats')}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            )}
+            
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={conversationUser?.avatar || '/placeholder.svg'} />
+              <AvatarFallback>{conversationName[0] || 'U'}</AvatarFallback>
+            </Avatar>
+            
+            <div className="flex-1">
+              <h1 
+                className="font-semibold cursor-pointer hover:text-primary transition-colors"
+                onClick={handleProfileClick}
+              >
+                {conversationName}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {isLoading ? "Loading..." : `${messages.length} messages`}
+              </p>
+            </div>
+          </div>
+        </div>
         
         <div className="flex-1 flex flex-col">
           {/* Messages area */}
@@ -136,8 +160,8 @@ export default function Chat() {
                     timestamp: new Date(message.created_at || Date.now()),
                     sender: {
                       id: message.sender_id,
-                      name: message.sender_id === user?.id ? "You" : "User",
-                      avatar: "/placeholder.svg"
+                      name: message.sender_id === user?.id ? "You" : conversationName,
+                      avatar: message.sender_id === user?.id ? (user?.user_metadata?.avatar_url || '/placeholder.svg') : (conversationUser?.avatar || '/placeholder.svg')
                     },
                     isCurrentUser: message.sender_id === user?.id
                   }}
