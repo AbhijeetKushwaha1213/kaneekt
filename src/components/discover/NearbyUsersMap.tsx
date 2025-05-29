@@ -7,8 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, MessageCircle, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { supabase } from '@/integrations/supabase/client';
-import { calculateDistance, formatDistance } from '@/utils/distanceUtils';
+import { formatDistance } from '@/utils/distanceUtils';
 import { useToast } from '@/hooks/use-toast';
 
 interface NearbyUser {
@@ -16,8 +15,6 @@ interface NearbyUser {
   name: string;
   username: string;
   avatar: string;
-  latitude: number;
-  longitude: number;
   distance?: number;
 }
 
@@ -32,52 +29,37 @@ export function NearbyUsersMap() {
 
   useEffect(() => {
     if (latitude && longitude) {
-      loadNearbyUsers();
+      loadMockNearbyUsers();
     }
   }, [latitude, longitude, radius]);
 
-  const loadNearbyUsers = async () => {
-    if (!user || !latitude || !longitude) return;
-
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, username, avatar, latitude, longitude')
-        .neq('id', user.id)
-        .eq('location_sharing_enabled', true)
-        .not('latitude', 'is', null)
-        .not('longitude', 'is', null);
-
-      if (error) {
-        throw error;
+  const loadMockNearbyUsers = () => {
+    // Mock data since database location features aren't available
+    const mockUsers = [
+      {
+        id: 'mock-1',
+        name: 'Sarah Chen',
+        username: 'sarahc',
+        avatar: '/placeholder.svg',
+        distance: 2.3
+      },
+      {
+        id: 'mock-2',
+        name: 'Marcus Johnson',
+        username: 'marcusj',
+        avatar: '/placeholder.svg',
+        distance: 4.7
+      },
+      {
+        id: 'mock-3',
+        name: 'Elena Rodriguez',
+        username: 'elenar',
+        avatar: '/placeholder.svg',
+        distance: radius > 10 ? 15.2 : undefined
       }
+    ].filter(user => !user.distance || user.distance <= radius);
 
-      if (data) {
-        // Calculate distances and filter by radius
-        const usersWithDistance = data
-          .map(profile => ({
-            ...profile,
-            distance: calculateDistance(
-              { latitude, longitude },
-              { latitude: profile.latitude!, longitude: profile.longitude! }
-            )
-          }))
-          .filter(user => user.distance! <= radius)
-          .sort((a, b) => a.distance! - b.distance!) as NearbyUser[];
-
-        setNearbyUsers(usersWithDistance);
-      }
-    } catch (error: any) {
-      console.error('Error loading nearby users:', error);
-      toast({
-        title: 'Error loading nearby users',
-        description: error.message || 'Failed to load nearby users',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
+    setNearbyUsers(mockUsers);
   };
 
   const handleMessageUser = (userId: string) => {

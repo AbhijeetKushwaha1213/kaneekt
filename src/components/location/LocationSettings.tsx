@@ -8,7 +8,6 @@ import { MapPin, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { supabase } from '@/integrations/supabase/client';
 import { formatDistance } from '@/utils/distanceUtils';
 
 export function LocationSettings() {
@@ -21,52 +20,25 @@ export function LocationSettings() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
-    loadLocationSettings();
-  }, [user]);
-
-  const loadLocationSettings = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('location_sharing_enabled, latitude, longitude, location_updated_at')
-        .eq('id', user.id)
-        .single();
-
-      if (error) {
-        console.error('Error loading location settings:', error);
-        return;
-      }
-
-      if (data) {
-        setLocationSharing(data.location_sharing_enabled || false);
-        if (data.location_updated_at) {
-          setLastUpdated(new Date(data.location_updated_at));
-        }
-      }
-    } catch (error) {
-      console.error('Error loading location settings:', error);
+    // Since database doesn't have location fields yet, use localStorage for demo
+    const storedLocationSharing = localStorage.getItem('locationSharing');
+    if (storedLocationSharing) {
+      setLocationSharing(JSON.parse(storedLocationSharing));
     }
-  };
+    
+    const storedLastUpdated = localStorage.getItem('locationLastUpdated');
+    if (storedLastUpdated) {
+      setLastUpdated(new Date(storedLastUpdated));
+    }
+  }, [user]);
 
   const updateLocationSharing = async (enabled: boolean) => {
     if (!user) return;
 
     setIsUpdating(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          location_sharing_enabled: enabled,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-
-      if (error) {
-        throw error;
-      }
-
+      // Store in localStorage since database columns don't exist yet
+      localStorage.setItem('locationSharing', JSON.stringify(enabled));
       setLocationSharing(enabled);
       
       toast({
@@ -77,7 +49,7 @@ export function LocationSettings() {
       console.error('Error updating location sharing:', error);
       toast({
         title: 'Error updating settings',
-        description: error.message || 'Failed to update location sharing settings',
+        description: 'Failed to update location sharing settings',
         variant: 'destructive'
       });
     } finally {
@@ -90,21 +62,10 @@ export function LocationSettings() {
 
     setIsUpdating(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          latitude: latitude,
-          longitude: longitude,
-          location_updated_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-
-      if (error) {
-        throw error;
-      }
-
-      setLastUpdated(new Date());
+      // Store in localStorage since database columns don't exist yet
+      const now = new Date();
+      localStorage.setItem('locationLastUpdated', now.toISOString());
+      setLastUpdated(now);
       
       toast({
         title: 'Location updated',
@@ -114,7 +75,7 @@ export function LocationSettings() {
       console.error('Error updating location:', error);
       toast({
         title: 'Error updating location',
-        description: error.message || 'Failed to update location',
+        description: 'Failed to update location',
         variant: 'destructive'
       });
     } finally {

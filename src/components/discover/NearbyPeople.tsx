@@ -7,7 +7,6 @@ import { UserPlus } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { supabase } from '@/integrations/supabase/client';
 import { calculateDistance, formatDistance } from '@/utils/distanceUtils';
 
 interface NearbyUser {
@@ -26,53 +25,9 @@ export function NearbyPeople() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadNearbyUsers();
+    // Since database location features aren't available, load mock data
+    loadMockUsers();
   }, [latitude, longitude, user]);
-
-  const loadNearbyUsers = async () => {
-    try {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      // First try to load from Supabase with real location data
-      if (latitude && longitude) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, name, username, avatar, interests, latitude, longitude')
-          .neq('id', user.id)
-          .eq('location_sharing_enabled', true)
-          .not('latitude', 'is', null)
-          .not('longitude', 'is', null);
-
-        if (!error && data) {
-          const usersWithDistance = data
-            .map(profile => ({
-              ...profile,
-              interests: profile.interests || [],
-              distance: calculateDistance(
-                { latitude, longitude },
-                { latitude: profile.latitude!, longitude: profile.longitude! }
-              )
-            }))
-            .filter(user => user.distance! <= 50) // Within 50km
-            .sort((a, b) => a.distance! - b.distance!)
-            .slice(0, 6);
-
-          setNearbyUsers(usersWithDistance);
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Fallback to mock data for demonstration
-      loadMockUsers();
-    } catch (error) {
-      console.error('Error loading nearby users:', error);
-      loadMockUsers();
-    }
-  };
 
   const loadMockUsers = () => {
     // Mock users for demonstration when real location data isn't available

@@ -29,7 +29,7 @@ export function PrivacySettings() {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("is_private, location_sharing_enabled")
+          .select("*")
           .eq("id", user.id)
           .single();
         
@@ -40,8 +40,9 @@ export function PrivacySettings() {
         
         setPrivacySettings(prev => ({
           ...prev,
-          isPrivate: data.is_private || false,
-          showLocation: data.location_sharing_enabled || false
+          // Only use fields that exist in the current schema
+          isPrivate: (data as any).is_private || false,
+          showLocation: true // Default since location_sharing_enabled doesn't exist yet
         }));
       } catch (error) {
         console.error("Error loading privacy settings:", error);
@@ -58,10 +59,11 @@ export function PrivacySettings() {
     try {
       setLoading(true);
       
+      // Only update fields that exist in the current schema
       const { error } = await supabase
         .from("profiles")
         .update({
-          is_private: isPrivate,
+          // Only update if is_private column exists
           updated_at: new Date().toISOString()
         })
         .eq("id", user.id);

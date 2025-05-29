@@ -23,3 +23,11 @@ export type ConversationUpdate = Tables['conversations']['Update'];
 export type Message = Tables['messages']['Row'];
 export type MessageInsert = Tables['messages']['Insert'];
 export type MessageUpdate = Tables['messages']['Update'];
+
+// Extended profile type with optional location fields for future compatibility
+export interface ProfileWithLocation extends Profile {
+  latitude?: number;
+  longitude?: number;
+  location_sharing_enabled?: boolean;
+  location_updated_at?: string;
+}
