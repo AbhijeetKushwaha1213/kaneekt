@@ -15,6 +15,7 @@ import EnhancedChannel from "./pages/EnhancedChannel";
 import Discover from "./pages/Discover";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import Features from "./pages/Features";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
 
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/:id" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/features" element={<Features />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
