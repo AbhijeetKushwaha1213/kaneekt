@@ -2,17 +2,20 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Paperclip } from "lucide-react";
+import { Send, Paperclip, Smile } from "lucide-react";
+import { VoiceMessage } from "@/components/chat/VoiceMessage";
+import { VideoCall } from "@/components/chat/VideoCall";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface ChatInputProps {
   conversationId: string;
   userId: string;
+  recipientName?: string;
   onMessageSent?: () => void;
 }
 
-export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputProps) {
+export function ChatInput({ conversationId, userId, recipientName = "User", onMessageSent }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -102,6 +105,29 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
     }
   };
 
+  const handleVoiceMessage = async (audioBlob: Blob) => {
+    // Convert voice message to base64 for storage demo
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const messageData = {
+        id: `msg-${Date.now()}`,
+        conversation_id: conversationId,
+        sender_id: userId,
+        content: "🎤 Voice message",
+        type: "voice",
+        audio_data: reader.result,
+        created_at: new Date().toISOString(),
+        is_read: false
+      };
+
+      const allMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+      allMessages.push(messageData);
+      localStorage.setItem("chatMessages", JSON.stringify(allMessages));
+      onMessageSent?.();
+    };
+    reader.readAsDataURL(audioBlob);
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -113,8 +139,14 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
 
   return (
     <div className="flex items-center space-x-2">
+      <VideoCall recipientName={recipientName} onCall={() => {}} />
+      
       <Button variant="ghost" size="icon" className="h-10 w-10">
         <Paperclip className="h-4 w-4" />
+      </Button>
+
+      <Button variant="ghost" size="icon" className="h-10 w-10">
+        <Smile className="h-4 w-4" />
       </Button>
       
       <div className="flex-1 flex items-center space-x-2">
@@ -130,6 +162,8 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
           disabled={isLoading || hasReachedLimit}
           className="flex-1"
         />
+        
+        <VoiceMessage onSend={handleVoiceMessage} />
         
         <Button
           onClick={handleSendMessage}
