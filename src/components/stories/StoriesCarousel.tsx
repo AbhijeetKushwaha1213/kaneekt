@@ -1,168 +1,185 @@
 
 import React, { useState, useEffect } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Plus } from 'lucide-react';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { StoryViewDialog } from './StoryViewDialog';
-import { CreateStoryDialog } from './CreateStoryDialog';
+import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Plus, Play, Eye } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface Story {
   id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  content: string;
-  image?: string;
-  timestamp: Date;
-  viewed: boolean;
+  user_id: string;
+  media_url: string;
+  media_type: 'image' | 'video';
+  content?: string;
+  view_count: number;
+  created_at: string;
+  expires_at: string;
+  profiles?: {
+    name: string;
+    avatar: string;
+  };
 }
 
 export function StoriesCarousel() {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [stories, setStories] = useState<Story[]>([]);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
-  const [createStoryOpen, setCreateStoryOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadStories();
   }, []);
 
-  const loadStories = () => {
-    const mockStories: Story[] = [
-      {
-        id: 'story-1',
-        userId: 'user-1',
-        userName: 'Sarah Chen',
-        userAvatar: '/placeholder.svg',
-        content: 'Beautiful sunset at the beach! 🌅',
-        timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-        viewed: false
-      },
-      {
-        id: 'story-2',
-        userId: 'user-2',
-        userName: 'Marcus Johnson',
-        userAvatar: '/placeholder.svg',
-        content: 'New art piece finished! What do you think?',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-        viewed: true
-      },
-      {
-        id: 'story-3',
-        userId: 'user-3',
-        userName: 'Elena Rodriguez',
-        userAvatar: '/placeholder.svg',
-        content: 'Trying this new coffee place ☕',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
-        viewed: false
-      }
-    ];
+  const loadStories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('stories')
+        .select(`
+          *,
+          profiles:user_id (name, avatar)
+        `)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(20);
 
-    const stored = localStorage.getItem('userStories');
-    if (stored) {
-      const userStories = JSON.parse(stored);
-      setStories([...userStories, ...mockStories]);
-    } else {
-      setStories(mockStories);
+      if (error) throw error;
+      setStories(data || []);
+    } catch (error) {
+      console.error('Error loading stories:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load stories',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCreateStory = (content: string, image?: File) => {
-    const newStory: Story = {
-      id: `story-${Date.now()}`,
-      userId: 'current-user',
-      userName: 'You',
-      userAvatar: '/placeholder.svg',
-      content,
-      timestamp: new Date(),
-      viewed: false
-    };
-
-    const userStories = JSON.parse(localStorage.getItem('userStories') || '[]');
-    userStories.unshift(newStory);
-    localStorage.setItem('userStories', JSON.stringify(userStories));
+  const viewStory = async (story: Story) => {
+    if (!user) return;
     
-    setStories(prev => [newStory, ...prev]);
-    setCreateStoryOpen(false);
-  };
-
-  const handleStoryClick = (story: Story) => {
     setSelectedStory(story);
     
-    // Mark as viewed
-    if (!story.viewed) {
-      setStories(prev => 
-        prev.map(s => 
-          s.id === story.id ? { ...s, viewed: true } : s
-        )
-      );
+    // Record story view
+    try {
+      await supabase
+        .from('story_views')
+        .insert({
+          story_id: story.id,
+          viewer_id: user.id
+        });
+
+      // Update view count
+      await supabase
+        .from('stories')
+        .update({ view_count: story.view_count + 1 })
+        .eq('id', story.id);
+    } catch (error) {
+      console.error('Error recording story view:', error);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex gap-4 p-4 overflow-x-auto">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="w-20 h-20 bg-gray-200 rounded-full"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="mb-6">
-      <h2 className="text-lg font-medium mb-3 flex items-center">
-        <span className="mr-2">📖</span> Stories
-      </h2>
-      
-      <Carousel className="w-full">
-        <CarouselContent className="-ml-2 md:-ml-4">
-          {/* Add Story Button */}
-          <CarouselItem className="pl-2 md:pl-4 basis-auto">
-            <div className="flex flex-col items-center space-y-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-16 w-16 rounded-full border-2 border-dashed border-muted-foreground/50 hover:border-primary"
-                onClick={() => setCreateStoryOpen(true)}
-              >
-                <Plus className="h-6 w-6" />
-              </Button>
-              <span className="text-xs text-muted-foreground">Add Story</span>
+    <div className="flex gap-4 p-4 overflow-x-auto">
+      {/* Add Story Button */}
+      <Dialog>
+        <DialogTrigger asChild>
+          <div className="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer">
+            <div className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center hover:border-primary transition-colors">
+              <Plus className="h-8 w-8 text-gray-400" />
             </div>
-          </CarouselItem>
+            <span className="text-xs text-center">Add Story</span>
+          </div>
+        </DialogTrigger>
+        <DialogContent>
+          <div className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Create Story</h3>
+            <p className="text-muted-foreground">Story creation feature coming soon!</p>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-          {/* Story Items */}
-          {stories.map((story) => (
-            <CarouselItem key={story.id} className="pl-2 md:pl-4 basis-auto">
-              <div 
-                className="flex flex-col items-center space-y-2 cursor-pointer"
-                onClick={() => handleStoryClick(story)}
-              >
-                <div className={`p-0.5 rounded-full ${
-                  story.viewed 
-                    ? 'bg-gray-300' 
-                    : 'bg-gradient-to-tr from-yellow-400 to-pink-600'
-                }`}>
-                  <Avatar className="h-14 w-14 border-2 border-background">
-                    <AvatarImage src={story.userAvatar} alt={story.userName} />
-                    <AvatarFallback>{story.userName[0]}</AvatarFallback>
-                  </Avatar>
-                </div>
-                <span className="text-xs text-center max-w-[70px] truncate">
-                  {story.userName}
-                </span>
+      {/* Stories */}
+      {stories.map((story) => (
+        <div
+          key={story.id}
+          className="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer"
+          onClick={() => viewStory(story)}
+        >
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-pink-500 to-orange-500 p-1">
+              <Avatar className="w-full h-full border-2 border-white">
+                <AvatarImage src={story.profiles?.avatar} />
+                <AvatarFallback>{story.profiles?.name?.[0] || 'U'}</AvatarFallback>
+              </Avatar>
+            </div>
+            {story.media_type === 'video' && (
+              <div className="absolute bottom-0 right-0 bg-primary rounded-full p-1">
+                <Play className="h-3 w-3 text-primary-foreground" />
               </div>
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-        <div className="hidden sm:block">
-          <CarouselPrevious className="left-0" />
-          <CarouselNext className="right-0" />
+            )}
+          </div>
+          <span className="text-xs text-center truncate w-full">
+            {story.profiles?.name || 'User'}
+          </span>
         </div>
-      </Carousel>
+      ))}
 
-      <StoryViewDialog
-        story={selectedStory}
-        open={selectedStory !== null}
-        onOpenChange={(open) => !open && setSelectedStory(null)}
-      />
-
-      <CreateStoryDialog
-        open={createStoryOpen}
-        onOpenChange={setCreateStoryOpen}
-        onCreateStory={handleCreateStory}
-      />
+      {/* Story View Dialog */}
+      <Dialog open={!!selectedStory} onOpenChange={() => setSelectedStory(null)}>
+        <DialogContent className="p-0 border-0 bg-black max-w-md">
+          {selectedStory && (
+            <div className="relative h-96 bg-black rounded-lg overflow-hidden">
+              <div className="absolute top-4 left-4 right-4 flex items-center gap-3 z-10">
+                <Avatar className="w-8 h-8">
+                  <AvatarImage src={selectedStory.profiles?.avatar} />
+                  <AvatarFallback>{selectedStory.profiles?.name?.[0] || 'U'}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="text-white text-sm font-medium">
+                    {selectedStory.profiles?.name || 'User'}
+                  </p>
+                  <p className="text-white/70 text-xs">
+                    {new Date(selectedStory.created_at).toLocaleTimeString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 text-white/70">
+                  <Eye className="h-4 w-4" />
+                  <span className="text-xs">{selectedStory.view_count}</span>
+                </div>
+              </div>
+              
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-white text-center p-8">
+                  <div className="w-32 h-32 bg-gray-700 rounded-lg mb-4 mx-auto"></div>
+                  <p>Story content placeholder</p>
+                  {selectedStory.content && (
+                    <p className="mt-2 text-sm text-white/80">{selectedStory.content}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

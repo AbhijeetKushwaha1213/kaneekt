@@ -24,6 +24,31 @@ export type Message = Tables['messages']['Row'];
 export type MessageInsert = Tables['messages']['Insert'];
 export type MessageUpdate = Tables['messages']['Update'];
 
+// Story-related types
+export type Story = Tables['stories']['Row'];
+export type StoryInsert = Tables['stories']['Insert'];
+export type StoryUpdate = Tables['stories']['Update'];
+
+// Event-related types
+export type Event = Tables['events']['Row'];
+export type EventInsert = Tables['events']['Insert'];
+export type EventUpdate = Tables['events']['Update'];
+
+// Like-related types
+export type Like = Tables['likes']['Row'];
+export type LikeInsert = Tables['likes']['Insert'];
+export type LikeUpdate = Tables['likes']['Update'];
+
+// Group-related types
+export type Group = Tables['groups']['Row'];
+export type GroupInsert = Tables['groups']['Insert'];
+export type GroupUpdate = Tables['groups']['Update'];
+
+// Achievement-related types
+export type Achievement = Tables['achievements']['Row'];
+export type AchievementInsert = Tables['achievements']['Insert'];
+export type AchievementUpdate = Tables['achievements']['Update'];
+
 // Extended profile type with optional location fields for future compatibility
 export interface ProfileWithLocation extends Profile {
   latitude?: number;
