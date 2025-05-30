@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -34,6 +35,7 @@ export default function Chat() {
         
         if (conversationData) {
           setConversationName(conversationData.user.name || "Chat");
+          setConversationUser(conversationData.user);
           
           // Try to load messages from Supabase first
           if (user) {
@@ -101,6 +103,15 @@ export default function Chat() {
       };
     }
   }, [id, user]);
+
+  const handleMessageSent = () => {
+    // Reload messages when a new message is sent
+    const allStoredMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+    const filteredMessages = allStoredMessages.filter(
+      (m: any) => m.conversation_id === id
+    );
+    setMessages(filteredMessages);
+  };
 
   const handleProfileClick = () => {
     if (conversationUser?.id) {

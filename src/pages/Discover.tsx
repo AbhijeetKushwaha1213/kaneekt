@@ -16,6 +16,7 @@ import { PostCreationButton } from "@/components/discover/PostCreationButton";
 import { DiscoverHero } from "@/components/discover/DiscoverHero";
 import { DiscoverTopics } from "@/components/discover/DiscoverTopics";
 import { NearbyPeople } from "@/components/discover/NearbyPeople";
+import { StoriesCarousel } from "@/components/stories/StoriesCarousel";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Discover() {
