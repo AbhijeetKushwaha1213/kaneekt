@@ -1,5 +1,5 @@
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Login from "./pages/Login";
@@ -20,34 +20,39 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/profile/:userId" element={<ProfileView />} />
-            <Route path="/discover" element={<Discover />} />
-            <Route path="/chat/:id" element={<Chat />} />
-            <Route path="/chats" element={<Chats />} />
-            <Route path="/chats/:id" element={<Chat />} />
-            <Route path="/features" element={<Features />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/channels" element={<Channels />} />
-            <Route path="/channel/:channelId" element={<Channel />} />
-            <Route path="/enhanced-channel/:channelId" element={<EnhancedChannel />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <Toaster />
-        </Router>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:userId" element={<ProfileView />} />
+          <Route path="/discover" element={<Discover />} />
+          <Route path="/chat/:id" element={<Chat />} />
+          <Route path="/chats" element={<Chats />} />
+          <Route path="/chats/:id" element={<Chat />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/channels" element={<Channels />} />
+          <Route path="/channel/:channelId" element={<Channel />} />
+          <Route path="/enhanced-channel/:channelId" element={<EnhancedChannel />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );
