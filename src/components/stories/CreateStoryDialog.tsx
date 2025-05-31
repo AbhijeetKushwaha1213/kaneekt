@@ -25,13 +25,28 @@ export function CreateStoryDialog({ trigger, onStoryCreated }: CreateStoryDialog
 
     setIsCreating(true);
     try {
-      // For now, simulate story creation since the table doesn't exist
-      console.log('Creating story:', {
+      // Get existing stories
+      const existingStories = JSON.parse(localStorage.getItem('user_stories') || '[]');
+      
+      // Create new story
+      const newStory = {
+        id: `story-${Date.now()}`,
         user_id: user.id,
         content: content.trim(),
         media_type: mediaType,
-        media_url: '/placeholder.svg'
-      });
+        media_url: '/placeholder.svg',
+        view_count: 0,
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        profiles: {
+          name: user.user_metadata?.name || user.email?.split('@')[0] || 'You',
+          avatar: user.user_metadata?.avatar_url || '/placeholder.svg'
+        }
+      };
+
+      // Save to localStorage
+      const updatedStories = [newStory, ...existingStories];
+      localStorage.setItem('user_stories', JSON.stringify(updatedStories));
 
       toast({
         title: 'Story created!',

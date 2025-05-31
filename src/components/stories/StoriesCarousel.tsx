@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Play, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { CreateStoryDialog } from './CreateStoryDialog';
 
 interface Story {
   id: string;
@@ -36,37 +37,46 @@ export function StoriesCarousel() {
 
   const loadStories = async () => {
     try {
-      // For now, simulate stories with mock data since the table doesn't exist
-      const mockStories: Story[] = [
-        {
-          id: '1',
-          user_id: 'user1',
-          media_url: '/placeholder.svg',
-          media_type: 'image',
-          content: 'Beautiful sunset today!',
-          view_count: 5,
-          created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          profiles: {
-            name: 'Sarah Johnson',
-            avatar: '/placeholder.svg'
+      // Load stories from localStorage or use mock data
+      const storedStories = localStorage.getItem('user_stories');
+      let mockStories: Story[] = [];
+      
+      if (storedStories) {
+        mockStories = JSON.parse(storedStories);
+      } else {
+        // Default mock stories
+        mockStories = [
+          {
+            id: '1',
+            user_id: 'user1',
+            media_url: '/placeholder.svg',
+            media_type: 'image',
+            content: 'Beautiful sunset today!',
+            view_count: 5,
+            created_at: new Date().toISOString(),
+            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            profiles: {
+              name: 'Sarah Johnson',
+              avatar: '/placeholder.svg'
+            }
+          },
+          {
+            id: '2',
+            user_id: 'user2',
+            media_url: '/placeholder.svg',
+            media_type: 'video',
+            content: 'Check out this amazing view!',
+            view_count: 12,
+            created_at: new Date().toISOString(),
+            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            profiles: {
+              name: 'Mike Chen',
+              avatar: '/placeholder.svg'
+            }
           }
-        },
-        {
-          id: '2',
-          user_id: 'user2',
-          media_url: '/placeholder.svg',
-          media_type: 'video',
-          content: 'Check out this amazing view!',
-          view_count: 12,
-          created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          profiles: {
-            name: 'Mike Chen',
-            avatar: '/placeholder.svg'
-          }
-        }
-      ];
+        ];
+        localStorage.setItem('user_stories', JSON.stringify(mockStories));
+      }
       
       setStories(mockStories);
     } catch (error) {
@@ -86,13 +96,20 @@ export function StoriesCarousel() {
     
     setSelectedStory(story);
     
-    // Simulate recording story view
+    // Update view count
     try {
-      console.log('Recording story view for story:', story.id);
-      // In a real app, this would update the database
+      const updatedStories = stories.map(s => 
+        s.id === story.id ? { ...s, view_count: s.view_count + 1 } : s
+      );
+      setStories(updatedStories);
+      localStorage.setItem('user_stories', JSON.stringify(updatedStories));
     } catch (error) {
       console.error('Error recording story view:', error);
     }
+  };
+
+  const handleStoryCreated = () => {
+    loadStories(); // Refresh stories after creation
   };
 
   if (loading) {
@@ -110,22 +127,17 @@ export function StoriesCarousel() {
   return (
     <div className="flex gap-4 p-4 overflow-x-auto">
       {/* Add Story Button */}
-      <Dialog>
-        <DialogTrigger asChild>
+      <CreateStoryDialog 
+        trigger={
           <div className="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer">
             <div className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center hover:border-primary transition-colors">
               <Plus className="h-8 w-8 text-gray-400" />
             </div>
             <span className="text-xs text-center">Add Story</span>
           </div>
-        </DialogTrigger>
-        <DialogContent>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Create Story</h3>
-            <p className="text-muted-foreground">Story creation feature coming soon!</p>
-          </div>
-        </DialogContent>
-      </Dialog>
+        }
+        onStoryCreated={handleStoryCreated}
+      />
 
       {/* Stories */}
       {stories.map((story) => (

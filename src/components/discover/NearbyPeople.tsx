@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageSquare } from 'lucide-react';
+import { UserPlus, MessageSquare, MapPin } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -18,26 +18,44 @@ interface NearbyUser {
   avatar: string;
   interests: string[];
   distance?: number;
+  isFriend?: boolean;
 }
 
 export function NearbyPeople() {
   const { user } = useAuth();
-  const { latitude, longitude } = useGeolocation();
+  const { latitude, longitude, requestPermission } = useGeolocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [likedUsers, setLikedUsers] = useState<Set<string>>(new Set());
+  const [friends, setFriends] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadMockUsers();
-    loadLikedUsers();
+    loadFriends();
   }, [latitude, longitude, user]);
 
-  const loadLikedUsers = () => {
-    const stored = localStorage.getItem('likedUsers');
+  const loadFriends = () => {
+    const stored = localStorage.getItem('user_friends');
     if (stored) {
-      setLikedUsers(new Set(JSON.parse(stored)));
+      setFriends(new Set(JSON.parse(stored)));
+    }
+  };
+
+  const handleLocationRequest = async () => {
+    try {
+      await requestPermission();
+      toast({
+        title: "Location enabled",
+        description: "Now showing people near you!",
+      });
+      loadMockUsers();
+    } catch (error) {
+      toast({
+        title: "Location access denied",
+        description: "Please enable location to see nearby people",
+        variant: "destructive"
+      });
     }
   };
 
@@ -49,7 +67,8 @@ export function NearbyPeople() {
         username: 'sarahc',
         avatar: '/placeholder.svg',
         interests: ['Technology', 'Photography'],
-        distance: 2.3
+        distance: latitude && longitude ? 2.3 : undefined,
+        isFriend: false
       },
       {
         id: 'mock-2',
@@ -57,7 +76,8 @@ export function NearbyPeople() {
         username: 'marcusj',
         avatar: '/placeholder.svg',
         interests: ['Music', 'Art'],
-        distance: 4.7
+        distance: latitude && longitude ? 4.7 : undefined,
+        isFriend: false
       },
       {
         id: 'mock-3',
@@ -65,7 +85,8 @@ export function NearbyPeople() {
         username: 'elenar',
         avatar: '/placeholder.svg',
         interests: ['Travel', 'Food'],
-        distance: 6.1
+        distance: latitude && longitude ? 6.1 : undefined,
+        isFriend: false
       },
       {
         id: 'mock-4',
@@ -73,23 +94,8 @@ export function NearbyPeople() {
         username: 'davidk',
         avatar: '/placeholder.svg',
         interests: ['Sports', 'Gaming'],
-        distance: 8.5
-      },
-      {
-        id: 'mock-5',
-        name: 'Lisa Wang',
-        username: 'lisaw',
-        avatar: '/placeholder.svg',
-        interests: ['Books', 'Coffee'],
-        distance: 12.2
-      },
-      {
-        id: 'mock-6',
-        name: 'Alex Thompson',
-        username: 'alext',
-        avatar: '/placeholder.svg',
-        interests: ['Fitness', 'Nature'],
-        distance: 15.8
+        distance: latitude && longitude ? 8.5 : undefined,
+        isFriend: false
       }
     ];
 
@@ -98,39 +104,33 @@ export function NearbyPeople() {
   };
 
   const handleProfileClick = (userId: string) => {
-    // Navigate to chat with this user
-    navigate(`/chats/${userId}`);
+    navigate(`/profile/${userId}`);
   };
 
-  const handleLike = (userId: string, userName: string) => {
-    const newLikedUsers = new Set(likedUsers);
+  const handleAddFriend = (userId: string, userName: string) => {
+    const newFriends = new Set(friends);
     
-    if (likedUsers.has(userId)) {
-      newLikedUsers.delete(userId);
+    if (friends.has(userId)) {
+      newFriends.delete(userId);
       toast({
-        title: "Like removed",
-        description: `You no longer like ${userName}`,
+        title: "Friend removed",
+        description: `You are no longer friends with ${userName}`,
       });
     } else {
-      newLikedUsers.add(userId);
+      newFriends.add(userId);
       toast({
-        title: "Like sent! 💖",
-        description: `You liked ${userName}. If they like you back, you'll be matched!`,
+        title: "Friend request sent! 👥",
+        description: `Friend request sent to ${userName}`,
       });
-      
-      // Simulate mutual match (20% chance for demo)
-      if (Math.random() < 0.2) {
-        setTimeout(() => {
-          toast({
-            title: "It's a match! 🎉",
-            description: `${userName} likes you too! You can now chat freely.`,
-          });
-        }, 1500);
-      }
     }
     
-    setLikedUsers(newLikedUsers);
-    localStorage.setItem('likedUsers', JSON.stringify(Array.from(newLikedUsers)));
+    setFriends(newFriends);
+    localStorage.setItem('user_friends', JSON.stringify(Array.from(newFriends)));
+    
+    // Update the local state
+    setNearbyUsers(prev => prev.map(u => 
+      u.id === userId ? { ...u, isFriend: !u.isFriend } : u
+    ));
   };
 
   if (loading) {
@@ -142,6 +142,26 @@ export function NearbyPeople() {
         <div className="animate-pulse">
           <div className="h-48 bg-gray-200 rounded-lg"></div>
         </div>
+      </div>
+    );
+  }
+
+  if (!latitude || !longitude) {
+    return (
+      <div className="mb-6">
+        <h2 className="text-lg font-medium mb-3 flex items-center">
+          <span className="mr-2">👥</span> People Near You
+        </h2>
+        <Card className="p-6 text-center">
+          <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-medium mb-2">Enable Location</h3>
+          <p className="text-muted-foreground mb-4">
+            Allow location access to discover people nearby
+          </p>
+          <Button onClick={handleLocationRequest}>
+            Enable Location
+          </Button>
+        </Card>
       </div>
     );
   }
@@ -158,7 +178,6 @@ export function NearbyPeople() {
             <CarouselItem key={nearbyUser.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
               <Card className="overflow-hidden hover:shadow-md transition-shadow duration-300">
                 <div className="relative">
-                  {/* Online status indicator */}
                   <div className={`absolute top-2 right-2 h-3 w-3 rounded-full ${
                     nearbyUser.id.charCodeAt(0) % 2 === 0 ? 'bg-green-500' : 'bg-amber-500'
                   } ring-2 ring-white`}></div>
@@ -196,17 +215,17 @@ export function NearbyPeople() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 rounded-full hover:bg-rose-100 hover:text-rose-600"
-                        onClick={() => handleLike(nearbyUser.id, nearbyUser.name)}
+                        className="h-8 w-8 rounded-full hover:bg-blue-100 hover:text-blue-600"
+                        onClick={() => handleAddFriend(nearbyUser.id, nearbyUser.name)}
                       >
-                        <Heart 
+                        <UserPlus 
                           className={`h-4 w-4 ${
-                            likedUsers.has(nearbyUser.id) 
-                              ? 'fill-rose-500 text-rose-500' 
+                            friends.has(nearbyUser.id) 
+                              ? 'fill-blue-500 text-blue-500' 
                               : ''
                           }`} 
                         />
-                        <span className="sr-only">Like</span>
+                        <span className="sr-only">Add Friend</span>
                       </Button>
                       <Button
                         variant="ghost"
