@@ -1,44 +1,47 @@
 
-import { ArrowLeft } from "lucide-react";
+import React from 'react';
 import { Button } from "@/components/ui/button";
-import { useNavigate, useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { ArrowLeft, Home } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface BackNavigationProps {
-  label?: string;
-  fallbackRoute?: string;
+  showHome?: boolean;
+  customBackPath?: string;
   className?: string;
-  variant?: "default" | "ghost" | "outline";
 }
 
-export function BackNavigation({ 
-  label = "Back", 
-  fallbackRoute = "/", 
-  className,
-  variant = "ghost" 
-}: BackNavigationProps) {
+export function BackNavigation({ showHome = true, customBackPath, className = "" }: BackNavigationProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleBack = () => {
-    // Check if there's browser history to go back to
-    if (window.history.length > 1) {
-      navigate(-1);
+    if (customBackPath) {
+      navigate(customBackPath);
     } else {
-      // Fallback to a specific route
-      navigate(fallbackRoute);
+      navigate(-1);
     }
   };
 
+  const handleHome = () => {
+    navigate('/');
+  };
+
+  // Don't show on home page
+  if (location.pathname === '/' || location.pathname === '/chats') {
+    return null;
+  }
+
   return (
-    <Button
-      variant={variant}
-      size="sm"
-      onClick={handleBack}
-      className={cn("flex items-center gap-2", className)}
-    >
-      <ArrowLeft className="h-4 w-4" />
-      {label}
-    </Button>
+    <div className={`flex items-center gap-2 ${className}`}>
+      <Button variant="ghost" size="icon" onClick={handleBack}>
+        <ArrowLeft className="h-4 w-4" />
+      </Button>
+      
+      {showHome && (
+        <Button variant="ghost" size="icon" onClick={handleHome}>
+          <Home className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
   );
 }

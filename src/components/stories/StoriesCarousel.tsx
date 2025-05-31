@@ -1,11 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Plus } from 'lucide-react';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { StoryViewDialog } from './StoryViewDialog';
 import { CreateStoryDialog } from './CreateStoryDialog';
+import { StoryViewDialog } from './StoryViewDialog';
 
 interface Story {
   id: string;
@@ -18,150 +17,119 @@ interface Story {
   viewed: boolean;
 }
 
-export function StoriesCarousel() {
-  const [stories, setStories] = useState<Story[]>([]);
-  const [selectedStory, setSelectedStory] = useState<Story | null>(null);
-  const [createStoryOpen, setCreateStoryOpen] = useState(false);
+interface StoriesCarouselProps {
+  currentUserId?: string;
+}
 
-  useEffect(() => {
-    loadStories();
-  }, []);
-
-  const loadStories = () => {
-    const mockStories: Story[] = [
-      {
-        id: 'story-1',
-        userId: 'user-1',
-        userName: 'Sarah Chen',
-        userAvatar: '/placeholder.svg',
-        content: 'Beautiful sunset at the beach! 🌅',
-        timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-        viewed: false
-      },
-      {
-        id: 'story-2',
-        userId: 'user-2',
-        userName: 'Marcus Johnson',
-        userAvatar: '/placeholder.svg',
-        content: 'New art piece finished! What do you think?',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-        viewed: true
-      },
-      {
-        id: 'story-3',
-        userId: 'user-3',
-        userName: 'Elena Rodriguez',
-        userAvatar: '/placeholder.svg',
-        content: 'Trying this new coffee place ☕',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
-        viewed: false
-      }
-    ];
-
-    const stored = localStorage.getItem('userStories');
-    if (stored) {
-      const userStories = JSON.parse(stored);
-      setStories([...userStories, ...mockStories]);
-    } else {
-      setStories(mockStories);
+export function StoriesCarousel({ currentUserId = "current-user" }: StoriesCarouselProps) {
+  const [stories, setStories] = useState<Story[]>([
+    {
+      id: '1',
+      userId: '1',
+      userName: 'Emma Wilson',
+      userAvatar: '/placeholder.svg',
+      content: 'Beautiful sunset today! 🌅',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+      viewed: false
+    },
+    {
+      id: '2',
+      userId: '2',
+      userName: 'Alex Chen',
+      userAvatar: '/placeholder.svg',
+      content: 'Coffee time ☕',
+      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
+      viewed: true
+    },
+    {
+      id: '3',
+      userId: '3',
+      userName: 'Sarah Johnson',
+      userAvatar: '/placeholder.svg',
+      content: 'New workout routine! 💪',
+      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
+      viewed: false
     }
-  };
+  ]);
+
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [selectedStory, setSelectedStory] = useState<Story | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
   const handleCreateStory = (content: string, image?: File) => {
     const newStory: Story = {
-      id: `story-${Date.now()}`,
-      userId: 'current-user',
+      id: Date.now().toString(),
+      userId: currentUserId,
       userName: 'You',
       userAvatar: '/placeholder.svg',
       content,
+      image: image ? URL.createObjectURL(image) : undefined,
       timestamp: new Date(),
       viewed: false
     };
 
-    const userStories = JSON.parse(localStorage.getItem('userStories') || '[]');
-    userStories.unshift(newStory);
-    localStorage.setItem('userStories', JSON.stringify(userStories));
-    
     setStories(prev => [newStory, ...prev]);
-    setCreateStoryOpen(false);
+    setCreateDialogOpen(false);
   };
 
   const handleStoryClick = (story: Story) => {
-    setSelectedStory(story);
-    
     // Mark as viewed
-    if (!story.viewed) {
-      setStories(prev => 
-        prev.map(s => 
-          s.id === story.id ? { ...s, viewed: true } : s
-        )
-      );
-    }
+    setStories(prev => prev.map(s => 
+      s.id === story.id ? { ...s, viewed: true } : s
+    ));
+    
+    setSelectedStory(story);
+    setViewDialogOpen(true);
   };
 
   return (
-    <div className="mb-6">
-      <h2 className="text-lg font-medium mb-3 flex items-center">
-        <span className="mr-2">📖</span> Stories
-      </h2>
-      
-      <Carousel className="w-full">
-        <CarouselContent className="-ml-2 md:-ml-4">
-          {/* Add Story Button */}
-          <CarouselItem className="pl-2 md:pl-4 basis-auto">
-            <div className="flex flex-col items-center space-y-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-16 w-16 rounded-full border-2 border-dashed border-muted-foreground/50 hover:border-primary"
-                onClick={() => setCreateStoryOpen(true)}
-              >
-                <Plus className="h-6 w-6" />
-              </Button>
-              <span className="text-xs text-muted-foreground">Add Story</span>
-            </div>
-          </CarouselItem>
+    <div className="flex space-x-4 p-4 overflow-x-auto">
+      {/* Create Story Button */}
+      <div className="flex flex-col items-center space-y-2 min-w-[70px]">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-16 w-16 rounded-full border-2 border-dashed border-gray-300 hover:border-primary"
+          onClick={() => setCreateDialogOpen(true)}
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
+        <span className="text-xs text-center">Your Story</span>
+      </div>
 
-          {/* Story Items */}
-          {stories.map((story) => (
-            <CarouselItem key={story.id} className="pl-2 md:pl-4 basis-auto">
-              <div 
-                className="flex flex-col items-center space-y-2 cursor-pointer"
-                onClick={() => handleStoryClick(story)}
-              >
-                <div className={`p-0.5 rounded-full ${
-                  story.viewed 
-                    ? 'bg-gray-300' 
-                    : 'bg-gradient-to-tr from-yellow-400 to-pink-600'
-                }`}>
-                  <Avatar className="h-14 w-14 border-2 border-background">
-                    <AvatarImage src={story.userAvatar} alt={story.userName} />
-                    <AvatarFallback>{story.userName[0]}</AvatarFallback>
-                  </Avatar>
-                </div>
-                <span className="text-xs text-center max-w-[70px] truncate">
-                  {story.userName}
-                </span>
-              </div>
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-        <div className="hidden sm:block">
-          <CarouselPrevious className="left-0" />
-          <CarouselNext className="right-0" />
+      {/* Stories */}
+      {stories.map((story) => (
+        <div
+          key={story.id}
+          className="flex flex-col items-center space-y-2 min-w-[70px] cursor-pointer"
+          onClick={() => handleStoryClick(story)}
+        >
+          <div className={`p-0.5 rounded-full ${
+            story.viewed 
+              ? 'bg-gray-300' 
+              : 'bg-gradient-to-tr from-yellow-400 to-pink-600'
+          }`}>
+            <Avatar className="h-16 w-16 border-2 border-white">
+              <AvatarImage src={story.userAvatar} alt={story.userName} />
+              <AvatarFallback>{story.userName[0]}</AvatarFallback>
+            </Avatar>
+          </div>
+          <span className="text-xs text-center truncate w-16">
+            {story.userName}
+          </span>
         </div>
-      </Carousel>
+      ))}
+
+      <CreateStoryDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreateStory={handleCreateStory}
+      />
 
       <StoryViewDialog
         story={selectedStory}
-        open={selectedStory !== null}
-        onOpenChange={(open) => !open && setSelectedStory(null)}
-      />
-
-      <CreateStoryDialog
-        open={createStoryOpen}
-        onOpenChange={setCreateStoryOpen}
-        onCreateStory={handleCreateStory}
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
       />
     </div>
   );

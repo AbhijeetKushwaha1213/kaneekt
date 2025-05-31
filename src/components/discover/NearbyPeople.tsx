@@ -1,234 +1,325 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageSquare } from 'lucide-react';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { useAuth } from '@/contexts/AuthContext';
-import { useGeolocation } from '@/hooks/useGeolocation';
-import { calculateDistance, formatDistance } from '@/utils/distanceUtils';
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
+import { MapPin, Heart, MessageCircle, UserPlus } from 'lucide-react';
+import { ProfileView } from "@/components/ui/profile-view";
+import { User } from "@/types";
 
-interface NearbyUser {
-  id: string;
-  name: string;
-  username: string;
-  avatar: string;
-  interests: string[];
-  distance?: number;
+interface NearbyPeopleProps {
+  searchQuery?: string;
+  selectedInterests?: string[];
 }
 
-export function NearbyPeople() {
-  const { user } = useAuth();
-  const { latitude, longitude } = useGeolocation();
-  const navigate = useNavigate();
+export function NearbyPeople({ searchQuery, selectedInterests }: NearbyPeopleProps) {
+  const [people, setPeople] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [profileViewOpen, setProfileViewOpen] = useState(false);
+  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [likedUsers, setLikedUsers] = useState<Set<string>>(new Set());
+
+  const mockNearbyPeople: User[] = [
+    {
+      id: '1',
+      name: 'Emma Wilson',
+      age: 24,
+      location: 'Downtown, 2.1 km away',
+      avatar: '/placeholder.svg',
+      bio: 'Love hiking and photography 📸',
+      interests: ['Photography', 'Hiking', 'Travel'],
+      distance: 2.1
+    },
+    {
+      id: '2',
+      name: 'Alex Chen',
+      age: 27,
+      location: 'Central Park, 1.5 km away',
+      avatar: '/placeholder.svg',
+      bio: 'Coffee enthusiast and book lover ☕📚',
+      interests: ['Coffee', 'Reading', 'Music'],
+      distance: 1.5
+    },
+    {
+      id: '3',
+      name: 'Sarah Johnson',
+      age: 26,
+      location: 'Midtown, 3.2 km away',
+      avatar: '/placeholder.svg',
+      bio: 'Fitness trainer and yoga instructor 🧘‍♀️',
+      interests: ['Fitness', 'Yoga', 'Wellness'],
+      distance: 3.2
+    },
+    {
+      id: '4',
+      name: 'Michael Brown',
+      age: 29,
+      location: 'East Side, 4.1 km away',
+      avatar: '/placeholder.svg',
+      bio: 'Tech enthusiast and gamer 🎮',
+      interests: ['Technology', 'Gaming', 'Programming'],
+      distance: 4.1
+    }
+  ];
 
   useEffect(() => {
-    loadMockUsers();
-    loadLikedUsers();
-  }, [latitude, longitude, user]);
+    let filteredPeople = mockNearbyPeople;
 
-  const loadLikedUsers = () => {
-    const stored = localStorage.getItem('likedUsers');
-    if (stored) {
-      setLikedUsers(new Set(JSON.parse(stored)));
+    if (searchQuery) {
+      filteredPeople = filteredPeople.filter(person =>
+        person.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        person.bio.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
-  };
 
-  const loadMockUsers = () => {
-    const mockUsers = [
-      {
-        id: 'mock-1',
-        name: 'Sarah Chen',
-        username: 'sarahc',
-        avatar: '/placeholder.svg',
-        interests: ['Technology', 'Photography'],
-        distance: 2.3
-      },
-      {
-        id: 'mock-2',
-        name: 'Marcus Johnson',
-        username: 'marcusj',
-        avatar: '/placeholder.svg',
-        interests: ['Music', 'Art'],
-        distance: 4.7
-      },
-      {
-        id: 'mock-3',
-        name: 'Elena Rodriguez',
-        username: 'elenar',
-        avatar: '/placeholder.svg',
-        interests: ['Travel', 'Food'],
-        distance: 6.1
-      },
-      {
-        id: 'mock-4',
-        name: 'David Kim',
-        username: 'davidk',
-        avatar: '/placeholder.svg',
-        interests: ['Sports', 'Gaming'],
-        distance: 8.5
-      },
-      {
-        id: 'mock-5',
-        name: 'Lisa Wang',
-        username: 'lisaw',
-        avatar: '/placeholder.svg',
-        interests: ['Books', 'Coffee'],
-        distance: 12.2
-      },
-      {
-        id: 'mock-6',
-        name: 'Alex Thompson',
-        username: 'alext',
-        avatar: '/placeholder.svg',
-        interests: ['Fitness', 'Nature'],
-        distance: 15.8
-      }
-    ];
+    if (selectedInterests && selectedInterests.length > 0) {
+      filteredPeople = filteredPeople.filter(person =>
+        person.interests.some(interest =>
+          selectedInterests.includes(interest)
+        )
+      );
+    }
 
-    setNearbyUsers(mockUsers);
-    setLoading(false);
-  };
+    setPeople(filteredPeople);
+  }, [searchQuery, selectedInterests]);
 
-  const handleProfileClick = (userId: string) => {
-    // Navigate to chat with this user
-    navigate(`/chats/${userId}`);
-  };
-
-  const handleLike = (userId: string, userName: string) => {
-    const newLikedUsers = new Set(likedUsers);
+  const requestLocationPermission = async () => {
+    setLoading(true);
     
-    if (likedUsers.has(userId)) {
-      newLikedUsers.delete(userId);
-      toast({
-        title: "Like removed",
-        description: `You no longer like ${userName}`,
+    try {
+      if (!navigator.geolocation) {
+        throw new Error('Geolocation is not supported by this browser');
+      }
+
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000
+        });
       });
-    } else {
-      newLikedUsers.add(userId);
+
+      setLocationEnabled(true);
       toast({
-        title: "Like sent! 💖",
-        description: `You liked ${userName}. If they like you back, you'll be matched!`,
+        title: "Location enabled!",
+        description: "Now showing people near your location",
       });
+
+      console.log('Location obtained:', position.coords);
       
-      // Simulate mutual match (20% chance for demo)
-      if (Math.random() < 0.2) {
-        setTimeout(() => {
-          toast({
-            title: "It's a match! 🎉",
-            description: `${userName} likes you too! You can now chat freely.`,
-          });
-        }, 1500);
+    } catch (error) {
+      console.error('Location error:', error);
+      
+      let errorMessage = "Unable to get your location";
+      if (error instanceof GeolocationPositionError) {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied. Please enable location in your browser settings.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information unavailable.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out.";
+            break;
+        }
       }
+      
+      toast({
+        title: "Location Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    setLikedUsers(newLikedUsers);
-    localStorage.setItem('likedUsers', JSON.stringify(Array.from(newLikedUsers)));
   };
 
-  if (loading) {
+  const handleLike = (personId: string) => {
+    toast({
+      title: "Profile liked!",
+      description: "They'll be notified if they like you back",
+    });
+  };
+
+  const handleMessage = (person: User) => {
+    // Create conversation and navigate to chat
+    const newConversation = {
+      id: `conv-${person.id}`,
+      user: {
+        id: person.id,
+        name: person.name,
+        avatar: person.avatar || '/placeholder.svg'
+      },
+      lastMessage: {
+        id: 'initial',
+        content: '',
+        timestamp: new Date(),
+        unread: false
+      },
+      isApproved: true
+    };
+
+    const conversations = JSON.parse(localStorage.getItem("conversations") || "[]");
+    const existingIndex = conversations.findIndex((c: any) => c.id === newConversation.id);
+    
+    if (existingIndex === -1) {
+      conversations.unshift(newConversation);
+      localStorage.setItem("conversations", JSON.stringify(conversations));
+    }
+
+    window.location.href = `/chats/${person.id}`;
+  };
+
+  const handleConnect = (personId: string) => {
+    toast({
+      title: "Connection request sent!",
+      description: "You'll be notified when they respond",
+    });
+  };
+
+  const handleProfileClick = (person: User) => {
+    setSelectedUser(person);
+    setProfileViewOpen(true);
+  };
+
+  if (!locationEnabled) {
     return (
-      <div className="mb-6">
-        <h2 className="text-lg font-medium mb-3 flex items-center">
-          <span className="mr-2">👥</span> People Near You
-        </h2>
-        <div className="animate-pulse">
-          <div className="h-48 bg-gray-200 rounded-lg"></div>
-        </div>
-      </div>
+      <Card className="text-center p-8">
+        <CardContent>
+          <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-semibold mb-2">Discover People Nearby</h3>
+          <p className="text-muted-foreground mb-4">
+            Enable location to find interesting people around you
+          </p>
+          <Button 
+            onClick={requestLocationPermission} 
+            disabled={loading}
+            className="w-full max-w-xs"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Getting Location...
+              </>
+            ) : (
+              <>
+                <MapPin className="h-4 w-4 mr-2" />
+                Enable Location
+              </>
+            )}
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">
+            Your location is used only to show nearby people and is not stored
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="mb-6">
-      <h2 className="text-lg font-medium mb-3 flex items-center">
-        <span className="mr-2">👥</span> People Near You
-      </h2>
-      
-      <Carousel className="w-full">
-        <CarouselContent className="-ml-2 md:-ml-4">
-          {nearbyUsers.map((nearbyUser) => (
-            <CarouselItem key={nearbyUser.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
-              <Card className="overflow-hidden hover:shadow-md transition-shadow duration-300">
-                <div className="relative">
-                  {/* Online status indicator */}
-                  <div className={`absolute top-2 right-2 h-3 w-3 rounded-full ${
-                    nearbyUser.id.charCodeAt(0) % 2 === 0 ? 'bg-green-500' : 'bg-amber-500'
-                  } ring-2 ring-white`}></div>
-                  
-                  <div 
-                    className="aspect-[3/2] bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 cursor-pointer"
-                    onClick={() => handleProfileClick(nearbyUser.id)}
-                  ></div>
-                  
-                  <div className="absolute -bottom-6 left-4">
-                    <Avatar className="h-12 w-12 border-2 border-background">
-                      <AvatarImage src={nearbyUser.avatar} alt={nearbyUser.name} />
-                      <AvatarFallback>{nearbyUser.name[0]}</AvatarFallback>
-                    </Avatar>
-                  </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">People Nearby</h2>
+        <Badge variant="secondary" className="flex items-center gap-1">
+          <MapPin className="h-3 w-3" />
+          {people.length} nearby
+        </Badge>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {people.map((person) => (
+          <Card key={person.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+            <CardContent className="p-0">
+              <div className="relative">
+                <img
+                  src={person.avatar || '/placeholder.svg'}
+                  alt={person.name}
+                  className="w-full h-48 object-cover cursor-pointer"
+                  onClick={() => handleProfileClick(person)}
+                />
+                <div className="absolute top-2 right-2">
+                  <Badge variant="secondary" className="text-xs">
+                    {person.distance} km
+                  </Badge>
+                </div>
+              </div>
+              
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 
+                    className="font-semibold text-lg cursor-pointer hover:text-primary"
+                    onClick={() => handleProfileClick(person)}
+                  >
+                    {person.name}, {person.age}
+                  </h3>
                 </div>
                 
-                <CardContent className="pt-8 pb-4">
-                  <div className="flex justify-between items-start">
-                    <div 
-                      className="cursor-pointer flex-1"
-                      onClick={() => handleProfileClick(nearbyUser.id)}
-                    >
-                      <h3 className="font-medium">{nearbyUser.name}</h3>
-                      <div className="text-xs text-muted-foreground flex flex-col">
-                        <span>
-                          {nearbyUser.distance ? formatDistance(nearbyUser.distance) : 'Nearby'}
-                        </span>
-                        <span className="mt-1 text-xs">
-                          {nearbyUser.interests.slice(0, 2).join(' • ')}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full hover:bg-rose-100 hover:text-rose-600"
-                        onClick={() => handleLike(nearbyUser.id, nearbyUser.name)}
-                      >
-                        <Heart 
-                          className={`h-4 w-4 ${
-                            likedUsers.has(nearbyUser.id) 
-                              ? 'fill-rose-500 text-rose-500' 
-                              : ''
-                          }`} 
-                        />
-                        <span className="sr-only">Like</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full hover:bg-slate-100 hover:text-indigo-600"
-                        onClick={() => handleProfileClick(nearbyUser.id)}
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        <span className="sr-only">Message</span>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-        <div className="hidden sm:block">
-          <CarouselPrevious className="left-0" />
-          <CarouselNext className="right-0" />
-        </div>
-      </Carousel>
+                <div className="flex items-center text-sm text-muted-foreground mb-2">
+                  <MapPin className="h-4 w-4 mr-1" />
+                  {person.location}
+                </div>
+                
+                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                  {person.bio}
+                </p>
+                
+                <div className="flex flex-wrap gap-1 mb-4">
+                  {person.interests.slice(0, 3).map((interest, index) => (
+                    <Badge key={index} variant="outline" className="text-xs">
+                      {interest}
+                    </Badge>
+                  ))}
+                  {person.interests.length > 3 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{person.interests.length - 3}
+                    </Badge>
+                  )}
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleLike(person.id)}
+                    className="flex-1"
+                  >
+                    <Heart className="h-4 w-4 mr-1" />
+                    Like
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleMessage(person)}
+                    className="flex-1"
+                  >
+                    <MessageCircle className="h-4 w-4 mr-1" />
+                    Chat
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleConnect(person.id)}
+                    className="flex-1"
+                  >
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Connect
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <ProfileView
+        user={selectedUser}
+        open={profileViewOpen}
+        onOpenChange={setProfileViewOpen}
+      />
     </div>
   );
 }

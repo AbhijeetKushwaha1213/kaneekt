@@ -2,12 +2,11 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ChatInput } from "@/components/ui/chat-input";
 import { ChatMessage } from "@/components/ui/chat-message";
+import { BackNavigation } from "@/components/ui/back-navigation";
 import { useChannelManagement } from "@/hooks/useChannelManagement";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -23,7 +22,11 @@ import {
   VolumeX,
   Heart,
   MessageSquare,
-  Share2
+  Share2,
+  Pin,
+  Search,
+  AtSign,
+  MoreVertical
 } from "lucide-react";
 
 export default function EnhancedChannel() {
@@ -36,7 +39,9 @@ export default function EnhancedChannel() {
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
+  const [onlineMembers, setOnlineMembers] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -45,10 +50,7 @@ export default function EnhancedChannel() {
       setIsLoading(true);
       
       try {
-        // Load from mock data first
         const mockChannel = CHANNELS.find(c => c.id === id);
-        
-        // Load from user created channels
         const userChannelsString = localStorage.getItem("userChannels");
         const userChannels = userChannelsString ? JSON.parse(userChannelsString) : [];
         const userChannel = userChannels.find((c: Channel) => c.id === id);
@@ -58,8 +60,8 @@ export default function EnhancedChannel() {
         if (foundChannel) {
           setChannel(foundChannel);
           setHasJoined(isChannelJoined(id));
+          setOnlineMembers(Math.floor(foundChannel.members * 0.3)); // Mock 30% online
           
-          // Load messages for this channel
           const storedMessages = JSON.parse(localStorage.getItem(`channel_messages_${id}`) || "[]");
           setMessages(storedMessages);
         } else {
@@ -123,9 +125,20 @@ export default function EnhancedChannel() {
   };
 
   const handleMessageSent = () => {
-    // Reload messages after sending
     const storedMessages = JSON.parse(localStorage.getItem(`channel_messages_${id}`) || "[]");
     setMessages(storedMessages);
+  };
+
+  const getPrivacyBadge = () => {
+    if (!channel) return null;
+    
+    if (channel.inviteOnly) {
+      return <Badge variant="outline" className="bg-amber-100 text-amber-800">Invite Only</Badge>;
+    }
+    if (channel.isPrivate) {
+      return <Badge variant="outline" className="bg-blue-100 text-blue-800">Private</Badge>;
+    }
+    return <Badge variant="outline" className="bg-green-100 text-green-800">Public</Badge>;
   };
 
   if (isLoading) {
@@ -155,51 +168,68 @@ export default function EnhancedChannel() {
     );
   }
 
-  const getPrivacyBadge = () => {
-    if (channel.inviteOnly) {
-      return <Badge variant="outline" className="bg-amber-100 text-amber-800">Invite Only</Badge>;
-    }
-    if (channel.isPrivate) {
-      return <Badge variant="outline" className="bg-blue-100 text-blue-800">Private</Badge>;
-    }
-    return <Badge variant="outline" className="bg-green-100 text-green-800">Public</Badge>;
-  };
-
   return (
     <MainLayout>
       <div className="h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)] flex flex-col">
-        {/* Enhanced page header */}
-        <PageHeader
-          title={`# ${channel.name}`}
-          subtitle={channel.description}
-          showBack={true}
-          fallbackRoute="/channels"
-          actions={
-            <div className="flex items-center gap-2">
+        {/* Discord-style header */}
+        <div className="border-b bg-background/95 backdrop-blur">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center space-x-3">
+              <BackNavigation customBackPath="/channels" showHome={false} />
+              
+              <Hash className="h-5 w-5 text-muted-foreground" />
+              <h1 className="text-lg font-semibold">{channel.name}</h1>
+              
               {getPrivacyBadge()}
+              
               <div className="flex items-center text-sm text-muted-foreground">
                 <Users className="h-4 w-4 mr-1" />
-                {channel.members}
+                {onlineMembers}/{channel.members}
               </div>
-              <Button variant="ghost" size="icon">
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8">
                 <Bell className="h-4 w-4" />
               </Button>
               <Button 
                 variant="ghost" 
-                size="icon"
+                size="icon" 
+                className="h-8 w-8"
+                onClick={() => setIsPinned(!isPinned)}
+              >
+                <Pin className={`h-4 w-4 ${isPinned ? 'text-primary' : ''}`} />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Search className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <AtSign className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8"
                 onClick={() => setIsMuted(!isMuted)}
               >
                 {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               </Button>
-              <Button variant="ghost" size="icon">
-                <Settings className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
               </Button>
             </div>
-          }
-        />
+          </div>
+
+          {/* Channel description */}
+          {channel.description && (
+            <div className="px-4 pb-2">
+              <p className="text-sm text-muted-foreground">{channel.description}</p>
+            </div>
+          )}
+        </div>
 
         {!hasJoined ? (
-          // Join channel prompt
+          {/* Join channel prompt */}
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="text-center max-w-md">
               <Hash className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
@@ -219,12 +249,12 @@ export default function EnhancedChannel() {
             </div>
           </div>
         ) : (
-          // Channel content
+          {/* Channel content */}
           <div className="flex-1 flex flex-col">
-            {/* Channel toolbar */}
-            <div className="border-b p-2 flex items-center justify-between">
+            {/* Discord-style toolbar */}
+            <div className="border-b p-2 flex items-center justify-between bg-accent/30">
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={handleLeaveChannel}>
+                <Button variant="ghost" size="sm" onClick={handleLeaveChannel} className="text-destructive hover:text-destructive">
                   Leave Channel
                 </Button>
               </div>
@@ -243,8 +273,8 @@ export default function EnhancedChannel() {
               </div>
             </div>
 
-            {/* Messages area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Messages area with Discord styling */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
               {messages.length > 0 ? (
                 messages.map((message, index) => (
                   <ChatMessage 
@@ -265,16 +295,19 @@ export default function EnhancedChannel() {
               ) : (
                 <div className="text-center py-10">
                   <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No messages yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <h3 className="font-medium mb-2">Welcome to #{channel.name}!</h3>
+                  <p className="text-muted-foreground text-sm mb-4">
+                    This is the beginning of the #{channel.name} channel.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
                     Be the first to start the conversation!
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Message input */}
-            <div className="border-t p-4">
+            {/* Discord-style message input */}
+            <div className="border-t bg-background">
               <ChatInput 
                 conversationId={`channel_${id}`}
                 userId={user?.id || "anonymous"}
@@ -285,7 +318,6 @@ export default function EnhancedChannel() {
         )}
       </div>
       
-      {/* Add padding at the bottom to account for mobile navigation */}
       <div className="md:hidden h-16"></div>
     </MainLayout>
   );
