@@ -101,7 +101,7 @@ export default function Features() {
             </TabsContent>
 
             <TabsContent value="premium">
-              <PremiumFeatures />
+              <PremiumFeatures userTier="free" />
             </TabsContent>
 
             <TabsContent value="media">

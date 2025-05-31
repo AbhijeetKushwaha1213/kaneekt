@@ -1,259 +1,206 @@
 
-import { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { ChatMessage } from "@/components/ui/chat-message";
 import { ChatInput } from "@/components/ui/chat-input";
-import { BackNavigation } from "@/components/ui/back-navigation";
-import { Phone, Video, MoreVertical, MapPin } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
-
-interface Message {
-  id: string;
-  content: string;
-  sender_id: string;
-  created_at: string;
-  is_read: boolean;
-}
-
-interface ChatUser {
-  id: string;
-  name: string;
-  avatar: string;
-  username: string;
-  isOnline: boolean;
-  lastSeen?: string;
-}
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export default function Chat() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const { toast } = useToast();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [chatUser, setChatUser] = useState<ChatUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
+  const [messages, setMessages] = useState<any[]>([]);
+  const [conversationName, setConversationName] = useState("");
+  const [conversationUser, setConversationUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
   useEffect(() => {
-    loadChatData();
-  }, [id]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const loadChatData = () => {
-    // Mock chat user data
-    const mockUsers: { [key: string]: ChatUser } = {
-      'mock-1': {
-        id: 'mock-1',
-        name: 'Sarah Chen',
-        avatar: '/placeholder.svg',
-        username: 'sarahc',
-        isOnline: true,
-      },
-      'mock-2': {
-        id: 'mock-2',
-        name: 'Marcus Johnson',
-        avatar: '/placeholder.svg',
-        username: 'marcusj',
-        isOnline: false,
-        lastSeen: '2 hours ago'
-      },
-      'mock-3': {
-        id: 'mock-3',
-        name: 'Elena Rodriguez',
-        avatar: '/placeholder.svg',
-        username: 'elenar',
-        isOnline: true,
-      },
-      'mock-4': {
-        id: 'mock-4',
-        name: 'David Kim',
-        avatar: '/placeholder.svg',
-        username: 'davidk',
-        isOnline: false,
-        lastSeen: '1 day ago'
+    if (!id) return;
+    
+    const loadMessages = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Get conversation data first
+        const conversations = JSON.parse(localStorage.getItem("conversations") || "[]");
+        const conversationData = conversations.find((c: any) => c.id === id);
+        
+        if (conversationData) {
+          setConversationName(conversationData.user.name || "Chat");
+          setConversationUser(conversationData.user);
+          
+          // Try to load messages from Supabase first
+          if (user) {
+            const { data, error } = await supabase
+              .from('messages')
+              .select('*')
+              .eq('conversation_id', id)
+              .order('created_at', { ascending: true });
+              
+            if (data && !error) {
+              setMessages(data);
+            } else {
+              console.error("Error loading messages from Supabase:", error);
+              // Fall back to local storage
+              loadMessagesFromLocalStorage();
+            }
+          } else {
+            // No authenticated user, use local storage
+            loadMessagesFromLocalStorage();
+          }
+        }
+      } catch (error) {
+        console.error("Error loading messages:", error);
+        loadMessagesFromLocalStorage();
+      } finally {
+        setIsLoading(false);
       }
     };
-
-    const currentUser = mockUsers[id || 'mock-1'] || mockUsers['mock-1'];
-    setChatUser(currentUser);
-
-    // Load messages from localStorage
-    const storedMessages = localStorage.getItem(`chat_${id}`);
-    if (storedMessages) {
-      setMessages(JSON.parse(storedMessages));
-    } else {
-      // Mock messages
-      const mockMessages: Message[] = [
-        {
-          id: '1',
-          content: 'Hey! How are you doing?',
-          sender_id: id || 'mock-1',
-          created_at: new Date(Date.now() - 3600000).toISOString(),
-          is_read: true
-        },
-        {
-          id: '2',
-          content: 'I\'m doing great! Thanks for asking 😊',
-          sender_id: user?.id || 'current-user',
-          created_at: new Date(Date.now() - 3000000).toISOString(),
-          is_read: true
-        },
-        {
-          id: '3',
-          content: 'What are you up to today?',
-          sender_id: id || 'mock-1',
-          created_at: new Date(Date.now() - 1800000).toISOString(),
-          is_read: false
-        }
-      ];
-      setMessages(mockMessages);
-      localStorage.setItem(`chat_${id}`, JSON.stringify(mockMessages));
+    
+    const loadMessagesFromLocalStorage = () => {
+      try {
+        // Load from local storage
+        const allStoredMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+        const filteredMessages = allStoredMessages.filter(
+          (m: any) => m.conversation_id === id
+        );
+        setMessages(filteredMessages);
+      } catch (error) {
+        console.error("Error loading messages from local storage:", error);
+        setMessages([]);
+      }
+    };
+    
+    loadMessages();
+    
+    // Subscribe to new messages if using Supabase
+    if (user) {
+      const channel = supabase
+        .channel(`conversation:${id}`)
+        .on('postgres_changes', 
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'messages',
+            filter: `conversation_id=eq.${id}` 
+          }, 
+          (payload) => {
+            setMessages(current => [...current, payload.new]);
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
-
-    setLoading(false);
-  };
+  }, [id, user]);
 
   const handleMessageSent = () => {
-    // Reload messages after sending
-    const storedMessages = localStorage.getItem(`chat_${id}`);
-    if (storedMessages) {
-      setMessages(JSON.parse(storedMessages));
-    }
+    // Reload messages when a new message is sent
+    const allStoredMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+    const filteredMessages = allStoredMessages.filter(
+      (m: any) => m.conversation_id === id
+    );
+    setMessages(filteredMessages);
   };
 
   const handleProfileClick = () => {
-    window.location.href = `/profile/${id}`;
+    if (conversationUser?.id) {
+      navigate(`/profile/${conversationUser.id}`);
+    }
   };
-
-  const handleVoiceCall = () => {
-    toast({
-      title: 'Voice call initiated',
-      description: `Calling ${chatUser?.name}...`,
-    });
-  };
-
-  const handleVideoCall = () => {
-    toast({
-      title: 'Video call initiated',
-      description: `Video calling ${chatUser?.name}...`,
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="animate-pulse text-center">
-          <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4"></div>
-          <div className="h-4 w-32 bg-gray-200 rounded mx-auto"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!chatUser) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-bold mb-4">Chat not found</h2>
-          <p className="text-muted-foreground">This conversation doesn't exist.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Chat Header */}
-      <div className="border-b p-4 bg-background/95 backdrop-blur">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <MainLayout>
+      <div className="h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)] flex flex-col">
+        {/* Enhanced page header with clickable profile */}
+        <div className="border-b p-4">
+          <div className="flex items-center space-x-3">
             {isMobile && (
-              <BackNavigation fallbackRoute="/chats" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/chats')}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
             )}
-            <div 
-              className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded-lg p-2 -m-2 transition-colors"
-              onClick={handleProfileClick}
-            >
-              <div className="relative">
-                <Avatar>
-                  <AvatarImage src={chatUser.avatar} alt={chatUser.name} />
-                  <AvatarFallback>{chatUser.name[0]}</AvatarFallback>
-                </Avatar>
-                {chatUser.isOnline && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></div>
-                )}
-              </div>
-              <div>
-                <h2 className="font-semibold">{chatUser.name}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {chatUser.isOnline ? 'Online' : `Last seen ${chatUser.lastSeen}`}
-                </p>
-              </div>
+            
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={conversationUser?.avatar || '/placeholder.svg'} />
+              <AvatarFallback>{conversationName[0] || 'U'}</AvatarFallback>
+            </Avatar>
+            
+            <div className="flex-1">
+              <h1 
+                className="font-semibold cursor-pointer hover:text-primary transition-colors"
+                onClick={handleProfileClick}
+              >
+                {conversationName}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {isLoading ? "Loading..." : `${messages.length} messages`}
+              </p>
             </div>
           </div>
+        </div>
+        
+        <div className="flex-1 flex flex-col">
+          {/* Messages area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {isLoading ? (
+              <div className="text-center py-10">
+                <p className="text-muted-foreground">Loading messages...</p>
+              </div>
+            ) : messages.length > 0 ? (
+              messages.map((message) => (
+                <ChatMessage 
+                  key={message.id} 
+                  message={{
+                    id: message.id,
+                    content: message.content,
+                    timestamp: new Date(message.created_at || Date.now()),
+                    sender: {
+                      id: message.sender_id,
+                      name: message.sender_id === user?.id ? "You" : conversationName,
+                      avatar: message.sender_id === user?.id ? (user?.user_metadata?.avatar_url || '/placeholder.svg') : (conversationUser?.avatar || '/placeholder.svg')
+                    },
+                    isCurrentUser: message.sender_id === user?.id
+                  }}
+                />
+              ))
+            ) : (
+              <div className="text-center py-10">
+                <p className="text-muted-foreground">No messages yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Send a message to start the conversation
+                </p>
+              </div>
+            )}
+          </div>
           
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={handleVoiceCall}>
-              <Phone className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleVideoCall}>
-              <Video className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
+          {/* Chat input */}
+          <div className="border-t p-4">
+            <ChatInput 
+              conversationId={id || ""} 
+              userId={user?.id || "anonymous"} 
+              onMessageSent={handleMessageSent} 
+            />
           </div>
         </div>
       </div>
-
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => {
-          const isOwn = message.sender_id === user?.id || message.sender_id === 'current-user';
-          return (
-            <div
-              key={message.id}
-              className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
-            >
-              <Card className={`max-w-[70%] p-3 ${
-                isOwn 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-muted'
-              }`}>
-                <p className="text-sm">{message.content}</p>
-                <p className={`text-xs mt-1 ${
-                  isOwn 
-                    ? 'text-primary-foreground/70' 
-                    : 'text-muted-foreground'
-                }`}>
-                  {new Date(message.created_at).toLocaleTimeString()}
-                </p>
-              </Card>
-            </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Chat Input */}
-      <div className="border-t p-4 bg-background">
-        <ChatInput
-          conversationId={id || ''}
-          userId={user?.id || 'current-user'}
-          onMessageSent={handleMessageSent}
-        />
-      </div>
-    </div>
+      
+      {/* Add padding at the bottom to account for mobile navigation */}
+      <div className="md:hidden h-16"></div>
+    </MainLayout>
   );
 }

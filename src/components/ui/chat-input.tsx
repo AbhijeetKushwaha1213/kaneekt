@@ -1,296 +1,185 @@
 
-import React, { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Send, Smile, Phone, Video, Paperclip, Mic, MicOff, Image as ImageIcon, FileText } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Send, Paperclip, Smile } from "lucide-react";
+import { VoiceMessage } from "@/components/chat/VoiceMessage";
+import { VideoCall } from "@/components/chat/VideoCall";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatInputProps {
   conversationId: string;
   userId: string;
+  recipientName?: string;
   onMessageSent?: () => void;
 }
 
-export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputProps) {
-  const [message, setMessage] = useState('');
+export function ChatInput({ conversationId, userId, recipientName = "User", onMessageSent }: ChatInputProps) {
+  const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [attachment, setAttachment] = useState<File | null>(null);
   const { toast } = useToast();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setAttachment(file);
+  // Check if this is the first message to this person
+  const checkMessageLimit = () => {
+    const allMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+    const conversationMessages = allMessages.filter(
+      (m: any) => m.conversation_id === conversationId
+    );
+    
+    const userMessages = conversationMessages.filter(
+      (m: any) => m.sender_id === userId
+    );
+
+    // Check if users are matched (liked each other)
+    const matches = JSON.parse(localStorage.getItem('matches') || '[]');
+    const isMatched = matches.includes(conversationId);
+
+    return { 
+      hasReachedLimit: userMessages.length >= 1 && !isMatched,
+      isFirstMessage: userMessages.length === 0,
+      isMatched 
+    };
+  };
+
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
+
+    const { hasReachedLimit, isFirstMessage, isMatched } = checkMessageLimit();
+
+    if (hasReachedLimit) {
       toast({
-        title: 'File attached',
-        description: `${file.name} is ready to send`,
+        title: "Message limit reached",
+        description: "You can only send one message until they respond or you both like each other",
+        variant: "destructive"
       });
+      return;
     }
-  };
-
-  const handleAttachmentClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleVoiceRecord = async () => {
-    if (!isRecording) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream);
-        mediaRecorderRef.current = mediaRecorder;
-        
-        const audioChunks: Blob[] = [];
-        mediaRecorder.ondataavailable = (event) => {
-          audioChunks.push(event.data);
-        };
-        
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-          const audioFile = new File([audioBlob], 'voice-message.wav', { type: 'audio/wav' });
-          setAttachment(audioFile);
-          stream.getTracks().forEach(track => track.stop());
-          toast({
-            title: 'Voice message recorded',
-            description: 'Your voice message is ready to send',
-          });
-        };
-        
-        mediaRecorder.start();
-        setIsRecording(true);
-        toast({
-          title: 'Recording started',
-          description: 'Speak your message...',
-        });
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Could not access microphone',
-          variant: 'destructive'
-        });
-      }
-    } else {
-      mediaRecorderRef.current?.stop();
-      setIsRecording(false);
-    }
-  };
-
-  const handleVoiceCall = () => {
-    toast({
-      title: 'Voice call initiated',
-      description: 'Starting voice call...',
-    });
-  };
-
-  const handleVideoCall = () => {
-    toast({
-      title: 'Video call initiated',
-      description: 'Starting video call...',
-    });
-  };
-
-  const handleEmojiClick = () => {
-    // Simple emoji insertion
-    const emojis = ['😀', '😂', '❤️', '👍', '🎉', '🔥', '💯', '✨'];
-    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-    setMessage(prev => prev + randomEmoji);
-    inputRef.current?.focus();
-  };
-
-  const sendMessage = async () => {
-    const content = message.trim();
-    if (!content && !attachment) return;
 
     setIsLoading(true);
-    try {
-      let messageContent = content;
-      let attachmentData = null;
-      
-      if (attachment) {
-        attachmentData = {
-          name: attachment.name,
-          type: attachment.type,
-          size: attachment.size
-        };
-        
-        if (attachment.type.startsWith('audio/')) {
-          messageContent = content || '🎤 Voice message';
-        } else if (attachment.type.startsWith('image/')) {
-          messageContent = content || '📷 Image';
-        } else if (attachment.type.startsWith('video/')) {
-          messageContent = content || '🎥 Video';
-        } else {
-          messageContent = content || `📎 ${attachment.name}`;
-        }
-      }
 
-      const newMessage = {
+    try {
+      const messageData = {
         id: `msg-${Date.now()}`,
         conversation_id: conversationId,
         sender_id: userId,
-        content: messageContent,
+        content: message.trim(),
         created_at: new Date().toISOString(),
-        attachment: attachmentData,
         is_read: false
       };
 
-      // Try to save to Supabase first, fall back to localStorage
-      try {
-        const { error } = await supabase
-          .from('messages')
-          .insert([{
-            conversation_id: conversationId,
-            sender_id: userId,
-            content: newMessage.content,
-          }]);
-
-        if (error) {
-          throw error;
+      // Try to save to Supabase first
+      if (userId !== 'anonymous') {
+        try {
+          await supabase.from('messages').insert(messageData);
+        } catch (error) {
+          console.error("Error saving to Supabase:", error);
         }
-      } catch (supabaseError) {
-        console.log('Supabase not available, using localStorage');
-        
-        // Fall back to localStorage
-        const storedMessages = JSON.parse(localStorage.getItem(`chat_${conversationId}`) || '[]');
-        storedMessages.push(newMessage);
-        localStorage.setItem(`chat_${conversationId}`, JSON.stringify(storedMessages));
       }
 
-      setMessage('');
-      setAttachment(null);
+      // Always save to localStorage as backup
+      const allMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+      allMessages.push(messageData);
+      localStorage.setItem("chatMessages", JSON.stringify(allMessages));
+
+      if (isFirstMessage) {
+        toast({
+          title: "First message sent!",
+          description: isMatched 
+            ? "You can continue chatting freely since you're matched!"
+            : "Wait for them to respond or like each other to unlock unlimited messaging",
+        });
+      }
+
+      setMessage("");
       onMessageSent?.();
-
-      toast({
-        title: 'Message sent',
-        description: attachment ? 'Message with attachment sent successfully' : undefined,
-      });
-
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to send message. Please try again.',
-        variant: 'destructive'
+        title: "Error sending message",
+        description: "Please try again",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleVoiceMessage = async (audioBlob: Blob) => {
+    // Convert voice message to base64 for storage demo
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const messageData = {
+        id: `msg-${Date.now()}`,
+        conversation_id: conversationId,
+        sender_id: userId,
+        content: "🎤 Voice message",
+        type: "voice",
+        audio_data: reader.result,
+        created_at: new Date().toISOString(),
+        is_read: false
+      };
+
+      const allMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+      allMessages.push(messageData);
+      localStorage.setItem("chatMessages", JSON.stringify(allMessages));
+      onMessageSent?.();
+    };
+    reader.readAsDataURL(audioBlob);
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSendMessage();
     }
   };
 
+  const { hasReachedLimit, isMatched } = checkMessageLimit();
+
   return (
-    <div className="flex flex-col gap-2">
-      {/* Call buttons */}
-      <div className="flex justify-end gap-2">
+    <div className="flex items-center space-x-2">
+      <VideoCall recipientName={recipientName} onCall={() => {}} />
+      
+      <Button variant="ghost" size="icon" className="h-10 w-10">
+        <Paperclip className="h-4 w-4" />
+      </Button>
+
+      <Button variant="ghost" size="icon" className="h-10 w-10">
+        <Smile className="h-4 w-4" />
+      </Button>
+      
+      <div className="flex-1 flex items-center space-x-2">
+        <Input
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder={
+            hasReachedLimit 
+              ? "Like each other to unlock unlimited messaging"
+              : "Type a message..."
+          }
+          disabled={isLoading || hasReachedLimit}
+          className="flex-1"
+        />
+        
+        <VoiceMessage onSend={handleVoiceMessage} />
+        
         <Button
-          variant="outline"
-          size="sm"
-          onClick={handleVoiceCall}
-          className="flex items-center gap-2"
+          onClick={handleSendMessage}
+          disabled={!message.trim() || isLoading || hasReachedLimit}
+          size="icon"
+          className="h-10 w-10"
         >
-          <Phone className="h-4 w-4" />
-          <span className="hidden sm:inline">Voice Call</span>
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleVideoCall}
-          className="flex items-center gap-2"
-        >
-          <Video className="h-4 w-4" />
-          <span className="hidden sm:inline">Video Call</span>
+          <Send className="h-4 w-4" />
         </Button>
       </div>
-
-      {/* Attachment preview */}
-      {attachment && (
-        <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
-          <div className="flex items-center gap-2 flex-1">
-            {attachment.type.startsWith('image/') && <ImageIcon className="h-4 w-4" />}
-            {attachment.type.startsWith('audio/') && <Mic className="h-4 w-4" />}
-            {attachment.type.startsWith('video/') && <Video className="h-4 w-4" />}
-            {!attachment.type.startsWith('image/') && !attachment.type.startsWith('audio/') && !attachment.type.startsWith('video/') && <FileText className="h-4 w-4" />}
-            <span className="text-sm truncate">{attachment.name}</span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setAttachment(null)}
-          >
-            Remove
-          </Button>
+      
+      {hasReachedLimit && !isMatched && (
+        <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-amber-100 text-amber-800 text-xs px-3 py-1 rounded-full">
+          💬 One message limit - like each other to chat freely!
         </div>
       )}
-
-      {/* Message input */}
-      <div className="flex items-end gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleAttachmentClick}
-          disabled={isLoading}
-        >
-          <Paperclip className="h-5 w-5" />
-        </Button>
-        
-        <div className="flex-1">
-          <Input
-            ref={inputRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={attachment ? "Add a message..." : "Type a message..."}
-            disabled={isLoading}
-            className="w-full"
-          />
-        </div>
-        
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleEmojiClick}
-          disabled={isLoading}
-        >
-          <Smile className="h-5 w-5" />
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleVoiceRecord}
-          disabled={isLoading}
-          className={isRecording ? 'bg-red-500 text-white' : ''}
-        >
-          {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-        </Button>
-        
-        <Button
-          onClick={sendMessage}
-          disabled={isLoading || (!message.trim() && !attachment)}
-          size="icon"
-        >
-          <Send className="h-5 w-5" />
-        </Button>
-      </div>
-
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        onChange={handleFileSelect}
-        className="hidden"
-        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
-      />
     </div>
   );
 }
