@@ -229,7 +229,6 @@ export default function EnhancedChannel() {
         </div>
 
         {!hasJoined ? (
-          {/* Join channel prompt */}
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="text-center max-w-md">
               <Hash className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
@@ -249,7 +248,6 @@ export default function EnhancedChannel() {
             </div>
           </div>
         ) : (
-          {/* Channel content */}
           <div className="flex-1 flex flex-col">
             {/* Discord-style toolbar */}
             <div className="border-b p-2 flex items-center justify-between bg-accent/30">
