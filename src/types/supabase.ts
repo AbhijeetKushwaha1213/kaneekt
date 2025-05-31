@@ -24,30 +24,142 @@ export type Message = Tables['messages']['Row'];
 export type MessageInsert = Tables['messages']['Insert'];
 export type MessageUpdate = Tables['messages']['Update'];
 
-// Story-related types
-export type Story = Tables['stories']['Row'];
-export type StoryInsert = Tables['stories']['Insert'];
-export type StoryUpdate = Tables['stories']['Update'];
+// Define custom types for features not yet in database
+export interface Story {
+  id: string;
+  user_id: string;
+  media_url: string;
+  media_type: 'image' | 'video';
+  content?: string;
+  view_count: number;
+  created_at: string;
+  expires_at: string;
+  profiles?: {
+    name: string;
+    avatar: string;
+  };
+}
 
-// Event-related types
-export type Event = Tables['events']['Row'];
-export type EventInsert = Tables['events']['Insert'];
-export type EventUpdate = Tables['events']['Update'];
+export interface StoryInsert {
+  user_id: string;
+  media_url: string;
+  media_type: 'image' | 'video';
+  content?: string;
+}
 
-// Like-related types
-export type Like = Tables['likes']['Row'];
-export type LikeInsert = Tables['likes']['Insert'];
-export type LikeUpdate = Tables['likes']['Update'];
+export interface StoryUpdate {
+  media_url?: string;
+  media_type?: 'image' | 'video';
+  content?: string;
+}
 
-// Group-related types
-export type Group = Tables['groups']['Row'];
-export type GroupInsert = Tables['groups']['Insert'];
-export type GroupUpdate = Tables['groups']['Update'];
+export interface Event {
+  id: string;
+  creator_id: string;
+  title: string;
+  description?: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  event_date: string;
+  max_participants?: number;
+  is_premium_only: boolean;
+  created_at: string;
+}
 
-// Achievement-related types
-export type Achievement = Tables['achievements']['Row'];
-export type AchievementInsert = Tables['achievements']['Insert'];
-export type AchievementUpdate = Tables['achievements']['Update'];
+export interface EventInsert {
+  creator_id: string;
+  title: string;
+  description?: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  event_date: string;
+  max_participants?: number;
+  is_premium_only?: boolean;
+}
+
+export interface EventUpdate {
+  title?: string;
+  description?: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  event_date?: string;
+  max_participants?: number;
+  is_premium_only?: boolean;
+}
+
+export interface Like {
+  id: string;
+  liker_id: string;
+  liked_id: string;
+  is_super_like: boolean;
+  created_at: string;
+}
+
+export interface LikeInsert {
+  liker_id: string;
+  liked_id: string;
+  is_super_like?: boolean;
+}
+
+export interface LikeUpdate {
+  is_super_like?: boolean;
+}
+
+export interface Group {
+  id: string;
+  creator_id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  is_private: boolean;
+  max_members: number;
+  created_at: string;
+}
+
+export interface GroupInsert {
+  creator_id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  is_private?: boolean;
+  max_members?: number;
+}
+
+export interface GroupUpdate {
+  name?: string;
+  description?: string;
+  category?: string;
+  is_private?: boolean;
+  max_members?: number;
+}
+
+export interface Achievement {
+  id: string;
+  user_id: string;
+  achievement_type: string;
+  title: string;
+  description?: string;
+  points: number;
+  earned_at: string;
+}
+
+export interface AchievementInsert {
+  user_id: string;
+  achievement_type: string;
+  title: string;
+  description?: string;
+  points?: number;
+}
+
+export interface AchievementUpdate {
+  achievement_type?: string;
+  title?: string;
+  description?: string;
+  points?: number;
+}
 
 // Extended profile type with optional location fields for future compatibility
 export interface ProfileWithLocation extends Profile {
