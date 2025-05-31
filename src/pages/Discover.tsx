@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Filter, Users, Map, Sparkles } from 'lucide-react';
+import { Filter, Users, Map, Sparkles, ArrowLeft } from 'lucide-react';
 import { NearbyPeople } from '@/components/discover/NearbyPeople';
 import { NearbyUsersMap } from '@/components/discover/NearbyUsersMap';
 import { SmartFilters } from '@/components/matching/SmartFilters';

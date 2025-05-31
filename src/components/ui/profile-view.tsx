@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BackNavigation } from '@/components/ui/back-navigation';
-import { UserPlus, MessageSquare, MoreHorizontal, MapPin, Calendar, Users, Grid, Image, Info } from 'lucide-react';
+import { UserPlus, MessageSquare, MoreHorizontal, MapPin, Calendar, Users, Grid, Image, Info, Heart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface UserProfile {
@@ -31,10 +31,17 @@ export function ProfileView() {
   const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFriend, setIsFriend] = useState(false);
 
   useEffect(() => {
     loadProfile();
+    checkFriendStatus();
   }, [userId]);
+
+  const checkFriendStatus = () => {
+    const friends = JSON.parse(localStorage.getItem('user_friends') || '[]');
+    setIsFriend(friends.includes(userId));
+  };
 
   const loadProfile = () => {
     // Mock profile data based on userId
@@ -105,14 +112,25 @@ export function ProfileView() {
   const handleAddFriend = () => {
     if (!profile) return;
     
-    setProfile(prev => prev ? { ...prev, isFriend: !prev.isFriend } : null);
+    const friends = JSON.parse(localStorage.getItem('user_friends') || '[]');
+    let updatedFriends;
     
-    toast({
-      title: profile.isFriend ? "Friend removed" : "Friend request sent!",
-      description: profile.isFriend 
-        ? `You are no longer friends with ${profile.name}`
-        : `Friend request sent to ${profile.name}`,
-    });
+    if (isFriend) {
+      updatedFriends = friends.filter((id: string) => id !== userId);
+      toast({
+        title: "Friend removed",
+        description: `You are no longer friends with ${profile.name}`,
+      });
+    } else {
+      updatedFriends = [...friends, userId];
+      toast({
+        title: "Friend request sent! 👥",
+        description: `Friend request sent to ${profile.name}`,
+      });
+    }
+    
+    localStorage.setItem('user_friends', JSON.stringify(updatedFriends));
+    setIsFriend(!isFriend);
   };
 
   const handleMessage = () => {
@@ -189,10 +207,10 @@ export function ProfileView() {
             <Button 
               onClick={handleAddFriend} 
               className="flex-1 max-w-32"
-              variant={profile.isFriend ? "outline" : "default"}
+              variant={isFriend ? "outline" : "default"}
             >
-              <UserPlus className="h-4 w-4 mr-2" />
-              {profile.isFriend ? 'Friends' : 'Add Friend'}
+              <Heart className={`h-4 w-4 mr-2 ${isFriend ? 'fill-current' : ''}`} />
+              {isFriend ? 'Friends' : 'Add Friend'}
             </Button>
             <Button variant="outline" onClick={handleMessage} className="flex-1 max-w-32">
               <MessageSquare className="h-4 w-4 mr-2" />

@@ -221,13 +221,13 @@ export function NearbyPeople() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 rounded-full hover:bg-blue-100 hover:text-blue-600"
+                        className="h-8 w-8 rounded-full hover:bg-red-100 hover:text-red-600"
                         onClick={() => handleAddFriend(nearbyUser.id, nearbyUser.name)}
                       >
-                        <UserPlus 
+                        <Heart 
                           className={`h-4 w-4 ${
                             friends.has(nearbyUser.id) 
-                              ? 'fill-blue-500 text-blue-500' 
+                              ? 'fill-red-500 text-red-500' 
                               : ''
                           }`} 
                         />

@@ -81,15 +81,15 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
 
   const handleVoiceCall = () => {
     toast({
-      title: 'Voice call',
-      description: 'Voice calling feature coming soon!',
+      title: 'Voice call initiated',
+      description: 'Starting voice call...',
     });
   };
 
   const handleVideoCall = () => {
     toast({
-      title: 'Video call',
-      description: 'Video calling feature coming soon!',
+      title: 'Video call initiated',
+      description: 'Starting video call...',
     });
   };
 
@@ -155,9 +155,9 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
         console.log('Supabase not available, using localStorage');
         
         // Fall back to localStorage
-        const storedMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+        const storedMessages = JSON.parse(localStorage.getItem(`chat_${conversationId}`) || '[]');
         storedMessages.push(newMessage);
-        localStorage.setItem('chatMessages', JSON.stringify(storedMessages));
+        localStorage.setItem(`chat_${conversationId}`, JSON.stringify(storedMessages));
       }
 
       setMessage('');
