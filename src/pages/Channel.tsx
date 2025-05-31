@@ -27,7 +27,11 @@ import {
   User,
   UserPlus,
   Crown,
-  Shield
+  Shield,
+  Volume2,
+  Mic,
+  MicOff,
+  Headphones
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ChatMessage } from "@/components/ui/chat-message";
@@ -228,353 +232,275 @@ export default function Channel() {
   
   return (
     <MainLayout>
-      <div className="flex h-[calc(100vh-3.5rem)]">
-        <div className="w-60 border-r bg-background flex flex-col">
-          <div className="p-3 border-b">
-            <h3 className="font-semibold truncate">{channel.name}</h3>
+      <div className="flex h-[calc(100vh-3.5rem)] bg-gray-50 dark:bg-gray-900">
+        {/* Discord-style Sidebar */}
+        <div className="w-64 bg-gray-800 text-white flex flex-col">
+          {/* Server Header */}
+          <div className="p-3 border-b border-gray-700 bg-gray-850">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-white truncate">{channel?.name}</h3>
+              <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white h-6 w-6">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto">
+          {/* Channel List */}
+          <div className="flex-1 overflow-y-auto p-2">
+            {/* Text Channels */}
             <Collapsible 
               open={isTextChannelsOpen} 
               onOpenChange={setIsTextChannelsOpen}
-              className="px-2 py-1"
+              className="mb-4"
             >
-              <CollapsibleTrigger className="flex w-full items-center justify-between p-1.5 text-sm hover:bg-accent rounded">
-                <span className="font-medium text-muted-foreground">TEXT CHANNELS</span>
-                <ChevronRight className="h-4 w-4 transition-transform duration-200" 
-                  style={{ transform: isTextChannelsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+              <CollapsibleTrigger className="flex w-full items-center justify-between p-1 text-xs font-semibold text-gray-400 hover:text-gray-200 uppercase tracking-wide">
+                <span>Text Channels</span>
+                <PlusCircle 
+                  className="h-4 w-4 hover:text-white cursor-pointer" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAddChannelDialogOpen(true);
+                  }}
                 />
               </CollapsibleTrigger>
-              <CollapsibleContent className="pl-2 space-y-0.5 pt-1">
+              <CollapsibleContent className="space-y-1 mt-1">
                 {subChannels
                   .filter(sc => sc.type === 'text')
                   .map(subChannel => (
                     <div 
                       key={subChannel.id}
-                      className={`group flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer ${
+                      className={`group flex items-center gap-2 px-2 py-1 mx-1 rounded cursor-pointer ${
                         activeSubChannel === subChannel.id ? 
-                        'bg-accent/50 text-accent-foreground' : 
-                        'hover:bg-accent/50 hover:text-accent-foreground'
+                        'bg-gray-700 text-white' : 
+                        'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
                       }`}
                       onClick={() => handleSubChannelClick(subChannel.id, 'text')}
                     >
-                      <Hash className={`h-4 w-4 ${activeSubChannel === subChannel.id ? '' : 'text-muted-foreground'}`} />
+                      <Hash className="h-4 w-4" />
                       <span className="text-sm">{subChannel.name}</span>
                     </div>
                   ))
                 }
-                <div 
-                  className="flex items-center gap-2 px-2 py-1 opacity-70 hover:opacity-100 cursor-pointer"
-                  onClick={() => setIsAddChannelDialogOpen(true)}
-                >
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  <span className="text-xs">Add Channel</span>
-                </div>
               </CollapsibleContent>
             </Collapsible>
             
+            {/* Voice Channels */}
             <Collapsible 
               open={isVoiceChannelsOpen} 
               onOpenChange={setIsVoiceChannelsOpen}
-              className="px-2 py-1"
             >
-              <CollapsibleTrigger className="flex w-full items-center justify-between p-1.5 text-sm hover:bg-accent rounded">
-                <span className="font-medium text-muted-foreground">VOICE CHANNELS</span>
-                <ChevronRight className="h-4 w-4 transition-transform duration-200" 
-                  style={{ transform: isVoiceChannelsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+              <CollapsibleTrigger className="flex w-full items-center justify-between p-1 text-xs font-semibold text-gray-400 hover:text-gray-200 uppercase tracking-wide">
+                <span>Voice Channels</span>
+                <PlusCircle 
+                  className="h-4 w-4 hover:text-white cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAddVoiceChannelDialogOpen(true);
+                  }}
                 />
               </CollapsibleTrigger>
-              <CollapsibleContent className="pl-2 space-y-0.5 pt-1">
+              <CollapsibleContent className="space-y-1 mt-1">
                 {subChannels
                   .filter(sc => sc.type === 'voice')
                   .map(subChannel => (
                     <div 
                       key={subChannel.id}
-                      className={`group flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer ${
+                      className={`group flex items-center gap-2 px-2 py-1 mx-1 rounded cursor-pointer ${
                         activeSubChannel === subChannel.id ? 
-                        'bg-accent/50 text-accent-foreground' : 
-                        'hover:bg-accent/50 hover:text-accent-foreground'
+                        'bg-gray-700 text-white' : 
+                        'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
                       }`}
                       onClick={() => handleSubChannelClick(subChannel.id, 'voice')}
                     >
-                      <Users className={`h-4 w-4 ${activeSubChannel === subChannel.id ? '' : 'text-muted-foreground'}`} />
+                      <Volume2 className="h-4 w-4" />
                       <span className="text-sm">{subChannel.name}</span>
+                      {activeSubChannel === subChannel.id && (
+                        <div className="ml-auto flex items-center gap-1">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-xs">2</span>
+                        </div>
+                      )}
                     </div>
                   ))
                 }
-                <div 
-                  className="flex items-center gap-2 px-2 py-1 opacity-70 hover:opacity-100 cursor-pointer"
-                  onClick={() => setIsAddVoiceChannelDialogOpen(true)}
-                >
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  <span className="text-xs">Add Voice Channel</span>
-                </div>
               </CollapsibleContent>
             </Collapsible>
           </div>
           
-          <div className="p-2 border-t mt-auto">
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start" 
-              size="sm"
-              onClick={() => setIsSettingsDialogOpen(true)}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Channel Settings
-            </Button>
+          {/* User Info Bar */}
+          <div className="p-2 bg-gray-900 border-t border-gray-700">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="/placeholder.svg" alt="User" />
+                  <AvatarFallback>U</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">You</p>
+                  <p className="text-xs text-gray-400">#1234</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white">
+                  <Mic className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white">
+                  <Headphones className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-gray-400 hover:text-white"
+                  onClick={() => setIsSettingsDialogOpen(true)}
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
         
-        <div className="flex-1 flex flex-col">
-          <div className="flex justify-between items-center px-4 py-2 border-b">
-            <div className="flex items-center">
-              <Hash className="h-5 w-5 mr-2 text-muted-foreground" />
-              <h2 className="font-semibold">{
-                activeSubChannel ? 
-                `${channel.name} / ${subChannels.find(sc => sc.id === activeSubChannel)?.name || activeSubChannel}` : 
-                channel.name
-              }</h2>
-              {channel.isPrivate && (
-                <Badge variant="outline" className="ml-2">Private</Badge>
-              )}
+        {/* Main Chat Area */}
+        <div className="flex-1 flex flex-col bg-white dark:bg-gray-800">
+          {/* Channel Header */}
+          <div className="flex justify-between items-center px-4 py-3 border-b bg-white dark:bg-gray-800 shadow-sm">
+            <div className="flex items-center gap-2">
+              <Hash className="h-5 w-5 text-gray-500" />
+              <h2 className="font-semibold text-gray-900 dark:text-white">
+                {subChannels.find(sc => sc.id === activeSubChannel)?.name || activeSubChannel}
+              </h2>
+              <div className="h-4 w-px bg-gray-300 mx-2"></div>
+              <p className="text-sm text-gray-500">
+                {filteredMessages.length === 0 ? 'No messages yet' : `${filteredMessages.length} messages`}
+              </p>
             </div>
             
             <div className="flex items-center space-x-2">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => setIsNotificationsDialogOpen(true)}
-              >
+              <Button variant="ghost" size="icon">
                 <Bell className="h-5 w-5" />
               </Button>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => setIsInviteDialogOpen(true)}
-              >
+              <Button variant="ghost" size="icon">
                 <UserPlus className="h-5 w-5" />
               </Button>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => setActiveTab("voice")}
-              >
-                <Video className="h-5 w-5" />
+              <Button variant="ghost" size="icon">
+                <Users className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="icon">
+                <MessageSquare className="h-5 w-5" />
               </Button>
             </div>
           </div>
           
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-            <div className="px-2 border-b">
-              <TabsList className="grid w-full max-w-md grid-cols-4 h-10">
-                <TabsTrigger value="chat" className="text-xs sm:text-sm">
-                  <MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Chat</span>
-                </TabsTrigger>
-                <TabsTrigger value="voice" className="text-xs sm:text-sm">
-                  <Phone className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Voice</span>
-                </TabsTrigger>
-                <TabsTrigger value="members" className="text-xs sm:text-sm">
-                  <Users className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Members</span>
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="text-xs sm:text-sm">
-                  <Settings className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Settings</span>
-                </TabsTrigger>
-              </TabsList>
-            </div>
-            
-            <TabsContent value="chat" className="flex-1 flex flex-col px-0 py-0">
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {filteredMessages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-center">
-                    <Hash className="h-12 w-12 mb-2 text-muted-foreground" />
-                    <h3 className="text-lg font-medium">Welcome to #{
-                      subChannels.find(sc => sc.id === activeSubChannel)?.name || activeSubChannel
-                    }!</h3>
-                    <p className="text-muted-foreground max-w-sm mt-2">
-                      This is the beginning of the {
-                        subChannels.find(sc => sc.id === activeSubChannel)?.name || activeSubChannel
-                      } channel. 
-                      Start the conversation by sending a message.
-                    </p>
-                  </div>
-                ) : (
-                  filteredMessages.map((message) => (
-                    <ChatMessage key={message.id} message={message} />
-                  ))
-                )}
-              </div>
-              
-              <div className="p-3 border-t">
-                <div className="flex items-end gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="flex-shrink-0" 
-                    aria-label="Attach file"
-                  >
-                    <Paperclip className="h-5 w-5" />
-                  </Button>
-                  
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={`Message #${subChannels.find(sc => sc.id === activeSubChannel)?.name || activeSubChannel}`}
-                    className="min-h-[2.5rem] resize-none"
-                  />
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="flex-shrink-0" 
-                    aria-label="Add emoji"
-                  >
-                    <Smile className="h-5 w-5" />
-                  </Button>
-                  
-                  <Button 
-                    onClick={handleSendMessage} 
-                    disabled={newMessage.trim() === ""}
-                    size="icon"
-                    className="flex-shrink-0"
-                    aria-label="Send message"
-                  >
-                    <Send className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="voice" className="flex-1 p-4">
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {filteredMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="bg-muted p-6 rounded-full mb-4">
-                  <Phone className="h-8 w-8 text-muted-foreground" />
+                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                  <Hash className="h-8 w-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-medium">Voice Chat</h3>
-                <p className="text-muted-foreground max-w-sm mt-2">
-                  {activeSubChannel && subChannels.find(sc => sc.id === activeSubChannel)?.type === 'voice' 
-                    ? `Join the ${subChannels.find(sc => sc.id === activeSubChannel)?.name} voice channel.`
-                    : "Start a voice conversation with other channel members."
-                  }
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Welcome to #{subChannels.find(sc => sc.id === activeSubChannel)?.name || activeSubChannel}!
+                </h3>
+                <p className="text-gray-500 max-w-sm">
+                  This is the beginning of the #{subChannels.find(sc => sc.id === activeSubChannel)?.name || activeSubChannel} channel. 
+                  Start the conversation by sending a message.
                 </p>
-                <Button className="mt-4">
-                  Join Voice Channel
-                </Button>
               </div>
-            </TabsContent>
-            
-            <TabsContent value="members" className="flex-1 p-4">
-              <h3 className="font-medium mb-4">Channel Members</h3>
+            ) : (
+              filteredMessages.map((message) => (
+                <ChatMessage key={message.id} message={message} />
+              ))
+            )}
+          </div>
+          
+          {/* Message Input */}
+          <div className="p-4 border-t bg-white dark:bg-gray-800">
+            <div className="flex items-center gap-3 bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <PlusCircle className="h-5 w-5" />
+              </Button>
               
-              <div className="space-y-5">
-                <div className="space-y-1">
-                  <h4 className="text-xs text-muted-foreground font-medium ml-2">ADMINS - 1</h4>
-                  <div className="flex items-center p-2 hover:bg-muted rounded-md">
-                    <Avatar className="h-8 w-8 mr-2">
-                      <AvatarImage src="/placeholder.svg" alt="Admin" />
-                      <AvatarFallback>A</AvatarFallback>
-                    </Avatar>
-                    <div className="flex items-center">
-                      <span className="font-medium">
-                        {channel.ownerId === "user-1" ? "You" : "Admin"}
-                      </span>
-                      <Crown className="h-3.5 w-3.5 text-amber-500 ml-1.5" />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-1">
-                  <h4 className="text-xs text-muted-foreground font-medium ml-2">MODERATORS - 2</h4>
-                  <div className="flex items-center p-2 hover:bg-muted rounded-md">
-                    <Avatar className="h-8 w-8 mr-2">
-                      <AvatarImage src="/placeholder.svg" alt="Mod" />
-                      <AvatarFallback>M</AvatarFallback>
-                    </Avatar>
-                    <div className="flex items-center">
-                      <span>Moderator</span>
-                      <Shield className="h-3.5 w-3.5 text-blue-500 ml-1.5" />
-                    </div>
-                  </div>
-                  <div className="flex items-center p-2 hover:bg-muted rounded-md">
-                    <Avatar className="h-8 w-8 mr-2">
-                      <AvatarImage src="/placeholder.svg" alt="Mod" />
-                      <AvatarFallback>M2</AvatarFallback>
-                    </Avatar>
-                    <div className="flex items-center">
-                      <span>Moderator 2</span>
-                      <Shield className="h-3.5 w-3.5 text-blue-500 ml-1.5" />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-1">
-                  <h4 className="text-xs text-muted-foreground font-medium ml-2">MEMBERS - {channel.members - 3}</h4>
-                  {Array.from({ length: Math.max(0, channel.members - 3) }).map((_, i) => (
-                    <div key={i} className="flex items-center p-2 hover:bg-muted rounded-md">
-                      <Avatar className="h-8 w-8 mr-2">
-                        <AvatarImage src="/placeholder.svg" alt={`Member ${i+1}`} />
-                        <AvatarFallback>M{i+1}</AvatarFallback>
-                      </Avatar>
-                      <span>Member {i+1}</span>
+              <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={`Message #${subChannels.find(sc => sc.id === activeSubChannel)?.name || activeSubChannel}`}
+                className="flex-1 border-0 bg-transparent focus-visible:ring-0"
+              />
+              
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Paperclip className="h-5 w-5" />
+              </Button>
+              
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Smile className="h-5 w-5" />
+              </Button>
+              
+              <Button 
+                onClick={handleSendMessage} 
+                disabled={newMessage.trim() === ""}
+                size="icon"
+                className="h-8 w-8"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Members Sidebar */}
+        <div className="w-60 bg-gray-50 dark:bg-gray-900 border-l">
+          <div className="p-4">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-4">
+              Members — {channel?.members || 0}
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-2">
+                  Online — 3
+                </h4>
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <div className="relative">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src="/placeholder.svg" alt={`Member ${i+1}`} />
+                          <AvatarFallback>M{i+1}</AvatarFallback>
+                        </Avatar>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                      </div>
+                      <span className="text-sm text-gray-900 dark:text-white">Member {i+1}</span>
                     </div>
                   ))}
                 </div>
               </div>
-            </TabsContent>
-            
-            <TabsContent value="settings" className="flex-1 p-4">
-              <h3 className="font-medium mb-4">Channel Settings</h3>
               
-              <div className="space-y-4 max-w-lg">
+              <div>
+                <h4 className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-2">
+                  Offline — {Math.max(0, (channel?.members || 0) - 3)}
+                </h4>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Channel Name</label>
-                  <Input value={channel.name} readOnly={channel.ownerId !== "user-1"} />
+                  {Array.from({ length: Math.max(0, (channel?.members || 0) - 3) }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <div className="relative">
+                        <Avatar className="h-8 w-8 opacity-60">
+                          <AvatarImage src="/placeholder.svg" alt={`Member ${i+4}`} />
+                          <AvatarFallback>M{i+4}</AvatarFallback>
+                        </Avatar>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-gray-400 border-2 border-white rounded-full"></div>
+                      </div>
+                      <span className="text-sm text-gray-500">Member {i+4}</span>
+                    </div>
+                  ))}
                 </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Description</label>
-                  <Input value={channel.description} readOnly={channel.ownerId !== "user-1"} />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Visibility</label>
-                  <div className="flex items-center space-x-2 text-sm">
-                    <Badge variant={channel.isPrivate ? "outline" : "default"}>
-                      {channel.isPrivate ? "Private" : "Public"}
-                    </Badge>
-                  </div>
-                </div>
-                
-                <div className="pt-4">
-                  <h4 className="text-sm font-medium mb-2">Invite Link</h4>
-                  <div className="flex space-x-2">
-                    <Input value={`https://app.com/invite/${channel.id}`} readOnly />
-                    <Button variant="outline" onClick={handleCopyInviteLink}>Copy</Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Share this link to invite people to your channel
-                  </p>
-                </div>
-                
-                <Separator className="my-4" />
-                
-                {channel.ownerId === "user-1" && (
-                  <div className="pt-4">
-                    <Button variant="destructive">Delete Channel</Button>
-                  </div>
-                )}
               </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+          </div>
         </div>
       </div>
       
+      {/* Keep existing dialogs */}
       <Dialog open={isAddChannelDialogOpen} onOpenChange={setIsAddChannelDialogOpen}>
         <DialogContent>
           <DialogHeader>

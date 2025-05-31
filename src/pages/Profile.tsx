@@ -2,12 +2,10 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { ProfileHeader } from "@/components/profile/ProfileHeader";
-import { ProfileInfo } from "@/components/profile/ProfileInfo";
-import { ActivityTabs } from "@/components/profile/ActivityTabs";
+import { InstagramProfileHeader } from "@/components/profile/InstagramProfileHeader";
 import { BackNavigation } from "@/components/ui/back-navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { User as UserType, AuthUser } from "@/types";
+import { User as UserType } from "@/types";
 
 export default function Profile() {
   const { id } = useParams<{ id: string }>();
@@ -27,14 +25,14 @@ export default function Profile() {
           id: currentUser.id,
           name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || "User",
           age: 25,
-          location: currentUser.user_metadata?.location || "Location not set",
+          location: currentUser.user_metadata?.location || "San Francisco, CA",
           avatar: currentUser.user_metadata?.avatar_url || "/placeholder.svg",
-          bio: "Bio not set",
-          interests: [],
+          bio: "Living life to the fullest 🌟 | Coffee lover ☕ | Travel enthusiast ✈️",
+          interests: ["Photography", "Travel", "Coffee", "Technology", "Fitness"],
           email: currentUser.email || "",
           username: currentUser.user_metadata?.username || currentUser.email?.split('@')[0] || "user",
-          followers: 156,
-          following: 89,
+          followers: 256,
+          following: 189,
           isPrivate: false
         };
         setUser(profile);
@@ -46,12 +44,12 @@ export default function Profile() {
           age: 24,
           location: "New York, NY",
           avatar: "/placeholder.svg",
-          bio: "Photography enthusiast and travel lover 📸✈️",
-          interests: ["Photography", "Travel", "Art", "Coffee"],
+          bio: "Photography enthusiast and travel lover 📸✈️ | Creating memories around the world",
+          interests: ["Photography", "Travel", "Art", "Coffee", "Music"],
           email: "emma@example.com",
           username: "emmawilson",
-          followers: 324,
-          following: 156,
+          followers: 1024,
+          following: 256,
           isPrivate: false
         };
         setUser(mockUser);
@@ -62,6 +60,18 @@ export default function Profile() {
 
     loadUserProfile();
   }, [id, currentUser, isOwnProfile]);
+
+  const handleFollow = () => {
+    // Implementation for follow functionality
+    console.log("Follow user:", user?.name);
+  };
+
+  const handleMessage = () => {
+    // Navigate to chat with this user
+    if (user) {
+      window.location.href = `/chats/${user.id}`;
+    }
+  };
 
   if (isLoading) {
     return (
@@ -87,46 +97,26 @@ export default function Profile() {
     );
   }
 
-  // Create AuthUser type for ActivityTabs component
-  const authUserData: AuthUser | null = currentUser ? {
-    id: currentUser.id,
-    email: currentUser.email || "",
-    username: currentUser.user_metadata?.username || currentUser.email?.split('@')[0] || "user",
-    name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || "User",
-    avatar: currentUser.user_metadata?.avatar_url,
-    isLoggedIn: true,
-    createdAt: currentUser.created_at
-  } : null;
-
   return (
     <MainLayout>
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-white">
         {/* Header with Navigation */}
         {!isOwnProfile && (
           <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
             <div className="flex items-center justify-between p-4">
               <BackNavigation />
-              <h1 className="text-xl font-semibold">{user?.name}</h1>
+              <h1 className="text-xl font-semibold">{user?.username}</h1>
               <div className="w-10" />
             </div>
           </div>
         )}
 
-        <div className="max-w-4xl mx-auto">
-          <ProfileHeader user={user} isOwnProfile={isOwnProfile} />
-          <ProfileInfo 
-            userData={user ? { name: user.name, username: user.username } : null}
-            profileData={user}
-            isPrivate={user?.isPrivate || false}
-            getAge={() => user?.age || null}
-          />
-          <ActivityTabs 
-            posts={[]}
-            userData={authUserData}
-            avatarUrl={user?.avatar || null}
-            handleCreatePostClick={() => {}}
-          />
-        </div>
+        <InstagramProfileHeader 
+          user={user} 
+          isOwnProfile={isOwnProfile}
+          onFollow={handleFollow}
+          onMessage={handleMessage}
+        />
       </div>
       
       <div className="md:hidden h-16"></div>

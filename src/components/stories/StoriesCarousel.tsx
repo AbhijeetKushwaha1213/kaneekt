@@ -13,6 +13,7 @@ interface Story {
   userAvatar: string;
   content: string;
   image?: string;
+  video?: string;
   timestamp: Date;
   viewed: boolean;
 }
@@ -29,7 +30,8 @@ export function StoriesCarousel({ currentUserId = "current-user" }: StoriesCarou
       userName: 'Emma Wilson',
       userAvatar: '/placeholder.svg',
       content: 'Beautiful sunset today! 🌅',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+      image: '/placeholder.svg',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
       viewed: false
     },
     {
@@ -38,7 +40,7 @@ export function StoriesCarousel({ currentUserId = "current-user" }: StoriesCarou
       userName: 'Alex Chen',
       userAvatar: '/placeholder.svg',
       content: 'Coffee time ☕',
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
+      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
       viewed: true
     },
     {
@@ -47,7 +49,8 @@ export function StoriesCarousel({ currentUserId = "current-user" }: StoriesCarou
       userName: 'Sarah Johnson',
       userAvatar: '/placeholder.svg',
       content: 'New workout routine! 💪',
-      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
+      video: '/placeholder.svg',
+      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
       viewed: false
     }
   ]);
@@ -56,7 +59,7 @@ export function StoriesCarousel({ currentUserId = "current-user" }: StoriesCarou
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
-  const handleCreateStory = (content: string, image?: File) => {
+  const handleCreateStory = (content: string, image?: File, video?: File) => {
     const newStory: Story = {
       id: Date.now().toString(),
       userId: currentUserId,
@@ -64,6 +67,7 @@ export function StoriesCarousel({ currentUserId = "current-user" }: StoriesCarou
       userAvatar: '/placeholder.svg',
       content,
       image: image ? URL.createObjectURL(image) : undefined,
+      video: video ? URL.createObjectURL(video) : undefined,
       timestamp: new Date(),
       viewed: false
     };
@@ -73,7 +77,6 @@ export function StoriesCarousel({ currentUserId = "current-user" }: StoriesCarou
   };
 
   const handleStoryClick = (story: Story) => {
-    // Mark as viewed
     setStories(prev => prev.map(s => 
       s.id === story.id ? { ...s, viewed: true } : s
     ));
@@ -84,7 +87,6 @@ export function StoriesCarousel({ currentUserId = "current-user" }: StoriesCarou
 
   return (
     <div className="flex space-x-4 p-4 overflow-x-auto">
-      {/* Create Story Button */}
       <div className="flex flex-col items-center space-y-2 min-w-[70px]">
         <Button
           variant="outline"
@@ -97,7 +99,6 @@ export function StoriesCarousel({ currentUserId = "current-user" }: StoriesCarou
         <span className="text-xs text-center">Your Story</span>
       </div>
 
-      {/* Stories */}
       {stories.map((story) => (
         <div
           key={story.id}
