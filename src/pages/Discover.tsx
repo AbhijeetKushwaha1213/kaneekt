@@ -81,7 +81,7 @@ export default function Discover() {
               <TabsContent value="people" className="mt-0">
                 <div className="p-4">
                   <div className="mb-4">
-                    <SortOptions onChange={setSortBy} />
+                    <SortOptions value={sortBy} onChange={setSortBy} />
                   </div>
                   <DiscoverFeed 
                     searchQuery={searchQuery}

@@ -7,12 +7,12 @@ import { ProfileInfo } from "@/components/profile/ProfileInfo";
 import { ActivityTabs } from "@/components/profile/ActivityTabs";
 import { BackNavigation } from "@/components/ui/back-navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { User } from "@/types";
+import { User as UserType } from "@/types";
 
 export default function Profile() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser } = useAuth();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const isOwnProfile = !id || id === currentUser?.id;
@@ -23,7 +23,7 @@ export default function Profile() {
 
       if (isOwnProfile && currentUser) {
         // Load current user's profile
-        const profile: User = {
+        const profile: UserType = {
           id: currentUser.id,
           name: currentUser.name || "User",
           age: 25,
@@ -40,7 +40,7 @@ export default function Profile() {
         setUser(profile);
       } else if (id) {
         // Load other user's profile (mock data for demo)
-        const mockUser: User = {
+        const mockUser: UserType = {
           id: id,
           name: "Emma Wilson",
           age: 24,

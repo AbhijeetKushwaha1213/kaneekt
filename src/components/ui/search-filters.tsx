@@ -18,15 +18,27 @@ import { InterestBadge } from "@/components/ui/interest-badge";
 import { cn } from "@/lib/utils";
 
 interface SearchFiltersProps {
-  onSearch: (filters: any) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  selectedInterests: string[];
+  onInterestsChange: (interests: string[]) => void;
+  ageRange: [number, number];
+  onAgeRangeChange: (range: [number, number]) => void;
+  onLocationChange: () => void;
   className?: string;
 }
 
-export function SearchFilters({ onSearch, className }: SearchFiltersProps) {
-  const [query, setQuery] = useState("");
+export function SearchFilters({ 
+  searchQuery,
+  onSearchChange,
+  selectedInterests,
+  onInterestsChange,
+  ageRange,
+  onAgeRangeChange,
+  onLocationChange,
+  className 
+}: SearchFiltersProps) {
   const [distance, setDistance] = useState([25]);
-  const [ageRange, setAgeRange] = useState([18, 50]);
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
 
   const interests = [
     "Sports", "Philosophy", "Politics", "Climate", 
@@ -37,19 +49,14 @@ export function SearchFilters({ onSearch, className }: SearchFiltersProps) {
 
   const toggleInterest = (interest: string) => {
     if (selectedInterests.includes(interest)) {
-      setSelectedInterests(selectedInterests.filter((i) => i !== interest));
+      onInterestsChange(selectedInterests.filter((i) => i !== interest));
     } else {
-      setSelectedInterests([...selectedInterests, interest]);
+      onInterestsChange([...selectedInterests, interest]);
     }
   };
 
   const handleSearch = () => {
-    onSearch({
-      query,
-      distance: distance[0],
-      ageRange,
-      interests: selectedInterests,
-    });
+    // Implementation for search functionality
   };
 
   return (
@@ -59,8 +66,8 @@ export function SearchFilters({ onSearch, className }: SearchFiltersProps) {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by name or interest..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9"
           />
         </div>
@@ -108,7 +115,7 @@ export function SearchFilters({ onSearch, className }: SearchFiltersProps) {
                   min={18}
                   step={1}
                   value={ageRange}
-                  onValueChange={setAgeRange}
+                  onValueChange={onAgeRangeChange}
                 />
               </div>
 
@@ -177,7 +184,7 @@ export function SearchFilters({ onSearch, className }: SearchFiltersProps) {
               variant="ghost"
               size="sm"
               className="h-7 text-xs"
-              onClick={() => setSelectedInterests([])}
+              onClick={() => onInterestsChange([])}
             >
               Clear all
             </Button>
