@@ -23,7 +23,7 @@ interface NearbyUser {
 
 export function NearbyPeople() {
   const { user } = useAuth();
-  const { latitude, longitude, requestPermission } = useGeolocation();
+  const { latitude, longitude, getCurrentPosition } = useGeolocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
@@ -44,7 +44,7 @@ export function NearbyPeople() {
 
   const handleLocationRequest = async () => {
     try {
-      await requestPermission();
+      getCurrentPosition();
       toast({
         title: "Location enabled",
         description: "Now showing people near you!",
