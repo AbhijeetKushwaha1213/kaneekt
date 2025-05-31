@@ -7,7 +7,7 @@ import { ProfileInfo } from "@/components/profile/ProfileInfo";
 import { ActivityTabs } from "@/components/profile/ActivityTabs";
 import { BackNavigation } from "@/components/ui/back-navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { User as UserType } from "@/types";
+import { User as UserType, AuthUser } from "@/types";
 
 export default function Profile() {
   const { id } = useParams<{ id: string }>();
@@ -22,17 +22,17 @@ export default function Profile() {
       setIsLoading(true);
 
       if (isOwnProfile && currentUser) {
-        // Load current user's profile
+        // Load current user's profile - create a UserType from Supabase User
         const profile: UserType = {
           id: currentUser.id,
-          name: currentUser.name || "User",
+          name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || "User",
           age: 25,
-          location: currentUser.location || "Location not set",
-          avatar: currentUser.avatar || "/placeholder.svg",
+          location: currentUser.user_metadata?.location || "Location not set",
+          avatar: currentUser.user_metadata?.avatar_url || "/placeholder.svg",
           bio: "Bio not set",
           interests: [],
           email: currentUser.email || "",
-          username: currentUser.username || currentUser.email?.split('@')[0] || "user",
+          username: currentUser.user_metadata?.username || currentUser.email?.split('@')[0] || "user",
           followers: 156,
           following: 89,
           isPrivate: false
@@ -87,6 +87,17 @@ export default function Profile() {
     );
   }
 
+  // Create AuthUser type for ActivityTabs component
+  const authUserData: AuthUser | null = currentUser ? {
+    id: currentUser.id,
+    email: currentUser.email || "",
+    username: currentUser.user_metadata?.username || currentUser.email?.split('@')[0] || "user",
+    name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || "User",
+    avatar: currentUser.user_metadata?.avatar_url,
+    isLoggedIn: true,
+    createdAt: currentUser.created_at
+  } : null;
+
   return (
     <MainLayout>
       <div className="min-h-screen">
@@ -111,7 +122,7 @@ export default function Profile() {
           />
           <ActivityTabs 
             posts={[]}
-            userData={currentUser}
+            userData={authUserData}
             avatarUrl={user?.avatar || null}
             handleCreatePostClick={() => {}}
           />
