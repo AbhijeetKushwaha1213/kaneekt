@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Play, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface Story {
@@ -37,18 +36,39 @@ export function StoriesCarousel() {
 
   const loadStories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('stories')
-        .select(`
-          *,
-          profiles:user_id (name, avatar)
-        `)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      setStories(data || []);
+      // For now, simulate stories with mock data since the table doesn't exist
+      const mockStories: Story[] = [
+        {
+          id: '1',
+          user_id: 'user1',
+          media_url: '/placeholder.svg',
+          media_type: 'image',
+          content: 'Beautiful sunset today!',
+          view_count: 5,
+          created_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          profiles: {
+            name: 'Sarah Johnson',
+            avatar: '/placeholder.svg'
+          }
+        },
+        {
+          id: '2',
+          user_id: 'user2',
+          media_url: '/placeholder.svg',
+          media_type: 'video',
+          content: 'Check out this amazing view!',
+          view_count: 12,
+          created_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          profiles: {
+            name: 'Mike Chen',
+            avatar: '/placeholder.svg'
+          }
+        }
+      ];
+      
+      setStories(mockStories);
     } catch (error) {
       console.error('Error loading stories:', error);
       toast({
@@ -66,20 +86,10 @@ export function StoriesCarousel() {
     
     setSelectedStory(story);
     
-    // Record story view
+    // Simulate recording story view
     try {
-      await supabase
-        .from('story_views')
-        .insert({
-          story_id: story.id,
-          viewer_id: user.id
-        });
-
-      // Update view count
-      await supabase
-        .from('stories')
-        .update({ view_count: story.view_count + 1 })
-        .eq('id', story.id);
+      console.log('Recording story view for story:', story.id);
+      // In a real app, this would update the database
     } catch (error) {
       console.error('Error recording story view:', error);
     }

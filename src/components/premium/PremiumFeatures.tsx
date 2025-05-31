@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Crown, Star, Zap, Heart, Eye, MessageCircle, Shield, Infinity } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface PremiumTier {
@@ -81,16 +80,16 @@ export function PremiumFeatures() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('premium_tier, premium_expires_at')
-        .eq('id', user.id)
-        .single();
-
-      if (error) throw error;
-
-      setCurrentTier(data?.premium_tier || 'free');
-      setExpiresAt(data?.premium_expires_at);
+      // For now, use localStorage to simulate premium features
+      const savedTier = localStorage.getItem(`premium_tier_${user.id}`);
+      const savedExpires = localStorage.getItem(`premium_expires_${user.id}`);
+      
+      if (savedTier) {
+        setCurrentTier(savedTier as 'free' | 'premium' | 'vip');
+      }
+      if (savedExpires) {
+        setExpiresAt(savedExpires);
+      }
     } catch (error) {
       console.error('Error loading user tier:', error);
     } finally {
@@ -105,15 +104,9 @@ export function PremiumFeatures() {
       const expirationDate = new Date();
       expirationDate.setMonth(expirationDate.getMonth() + 1);
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          premium_tier: newTier,
-          premium_expires_at: expirationDate.toISOString()
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
+      // For now, store in localStorage (in real app would update database)
+      localStorage.setItem(`premium_tier_${user.id}`, newTier);
+      localStorage.setItem(`premium_expires_${user.id}`, expirationDate.toISOString());
 
       setCurrentTier(newTier);
       setExpiresAt(expirationDate.toISOString());

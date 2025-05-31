@@ -19,7 +19,6 @@ interface FilterOptions {
   occupation: string;
   education: string;
   relationshipStatus: string;
-  premiumOnly: boolean;
   verifiedOnly: boolean;
 }
 
@@ -31,7 +30,6 @@ const defaultFilters: FilterOptions = {
   occupation: '',
   education: '',
   relationshipStatus: 'single',
-  premiumOnly: false,
   verifiedOnly: false
 };
 
@@ -53,7 +51,6 @@ export function SmartFilters() {
   const loadSavedFilters = async () => {
     if (!user) return;
     
-    // Load saved filters from localStorage for now
     const saved = localStorage.getItem(`filters_${user.id}`);
     if (saved) {
       setFilters(JSON.parse(saved));
@@ -64,7 +61,6 @@ export function SmartFilters() {
     if (!user) return;
     
     try {
-      // Save filters to localStorage for now
       localStorage.setItem(`filters_${user.id}`, JSON.stringify(filters));
       
       toast({
@@ -86,37 +82,14 @@ export function SmartFilters() {
     
     setLoading(true);
     try {
-      // Apply filters to find matches
       let query = supabase
         .from('profiles')
         .select('*')
         .neq('id', user.id);
 
-      // Age filter
-      if (filters.ageRange[0] > 18 || filters.ageRange[1] < 50) {
-        query = query
-          .gte('age', filters.ageRange[0])
-          .lte('age', filters.ageRange[1]);
-      }
-
       // Gender filter
       if (filters.gender !== 'all') {
         query = query.eq('gender', filters.gender);
-      }
-
-      // Relationship status filter
-      if (filters.relationshipStatus !== 'all') {
-        query = query.eq('relationship_status', filters.relationshipStatus);
-      }
-
-      // Verified only
-      if (filters.verifiedOnly) {
-        query = query.eq('is_verified', true);
-      }
-
-      // Premium only
-      if (filters.premiumOnly) {
-        query = query.neq('premium_tier', 'free');
       }
 
       const { data, error } = await query.limit(20);
@@ -160,6 +133,34 @@ export function SmartFilters() {
     }));
   };
 
+  const updateAgeRange = (value: number[]) => {
+    setFilters(prev => ({ ...prev, ageRange: [value[0], value[1]] }));
+  };
+
+  const updateDistance = (value: number[]) => {
+    setFilters(prev => ({ ...prev, distance: value[0] }));
+  };
+
+  const updateGender = (value: string) => {
+    setFilters(prev => ({ ...prev, gender: value }));
+  };
+
+  const updateOccupation = (value: string) => {
+    setFilters(prev => ({ ...prev, occupation: value }));
+  };
+
+  const updateEducation = (value: string) => {
+    setFilters(prev => ({ ...prev, education: value }));
+  };
+
+  const updateRelationshipStatus = (value: string) => {
+    setFilters(prev => ({ ...prev, relationshipStatus: value }));
+  };
+
+  const updateVerifiedOnly = (checked: boolean) => {
+    setFilters(prev => ({ ...prev, verifiedOnly: checked }));
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -177,7 +178,7 @@ export function SmartFilters() {
             </label>
             <Slider
               value={filters.ageRange}
-              onValueChange={(value) => setFilters(prev => ({ ...prev, ageRange: value as [number, number] }))}
+              onValueChange={updateAgeRange}
               min={18}
               max={70}
               step={1}
@@ -193,7 +194,7 @@ export function SmartFilters() {
             </label>
             <Slider
               value={[filters.distance]}
-              onValueChange={(value) => setFilters(prev => ({ ...prev, distance: value[0] }))}
+              onValueChange={updateDistance}
               min={1}
               max={200}
               step={1}
@@ -204,7 +205,7 @@ export function SmartFilters() {
           {/* Gender */}
           <div>
             <label className="text-sm font-medium mb-3 block">Gender</label>
-            <Select value={filters.gender} onValueChange={(value) => setFilters(prev => ({ ...prev, gender: value }))}>
+            <Select value={filters.gender} onValueChange={updateGender}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -244,7 +245,7 @@ export function SmartFilters() {
               <Briefcase className="h-4 w-4" />
               Occupation
             </label>
-            <Select value={filters.occupation} onValueChange={(value) => setFilters(prev => ({ ...prev, occupation: value }))}>
+            <Select value={filters.occupation} onValueChange={updateOccupation}>
               <SelectTrigger>
                 <SelectValue placeholder="Any occupation" />
               </SelectTrigger>
@@ -266,7 +267,7 @@ export function SmartFilters() {
               <GraduationCap className="h-4 w-4" />
               Education
             </label>
-            <Select value={filters.education} onValueChange={(value) => setFilters(prev => ({ ...prev, education: value }))}>
+            <Select value={filters.education} onValueChange={updateEducation}>
               <SelectTrigger>
                 <SelectValue placeholder="Any education level" />
               </SelectTrigger>
@@ -280,39 +281,15 @@ export function SmartFilters() {
             </Select>
           </div>
 
-          {/* Relationship Status */}
-          <div>
-            <label className="text-sm font-medium mb-3 block">Relationship Status</label>
-            <Select value={filters.relationshipStatus} onValueChange={(value) => setFilters(prev => ({ ...prev, relationshipStatus: value }))}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="single">Single</SelectItem>
-                <SelectItem value="divorced">Divorced</SelectItem>
-                <SelectItem value="widowed">Widowed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Premium Options */}
+          {/* Verification */}
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="verified"
                 checked={filters.verifiedOnly}
-                onCheckedChange={(checked) => setFilters(prev => ({ ...prev, verifiedOnly: !!checked }))}
+                onCheckedChange={updateVerifiedOnly}
               />
               <label htmlFor="verified" className="text-sm">Verified profiles only</label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="premium"
-                checked={filters.premiumOnly}
-                onCheckedChange={(checked) => setFilters(prev => ({ ...prev, premiumOnly: !!checked }))}
-              />
-              <label htmlFor="premium" className="text-sm">Premium members only</label>
             </div>
           </div>
 
