@@ -1,292 +1,313 @@
 
-import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { MainLayout } from "@/components/layout/MainLayout";
-import { PageHeader } from "@/components/ui/page-header";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ChatInput } from "@/components/ui/chat-input";
-import { ChatMessage } from "@/components/ui/chat-message";
-import { useChannelManagement } from "@/hooks/useChannelManagement";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { CHANNELS } from "@/data/mock-data";
-import { Channel } from "@/types";
-import { 
-  Users, 
-  Hash, 
-  Bell, 
-  Settings, 
-  UserPlus, 
-  Volume2,
-  VolumeX,
-  Heart,
-  MessageSquare,
-  Share2
-} from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { BackNavigation } from '@/components/ui/back-navigation';
+import { ChatInput } from '@/components/ui/chat-input';
+import { Hash, Users, Settings, Mic, MicOff, Video, VideoOff, Phone, PhoneOff, Volume2, VolumeX } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+
+interface Channel {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  members: number;
+  isJoined: boolean;
+  isPrivate: boolean;
+  messages: Message[];
+}
+
+interface Message {
+  id: string;
+  content: string;
+  sender: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
+  timestamp: Date;
+}
 
 export default function EnhancedChannel() {
-  const { id } = useParams<{ id: string }>();
+  const { channelId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { joinChannel, leaveChannel, isChannelJoined } = useChannelManagement();
   
   const [channel, setChannel] = useState<Channel | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [isVoiceConnected, setIsVoiceConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [hasJoined, setHasJoined] = useState(false);
+  const [isDeafened, setIsDeafened] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    loadChannel();
+  }, [channelId]);
 
-    const loadChannel = async () => {
-      setIsLoading(true);
-      
-      try {
-        // Load from mock data first
-        const mockChannel = CHANNELS.find(c => c.id === id);
-        
-        // Load from user created channels
-        const userChannelsString = localStorage.getItem("userChannels");
-        const userChannels = userChannelsString ? JSON.parse(userChannelsString) : [];
-        const userChannel = userChannels.find((c: Channel) => c.id === id);
-        
-        const foundChannel = mockChannel || userChannel;
-        
-        if (foundChannel) {
-          setChannel(foundChannel);
-          setHasJoined(isChannelJoined(id));
-          
-          // Load messages for this channel
-          const storedMessages = JSON.parse(localStorage.getItem(`channel_messages_${id}`) || "[]");
-          setMessages(storedMessages);
-        } else {
-          toast({
-            title: "Channel not found",
-            description: "The channel you're looking for doesn't exist.",
-            variant: "destructive"
-          });
+  const loadChannel = () => {
+    // Mock channel data
+    const mockChannel: Channel = {
+      id: channelId || '1',
+      name: 'General Discussion',
+      description: 'Welcome to the general discussion channel! Feel free to chat about anything.',
+      category: 'General',
+      members: 42,
+      isJoined: true,
+      isPrivate: false,
+      messages: [
+        {
+          id: '1',
+          content: 'Welcome to the channel! 👋',
+          sender: {
+            id: 'mod1',
+            name: 'Channel Moderator',
+            avatar: '/placeholder.svg'
+          },
+          timestamp: new Date(Date.now() - 60000)
+        },
+        {
+          id: '2',
+          content: 'Thanks! Excited to be here!',
+          sender: {
+            id: 'user1',
+            name: 'Sarah Chen',
+            avatar: '/placeholder.svg'
+          },
+          timestamp: new Date(Date.now() - 30000)
         }
-      } catch (error) {
-        console.error("Error loading channel:", error);
-        toast({
-          title: "Error loading channel",
-          description: "Please try again later.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
+      ]
     };
 
-    loadChannel();
-  }, [id, isChannelJoined, toast]);
-
-  const handleJoinChannel = async () => {
-    if (!channel) return;
-    
-    try {
-      joinChannel(channel.id);
-      setHasJoined(true);
-      toast({
-        title: "Joined channel",
-        description: `Welcome to ${channel.name}!`,
-      });
-    } catch (error) {
-      toast({
-        title: "Failed to join",
-        description: "Please try again later",
-        variant: "destructive"
-      });
-    }
+    setChannel(mockChannel);
+    setLoading(false);
   };
 
-  const handleLeaveChannel = async () => {
-    if (!channel) return;
-    
-    try {
-      leaveChannel(channel.id);
-      setHasJoined(false);
-      toast({
-        title: "Left channel",
-        description: `You've left ${channel.name}`,
-      });
-    } catch (error) {
-      toast({
-        title: "Failed to leave",
-        description: "Please try again later",
-        variant: "destructive"
-      });
-    }
+  const handleJoinVoice = () => {
+    setIsVoiceConnected(!isVoiceConnected);
+    toast({
+      title: isVoiceConnected ? 'Left voice channel' : 'Joined voice channel',
+      description: isVoiceConnected ? 'You left the voice channel' : 'You joined the voice channel',
+    });
   };
 
-  const handleMessageSent = () => {
-    // Reload messages after sending
-    const storedMessages = JSON.parse(localStorage.getItem(`channel_messages_${id}`) || "[]");
-    setMessages(storedMessages);
+  const handleMute = () => {
+    setIsMuted(!isMuted);
+    toast({
+      title: isMuted ? 'Unmuted' : 'Muted',
+      description: isMuted ? 'Your microphone is now on' : 'Your microphone is now muted',
+    });
   };
 
-  if (isLoading) {
+  const handleDeafen = () => {
+    setIsDeafened(!isDeafened);
+    toast({
+      title: isDeafened ? 'Undeafened' : 'Deafened',
+      description: isDeafened ? 'You can now hear others' : 'You cannot hear others',
+    });
+  };
+
+  if (loading) {
     return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading channel...</p>
+      <div className="min-h-screen bg-gray-900 text-white">
+        <div className="flex">
+          <div className="w-64 bg-gray-800 p-4">
+            <div className="animate-pulse space-y-4">
+              <div className="h-6 bg-gray-700 rounded"></div>
+              <div className="h-4 bg-gray-700 rounded"></div>
+            </div>
+          </div>
+          <div className="flex-1 p-4">
+            <div className="animate-pulse space-y-4">
+              <div className="h-8 bg-gray-700 rounded"></div>
+              <div className="h-64 bg-gray-700 rounded"></div>
+            </div>
           </div>
         </div>
-      </MainLayout>
+      </div>
     );
   }
 
   if (!channel) {
     return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)]">
-          <div className="text-center">
-            <Hash className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Channel not found</h2>
-            <p className="text-muted-foreground">The channel you're looking for doesn't exist.</p>
-          </div>
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-4">Channel not found</h2>
+          <Button onClick={() => navigate('/channels')} variant="outline">
+            Back to Channels
+          </Button>
         </div>
-      </MainLayout>
+      </div>
     );
   }
 
-  const getPrivacyBadge = () => {
-    if (channel.inviteOnly) {
-      return <Badge variant="outline" className="bg-amber-100 text-amber-800">Invite Only</Badge>;
-    }
-    if (channel.isPrivate) {
-      return <Badge variant="outline" className="bg-blue-100 text-blue-800">Private</Badge>;
-    }
-    return <Badge variant="outline" className="bg-green-100 text-green-800">Public</Badge>;
-  };
-
   return (
-    <MainLayout>
-      <div className="h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)] flex flex-col">
-        {/* Enhanced page header */}
-        <PageHeader
-          title={`# ${channel.name}`}
-          subtitle={channel.description}
-          showBack={true}
-          fallbackRoute="/channels"
-          actions={
+    <div className="min-h-screen bg-gray-900 text-white">
+      <div className="flex h-screen">
+        {/* Left Sidebar - Discord Style */}
+        <div className="w-64 bg-gray-800 flex flex-col">
+          {/* Channel Header */}
+          <div className="p-4 border-b border-gray-700">
+            <div className="flex items-center gap-2 mb-2">
+              <BackNavigation 
+                fallbackRoute="/channels" 
+                className="text-gray-400 hover:text-white"
+                variant="ghost"
+              />
+            </div>
             <div className="flex items-center gap-2">
-              {getPrivacyBadge()}
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Users className="h-4 w-4 mr-1" />
-                {channel.members}
-              </div>
-              <Button variant="ghost" size="icon">
-                <Bell className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => setIsMuted(!isMuted)}
-              >
-                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-              </Button>
-              <Button variant="ghost" size="icon">
-                <Settings className="h-4 w-4" />
-              </Button>
+              <Hash className="h-4 w-4 text-gray-400" />
+              <span className="font-semibold">{channel.name}</span>
             </div>
-          }
-        />
-
-        {!hasJoined ? (
-          // Join channel prompt
-          <div className="flex-1 flex items-center justify-center p-8">
-            <div className="text-center max-w-md">
-              <Hash className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
-              <h2 className="text-2xl font-bold mb-2">Welcome to #{channel.name}</h2>
-              <p className="text-muted-foreground mb-6">{channel.description}</p>
-              <div className="flex items-center justify-center gap-4 mb-6">
-                {getPrivacyBadge()}
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Users className="h-4 w-4 mr-1" />
-                  {channel.members} members
-                </div>
-              </div>
-              <Button onClick={handleJoinChannel} className="w-full">
-                <UserPlus className="h-4 w-4 mr-2" />
-                Join Channel
-              </Button>
-            </div>
+            <p className="text-xs text-gray-400 mt-1">{channel.description}</p>
           </div>
-        ) : (
-          // Channel content
-          <div className="flex-1 flex flex-col">
-            {/* Channel toolbar */}
-            <div className="border-b p-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={handleLeaveChannel}>
-                  Leave Channel
-                </Button>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm">
-                  <Heart className="h-4 w-4 mr-1" />
-                  {Math.floor(Math.random() * 50) + 10}
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <MessageSquare className="h-4 w-4 mr-1" />
-                  {messages.length}
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
 
-            {/* Messages area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.length > 0 ? (
-                messages.map((message, index) => (
-                  <ChatMessage 
-                    key={message.id || index}
-                    message={{
-                      id: message.id || `msg-${index}`,
-                      content: message.content,
-                      timestamp: new Date(message.created_at || Date.now()),
-                      sender: {
-                        id: message.sender_id || "user",
-                        name: message.sender_id === user?.id ? "You" : "User",
-                        avatar: "/placeholder.svg"
-                      },
-                      isCurrentUser: message.sender_id === user?.id
-                    }}
-                  />
-                ))
-              ) : (
-                <div className="text-center py-10">
-                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No messages yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Be the first to start the conversation!
-                  </p>
+          {/* Voice Channel Section */}
+          <div className="p-4 border-b border-gray-700">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-gray-400 uppercase">Voice Channel</span>
+              <Badge variant="secondary" className="text-xs">
+                {channel.members} members
+              </Badge>
+            </div>
+            
+            <div className="bg-gray-700 rounded p-2 mb-2">
+              <div className="flex items-center gap-2 text-sm">
+                <Volume2 className="h-4 w-4" />
+                <span>General Voice</span>
+              </div>
+              {isVoiceConnected && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center gap-2 text-xs text-green-400">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span>You</span>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Message input */}
-            <div className="border-t p-4">
-              <ChatInput 
-                conversationId={`channel_${id}`}
-                userId={user?.id || "anonymous"}
-                onMessageSent={handleMessageSent}
-              />
+            <Button
+              onClick={handleJoinVoice}
+              variant={isVoiceConnected ? "destructive" : "secondary"}
+              size="sm"
+              className="w-full mb-2"
+            >
+              {isVoiceConnected ? 'Leave Voice' : 'Join Voice'}
+            </Button>
+
+            {/* Voice Controls */}
+            {isVoiceConnected && (
+              <div className="flex gap-1">
+                <Button
+                  onClick={handleMute}
+                  variant={isMuted ? "destructive" : "secondary"}
+                  size="icon"
+                  className="h-8 w-8"
+                >
+                  {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
+                <Button
+                  onClick={handleDeafen}
+                  variant={isDeafened ? "destructive" : "secondary"}
+                  size="icon"
+                  className="h-8 w-8"
+                >
+                  {isDeafened ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Online Members */}
+          <div className="p-4 flex-1">
+            <div className="text-xs font-semibold text-gray-400 uppercase mb-2">
+              Online - {Math.floor(channel.members * 0.7)}
+            </div>
+            <div className="space-y-2">
+              {['Sarah Chen', 'Marcus Johnson', 'Elena Rodriguez'].map((name, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm hover:bg-gray-700 rounded p-1 cursor-pointer">
+                  <div className="relative">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src="/placeholder.svg" />
+                      <AvatarFallback className="text-xs">{name[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-gray-800 rounded-full"></div>
+                  </div>
+                  <span>{name}</span>
+                </div>
+              ))}
             </div>
           </div>
-        )}
+        </div>
+
+        {/* Main Chat Area */}
+        <div className="flex-1 flex flex-col">
+          {/* Chat Header */}
+          <div className="p-4 border-b border-gray-700 bg-gray-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Hash className="h-5 w-5 text-gray-400" />
+                <h1 className="font-semibold">{channel.name}</h1>
+                <Badge variant="secondary">{channel.category}</Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon">
+                  <Phone className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon">
+                  <Video className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon">
+                  <Users className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {channel.messages.map((message) => (
+              <div key={message.id} className="flex gap-3 hover:bg-gray-800/50 p-2 rounded">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={message.sender.avatar} />
+                  <AvatarFallback>{message.sender.name[0]}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium text-sm">{message.sender.name}</span>
+                    <span className="text-xs text-gray-400">
+                      {message.timestamp.toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <p className="text-sm">{message.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Chat Input */}
+          <div className="p-4 bg-gray-800">
+            <ChatInput
+              conversationId={channelId || ''}
+              userId={user?.id || ''}
+              onMessageSent={() => {
+                // Refresh messages
+                toast({
+                  title: 'Message sent',
+                  description: 'Your message has been sent to the channel',
+                });
+              }}
+            />
+          </div>
+        </div>
       </div>
-      
-      {/* Add padding at the bottom to account for mobile navigation */}
-      <div className="md:hidden h-16"></div>
-    </MainLayout>
+    </div>
   );
 }

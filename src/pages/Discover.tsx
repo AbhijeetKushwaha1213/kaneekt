@@ -7,22 +7,25 @@ import { NearbyPeople } from '@/components/discover/NearbyPeople';
 import { NearbyUsersMap } from '@/components/discover/NearbyUsersMap';
 import { SmartFilters } from '@/components/matching/SmartFilters';
 import { StoriesCarousel } from '@/components/stories/StoriesCarousel';
-import { MatchNotification } from '@/components/matches/MatchNotification';
 import { CreateStoryDialog } from '@/components/stories/CreateStoryDialog';
+import { BackNavigation } from '@/components/ui/back-navigation';
 
 export default function Discover() {
   const [showFilters, setShowFilters] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-6 max-w-6xl">
-        {/* Header */}
+        {/* Header with Back Navigation */}
         <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-              Discover
-            </h1>
-            <p className="text-muted-foreground">Find your perfect match nearby</p>
+          <div className="flex items-center gap-4">
+            <BackNavigation fallbackRoute="/" />
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Discover
+              </h1>
+              <p className="text-muted-foreground">Connect with people nearby</p>
+            </div>
           </div>
           
           <div className="flex gap-2">
@@ -83,9 +86,6 @@ export default function Discover() {
           </div>
         </div>
       </div>
-      
-      {/* Match Notification Component */}
-      <MatchNotification />
     </div>
   );
 }

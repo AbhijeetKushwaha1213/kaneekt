@@ -2,8 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Smile, Phone, Video } from 'lucide-react';
-import { MessageAttachmentUploader, AttachmentType } from '@/components/ui/message-attachment-uploader';
+import { Send, Smile, Phone, Video, Paperclip, Mic, MicOff, Image as ImageIcon, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -16,34 +15,68 @@ interface ChatInputProps {
 export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [attachment, setAttachment] = useState<{
-    file: File;
-    type: AttachmentType;
-    preview?: string;
-  } | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
-  const handleAttachmentSelect = (file: File, type: AttachmentType) => {
-    let preview: string | undefined;
-    
-    if (type === 'image' || type === 'video') {
-      preview = URL.createObjectURL(file);
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setAttachment(file);
+      toast({
+        title: 'File attached',
+        description: `${file.name} is ready to send`,
+      });
     }
-    
-    setAttachment({ file, type, preview });
-    
-    toast({
-      title: 'File attached',
-      description: `${file.name} is ready to send`,
-    });
   };
 
-  const handleAttachmentRemove = () => {
-    if (attachment?.preview) {
-      URL.revokeObjectURL(attachment.preview);
+  const handleAttachmentClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleVoiceRecord = async () => {
+    if (!isRecording) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        
+        const audioChunks: Blob[] = [];
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          const audioFile = new File([audioBlob], 'voice-message.wav', { type: 'audio/wav' });
+          setAttachment(audioFile);
+          stream.getTracks().forEach(track => track.stop());
+          toast({
+            title: 'Voice message recorded',
+            description: 'Your voice message is ready to send',
+          });
+        };
+        
+        mediaRecorder.start();
+        setIsRecording(true);
+        toast({
+          title: 'Recording started',
+          description: 'Speak your message...',
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Could not access microphone',
+          variant: 'destructive'
+        });
+      }
+    } else {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
     }
-    setAttachment(null);
   };
 
   const handleVoiceCall = () => {
@@ -61,10 +94,11 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
   };
 
   const handleEmojiClick = () => {
-    toast({
-      title: 'Emojis',
-      description: 'Emoji picker coming soon!',
-    });
+    // Simple emoji insertion
+    const emojis = ['😀', '😂', '❤️', '👍', '🎉', '🔥', '💯', '✨'];
+    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+    setMessage(prev => prev + randomEmoji);
+    inputRef.current?.focus();
   };
 
   const sendMessage = async () => {
@@ -73,22 +107,32 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
 
     setIsLoading(true);
     try {
+      let messageContent = content;
       let attachmentData = null;
       
       if (attachment) {
-        // For now, just store attachment info (file upload coming soon)
         attachmentData = {
-          name: attachment.file.name,
+          name: attachment.name,
           type: attachment.type,
-          size: attachment.file.size
+          size: attachment.size
         };
+        
+        if (attachment.type.startsWith('audio/')) {
+          messageContent = content || '🎤 Voice message';
+        } else if (attachment.type.startsWith('image/')) {
+          messageContent = content || '📷 Image';
+        } else if (attachment.type.startsWith('video/')) {
+          messageContent = content || '🎥 Video';
+        } else {
+          messageContent = content || `📎 ${attachment.name}`;
+        }
       }
 
       const newMessage = {
         id: `msg-${Date.now()}`,
         conversation_id: conversationId,
         sender_id: userId,
-        content: content || `Sent a ${attachment?.type || 'file'}`,
+        content: messageContent,
         created_at: new Date().toISOString(),
         attachment: attachmentData,
         is_read: false
@@ -117,7 +161,7 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
       }
 
       setMessage('');
-      handleAttachmentRemove();
+      setAttachment(null);
       onMessageSent?.();
 
       toast({
@@ -168,13 +212,36 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
         </Button>
       </div>
 
+      {/* Attachment preview */}
+      {attachment && (
+        <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+          <div className="flex items-center gap-2 flex-1">
+            {attachment.type.startsWith('image/') && <ImageIcon className="h-4 w-4" />}
+            {attachment.type.startsWith('audio/') && <Mic className="h-4 w-4" />}
+            {attachment.type.startsWith('video/') && <Video className="h-4 w-4" />}
+            {!attachment.type.startsWith('image/') && !attachment.type.startsWith('audio/') && !attachment.type.startsWith('video/') && <FileText className="h-4 w-4" />}
+            <span className="text-sm truncate">{attachment.name}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setAttachment(null)}
+          >
+            Remove
+          </Button>
+        </div>
+      )}
+
       {/* Message input */}
       <div className="flex items-end gap-2">
-        <MessageAttachmentUploader
-          onAttachmentSelect={handleAttachmentSelect}
-          onAttachmentRemove={handleAttachmentRemove}
-          currentAttachment={attachment}
-        />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleAttachmentClick}
+          disabled={isLoading}
+        >
+          <Paperclip className="h-5 w-5" />
+        </Button>
         
         <div className="flex-1">
           <Input
@@ -196,6 +263,16 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
         >
           <Smile className="h-5 w-5" />
         </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleVoiceRecord}
+          disabled={isLoading}
+          className={isRecording ? 'bg-red-500 text-white' : ''}
+        >
+          {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+        </Button>
         
         <Button
           onClick={sendMessage}
@@ -205,6 +282,15 @@ export function ChatInput({ conversationId, userId, onMessageSent }: ChatInputPr
           <Send className="h-5 w-5" />
         </Button>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        onChange={handleFileSelect}
+        className="hidden"
+        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+      />
     </div>
   );
 }

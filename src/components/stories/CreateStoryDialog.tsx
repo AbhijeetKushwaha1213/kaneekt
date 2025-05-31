@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Camera, Video, Image as ImageIcon } from 'lucide-react';
+import { Camera, Video, Image as ImageIcon, Upload } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,9 +19,29 @@ export function CreateStoryDialog({ trigger, onStoryCreated }: CreateStoryDialog
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
   const [isCreating, setIsCreating] = useState(false);
   const [open, setOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      if (file.type.startsWith('video/')) {
+        setMediaType('video');
+      } else {
+        setMediaType('image');
+      }
+    }
+  };
 
   const createStory = async () => {
-    if (!user || !content.trim()) return;
+    if (!user || (!content.trim() && !selectedFile)) {
+      toast({
+        title: 'Error',
+        description: 'Please add content or select a file for your story',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     setIsCreating(true);
     try {
@@ -34,7 +54,7 @@ export function CreateStoryDialog({ trigger, onStoryCreated }: CreateStoryDialog
         user_id: user.id,
         content: content.trim(),
         media_type: mediaType,
-        media_url: '/placeholder.svg',
+        media_url: selectedFile ? URL.createObjectURL(selectedFile) : '/placeholder.svg',
         view_count: 0,
         created_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -49,11 +69,12 @@ export function CreateStoryDialog({ trigger, onStoryCreated }: CreateStoryDialog
       localStorage.setItem('user_stories', JSON.stringify(updatedStories));
 
       toast({
-        title: 'Story created!',
+        title: 'Story created! ✨',
         description: 'Your story has been shared successfully.',
       });
 
       setContent('');
+      setSelectedFile(null);
       setOpen(false);
       onStoryCreated?.();
     } catch (error) {
@@ -98,11 +119,35 @@ export function CreateStoryDialog({ trigger, onStoryCreated }: CreateStoryDialog
             </Button>
           </div>
 
-          <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-            <div className="text-center text-gray-500">
-              <Camera className="h-12 w-12 mx-auto mb-2" />
-              <p>Media upload coming soon</p>
-            </div>
+          <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center relative overflow-hidden">
+            {selectedFile ? (
+              <div className="w-full h-full flex items-center justify-center">
+                {mediaType === 'video' ? (
+                  <video 
+                    src={URL.createObjectURL(selectedFile)} 
+                    className="max-w-full max-h-full"
+                    controls
+                  />
+                ) : (
+                  <img 
+                    src={URL.createObjectURL(selectedFile)} 
+                    alt="Selected" 
+                    className="max-w-full max-h-full object-cover"
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="text-center text-gray-500">
+                <Camera className="h-12 w-12 mx-auto mb-2" />
+                <p>Select a file to upload</p>
+              </div>
+            )}
+            <input
+              type="file"
+              accept={mediaType === 'video' ? 'video/*' : 'image/*'}
+              onChange={handleFileSelect}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+            />
           </div>
 
           <Textarea
@@ -122,7 +167,7 @@ export function CreateStoryDialog({ trigger, onStoryCreated }: CreateStoryDialog
             </Button>
             <Button
               onClick={createStory}
-              disabled={!content.trim() || isCreating}
+              disabled={(!content.trim() && !selectedFile) || isCreating}
               className="flex-1"
             >
               {isCreating ? 'Creating...' : 'Share Story'}

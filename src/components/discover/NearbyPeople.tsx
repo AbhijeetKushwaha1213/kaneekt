@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { UserPlus, MessageSquare, MapPin } from 'lucide-react';
+import { UserPlus, MessageSquare, MapPin, Heart } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -23,11 +23,11 @@ interface NearbyUser {
 
 export function NearbyPeople() {
   const { user } = useAuth();
-  const { latitude, longitude, getCurrentPosition } = useGeolocation();
+  const { latitude, longitude, getCurrentPosition, loading, error } = useGeolocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [friends, setFriends] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -44,13 +44,14 @@ export function NearbyPeople() {
 
   const handleLocationRequest = async () => {
     try {
-      getCurrentPosition();
+      await getCurrentPosition();
       toast({
         title: "Location enabled",
         description: "Now showing people near you!",
       });
       loadMockUsers();
     } catch (error) {
+      console.error('Location error:', error);
       toast({
         title: "Location access denied",
         description: "Please enable location to see nearby people",
@@ -66,7 +67,7 @@ export function NearbyPeople() {
         name: 'Sarah Chen',
         username: 'sarahc',
         avatar: '/placeholder.svg',
-        interests: ['Technology', 'Photography'],
+        interests: ['Photography', 'Travel'],
         distance: latitude && longitude ? 2.3 : undefined,
         isFriend: false
       },
@@ -100,7 +101,7 @@ export function NearbyPeople() {
     ];
 
     setNearbyUsers(mockUsers);
-    setLoading(false);
+    setLoadingUsers(false);
   };
 
   const handleProfileClick = (userId: string) => {
@@ -127,13 +128,12 @@ export function NearbyPeople() {
     setFriends(newFriends);
     localStorage.setItem('user_friends', JSON.stringify(Array.from(newFriends)));
     
-    // Update the local state
     setNearbyUsers(prev => prev.map(u => 
       u.id === userId ? { ...u, isFriend: !u.isFriend } : u
     ));
   };
 
-  if (loading) {
+  if (loadingUsers) {
     return (
       <div className="mb-6">
         <h2 className="text-lg font-medium mb-3 flex items-center">
@@ -158,9 +158,15 @@ export function NearbyPeople() {
           <p className="text-muted-foreground mb-4">
             Allow location access to discover people nearby
           </p>
-          <Button onClick={handleLocationRequest}>
-            Enable Location
+          <Button 
+            onClick={handleLocationRequest}
+            disabled={loading}
+          >
+            {loading ? 'Requesting...' : 'Enable Location'}
           </Button>
+          {error && (
+            <p className="text-red-500 text-sm mt-2">{error}</p>
+          )}
         </Card>
       </div>
     );
@@ -231,7 +237,7 @@ export function NearbyPeople() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 rounded-full hover:bg-slate-100 hover:text-indigo-600"
-                        onClick={() => handleProfileClick(nearbyUser.id)}
+                        onClick={() => navigate(`/chats/${nearbyUser.id}`)}
                       >
                         <MessageSquare className="h-4 w-4" />
                         <span className="sr-only">Message</span>

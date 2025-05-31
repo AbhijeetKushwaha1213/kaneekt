@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BackNavigation } from '@/components/ui/back-navigation';
-import { UserPlus, MessageSquare, MoreHorizontal, MapPin, Calendar, Users } from 'lucide-react';
+import { UserPlus, MessageSquare, MoreHorizontal, MapPin, Calendar, Users, Grid, Image, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface UserProfile {
@@ -37,22 +37,67 @@ export function ProfileView() {
   }, [userId]);
 
   const loadProfile = () => {
-    // Mock profile data
-    const mockProfile: UserProfile = {
-      id: userId || 'mock-1',
-      name: 'Sarah Chen',
-      username: 'sarahc',
-      avatar: '/placeholder.svg',
-      bio: 'Photography enthusiast 📸 | Travel lover ✈️ | Coffee addict ☕',
-      location: 'San Francisco, CA',
-      followers: 1247,
-      following: 892,
-      posts: 156,
-      interests: ['Photography', 'Travel', 'Coffee', 'Technology', 'Art'],
-      joinDate: 'March 2023',
-      isFriend: false
+    // Mock profile data based on userId
+    const mockProfiles: { [key: string]: UserProfile } = {
+      'mock-1': {
+        id: 'mock-1',
+        name: 'Sarah Chen',
+        username: 'sarahc',
+        avatar: '/placeholder.svg',
+        bio: 'Photography enthusiast 📸 | Travel lover ✈️ | Coffee addict ☕ | Love exploring new places and meeting new people!',
+        location: 'San Francisco, CA',
+        followers: 1247,
+        following: 892,
+        posts: 156,
+        interests: ['Photography', 'Travel', 'Coffee', 'Technology', 'Art', 'Music'],
+        joinDate: 'March 2023',
+        isFriend: false
+      },
+      'mock-2': {
+        id: 'mock-2',
+        name: 'Marcus Johnson',
+        username: 'marcusj',
+        avatar: '/placeholder.svg',
+        bio: 'Music producer 🎵 | Digital artist 🎨 | Always creating something new',
+        location: 'Los Angeles, CA',
+        followers: 892,
+        following: 567,
+        posts: 89,
+        interests: ['Music', 'Art', 'Technology', 'Design'],
+        joinDate: 'January 2023',
+        isFriend: false
+      },
+      'mock-3': {
+        id: 'mock-3',
+        name: 'Elena Rodriguez',
+        username: 'elenar',
+        avatar: '/placeholder.svg',
+        bio: 'Food blogger 🍜 | World traveler 🌍 | Sharing amazing flavors from around the globe',
+        location: 'Miami, FL',
+        followers: 2134,
+        following: 1045,
+        posts: 234,
+        interests: ['Travel', 'Food', 'Culture', 'Photography'],
+        joinDate: 'May 2022',
+        isFriend: false
+      },
+      'mock-4': {
+        id: 'mock-4',
+        name: 'David Kim',
+        username: 'davidk',
+        avatar: '/placeholder.svg',
+        bio: 'Gamer 🎮 | Tech enthusiast 💻 | Sports fan ⚽',
+        location: 'Seattle, WA',
+        followers: 567,
+        following: 432,
+        posts: 98,
+        interests: ['Sports', 'Gaming', 'Technology', 'Fitness'],
+        joinDate: 'August 2023',
+        isFriend: false
+      }
     };
-    
+
+    const mockProfile = mockProfiles[userId || 'mock-1'] || mockProfiles['mock-1'];
     setProfile(mockProfile);
     setLoading(false);
   };
@@ -107,7 +152,7 @@ export function ProfileView() {
           <p className="text-muted-foreground mb-2">@{profile.username}</p>
           
           {profile.bio && (
-            <p className="text-sm mb-4 max-w-md mx-auto">{profile.bio}</p>
+            <p className="text-sm mb-4 max-w-md mx-auto leading-relaxed">{profile.bio}</p>
           )}
           
           <div className="flex items-center justify-center gap-4 mb-4 text-sm text-muted-foreground">
@@ -124,7 +169,7 @@ export function ProfileView() {
           </div>
 
           {/* Stats */}
-          <div className="flex justify-center gap-6 mb-6">
+          <div className="flex justify-center gap-8 mb-6">
             <div className="text-center">
               <div className="text-xl font-bold">{profile.posts}</div>
               <div className="text-xs text-muted-foreground">Posts</div>
@@ -141,7 +186,11 @@ export function ProfileView() {
 
           {/* Action Buttons */}
           <div className="flex justify-center gap-3 mb-6">
-            <Button onClick={handleAddFriend} className="flex-1 max-w-32">
+            <Button 
+              onClick={handleAddFriend} 
+              className="flex-1 max-w-32"
+              variant={profile.isFriend ? "outline" : "default"}
+            >
               <UserPlus className="h-4 w-4 mr-2" />
               {profile.isFriend ? 'Friends' : 'Add Friend'}
             </Button>
@@ -159,10 +208,13 @@ export function ProfileView() {
         {profile.interests.length > 0 && (
           <Card className="mb-6">
             <CardContent className="p-4">
-              <h3 className="font-medium mb-3">Interests</h3>
+              <h3 className="font-medium mb-3 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Interests
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {profile.interests.map((interest) => (
-                  <Badge key={interest} variant="secondary">
+                  <Badge key={interest} variant="secondary" className="text-xs">
                     {interest}
                   </Badge>
                 ))}
@@ -174,18 +226,34 @@ export function ProfileView() {
         {/* Content Tabs */}
         <Tabs defaultValue="posts" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="posts">Posts</TabsTrigger>
-            <TabsTrigger value="photos">Photos</TabsTrigger>
-            <TabsTrigger value="about">About</TabsTrigger>
+            <TabsTrigger value="posts" className="flex items-center gap-2">
+              <Grid className="h-4 w-4" />
+              Posts
+            </TabsTrigger>
+            <TabsTrigger value="photos" className="flex items-center gap-2">
+              <Image className="h-4 w-4" />
+              Photos
+            </TabsTrigger>
+            <TabsTrigger value="about" className="flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              About
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="posts" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[...Array(6)].map((_, i) => (
-                <Card key={i} className="overflow-hidden">
-                  <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200"></div>
+                <Card key={i} className="overflow-hidden group hover:shadow-lg transition-shadow">
+                  <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 relative">
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
+                  </div>
                   <CardContent className="p-3">
-                    <p className="text-sm">Sample post content...</p>
+                    <p className="text-sm">Sample post content for {profile.name}...</p>
+                    <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                      <span>2 hours ago</span>
+                      <span>•</span>
+                      <span>24 likes</span>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -195,27 +263,56 @@ export function ProfileView() {
           <TabsContent value="photos" className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
               {[...Array(12)].map((_, i) => (
-                <div key={i} className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg"></div>
+                <div 
+                  key={i} 
+                  className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                ></div>
               ))}
             </div>
           </TabsContent>
           
           <TabsContent value="about" className="space-y-4">
             <Card>
-              <CardContent className="p-4 space-y-4">
+              <CardContent className="p-4 space-y-6">
                 <div>
-                  <h4 className="font-medium mb-2">About {profile.name}</h4>
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    About {profile.name}
+                  </h4>
                   <p className="text-sm text-muted-foreground">
                     {profile.bio || 'No bio available'}
                   </p>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-2">Location</h4>
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Location
+                  </h4>
                   <p className="text-sm text-muted-foreground">{profile.location}</p>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-2">Member Since</h4>
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Member Since
+                  </h4>
                   <p className="text-sm text-muted-foreground">{profile.joinDate}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-2">Activity</h4>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <div className="font-semibold text-lg">{profile.posts}</div>
+                      <div className="text-xs text-muted-foreground">Posts</div>
+                    </div>
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <div className="font-semibold text-lg">{profile.followers}</div>
+                      <div className="text-xs text-muted-foreground">Followers</div>
+                    </div>
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <div className="font-semibold text-lg">{profile.following}</div>
+                      <div className="text-xs text-muted-foreground">Following</div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

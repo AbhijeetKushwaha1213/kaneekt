@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Play, Eye } from 'lucide-react';
+import { Plus, Play, Eye, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { CreateStoryDialog } from './CreateStoryDialog';
@@ -37,21 +37,29 @@ export function StoriesCarousel() {
 
   const loadStories = async () => {
     try {
-      // Load stories from localStorage or use mock data
+      // Get stories from localStorage
       const storedStories = localStorage.getItem('user_stories');
-      let mockStories: Story[] = [];
+      let userStories: Story[] = [];
       
       if (storedStories) {
-        mockStories = JSON.parse(storedStories);
-      } else {
-        // Default mock stories
-        mockStories = [
+        const parsed = JSON.parse(storedStories);
+        // Filter out expired stories
+        const now = new Date();
+        userStories = parsed.filter((story: Story) => new Date(story.expires_at) > now);
+        
+        // Update localStorage with non-expired stories
+        localStorage.setItem('user_stories', JSON.stringify(userStories));
+      }
+      
+      // Add some mock stories if no user stories exist
+      if (userStories.length === 0) {
+        userStories = [
           {
             id: '1',
             user_id: 'user1',
             media_url: '/placeholder.svg',
             media_type: 'image',
-            content: 'Beautiful sunset today!',
+            content: 'Beautiful sunset today! 🌅',
             view_count: 5,
             created_at: new Date().toISOString(),
             expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -65,7 +73,7 @@ export function StoriesCarousel() {
             user_id: 'user2',
             media_url: '/placeholder.svg',
             media_type: 'video',
-            content: 'Check out this amazing view!',
+            content: 'Check out this amazing view! 🏔️',
             view_count: 12,
             created_at: new Date().toISOString(),
             expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -75,10 +83,9 @@ export function StoriesCarousel() {
             }
           }
         ];
-        localStorage.setItem('user_stories', JSON.stringify(mockStories));
       }
       
-      setStories(mockStories);
+      setStories(userStories);
     } catch (error) {
       console.error('Error loading stories:', error);
       toast({
@@ -102,7 +109,16 @@ export function StoriesCarousel() {
         s.id === story.id ? { ...s, view_count: s.view_count + 1 } : s
       );
       setStories(updatedStories);
-      localStorage.setItem('user_stories', JSON.stringify(updatedStories));
+      
+      // Update localStorage
+      const storedStories = localStorage.getItem('user_stories');
+      if (storedStories) {
+        const parsed = JSON.parse(storedStories);
+        const updated = parsed.map((s: Story) => 
+          s.id === story.id ? { ...s, view_count: s.view_count + 1 } : s
+        );
+        localStorage.setItem('user_stories', JSON.stringify(updated));
+      }
     } catch (error) {
       console.error('Error recording story view:', error);
     }
@@ -170,6 +186,7 @@ export function StoriesCarousel() {
         <DialogContent className="p-0 border-0 bg-black max-w-md">
           {selectedStory && (
             <div className="relative h-96 bg-black rounded-lg overflow-hidden">
+              {/* Header */}
               <div className="absolute top-4 left-4 right-4 flex items-center gap-3 z-10">
                 <Avatar className="w-8 h-8">
                   <AvatarImage src={selectedStory.profiles?.avatar} />
@@ -187,14 +204,28 @@ export function StoriesCarousel() {
                   <Eye className="h-4 w-4" />
                   <span className="text-xs">{selectedStory.view_count}</span>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white/20"
+                  onClick={() => setSelectedStory(null)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
               
+              {/* Story Content */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-white text-center p-8">
-                  <div className="w-32 h-32 bg-gray-700 rounded-lg mb-4 mx-auto"></div>
-                  <p>Story content placeholder</p>
+                  <div className="w-32 h-32 bg-gray-700 rounded-lg mb-4 mx-auto flex items-center justify-center">
+                    {selectedStory.media_type === 'video' ? (
+                      <Play className="h-8 w-8 text-white" />
+                    ) : (
+                      <div className="text-xs">Photo</div>
+                    )}
+                  </div>
                   {selectedStory.content && (
-                    <p className="mt-2 text-sm text-white/80">{selectedStory.content}</p>
+                    <p className="text-sm text-white/90">{selectedStory.content}</p>
                   )}
                 </div>
               </div>
