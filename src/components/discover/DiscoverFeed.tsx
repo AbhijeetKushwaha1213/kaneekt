@@ -116,11 +116,20 @@ const getContentTypeIcon = (post: any) => {
 };
 
 interface DiscoverFeedProps {
-  sortBy: string;
-  topics: string[];
+  searchQuery?: string;
+  selectedInterests?: string[];
+  ageRange?: [number, number];
+  sortBy?: string;
+  topics?: string[];
 }
 
-export function DiscoverFeed({ sortBy, topics }: DiscoverFeedProps) {
+export function DiscoverFeed({ 
+  searchQuery = "",
+  selectedInterests = [],
+  ageRange = [18, 50],
+  sortBy = "trending",
+  topics = []
+}: DiscoverFeedProps) {
   // Filter posts based on selected topics if any
   const filteredPosts = topics.length > 0
     ? POSTS.filter(post => post.topics?.some(topic => topics.includes(topic)))

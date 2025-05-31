@@ -25,14 +25,14 @@ export default function Profile() {
         // Load current user's profile
         const profile: User = {
           id: currentUser.id,
-          name: currentUser.user_metadata?.name || "User",
+          name: currentUser.name || "User",
           age: 25,
-          location: currentUser.user_metadata?.location || "Location not set",
-          avatar: currentUser.user_metadata?.avatar_url || "/placeholder.svg",
-          bio: currentUser.user_metadata?.bio || "Bio not set",
-          interests: currentUser.user_metadata?.interests || [],
+          location: currentUser.location || "Location not set",
+          avatar: currentUser.avatar || "/placeholder.svg",
+          bio: "Bio not set",
+          interests: [],
           email: currentUser.email || "",
-          username: currentUser.user_metadata?.username || currentUser.email?.split('@')[0] || "user",
+          username: currentUser.username || currentUser.email?.split('@')[0] || "user",
           followers: 156,
           following: 89,
           isPrivate: false
@@ -95,7 +95,7 @@ export default function Profile() {
           <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
             <div className="flex items-center justify-between p-4">
               <BackNavigation />
-              <h1 className="text-xl font-semibold">{user.name}</h1>
+              <h1 className="text-xl font-semibold">{user?.name}</h1>
               <div className="w-10" />
             </div>
           </div>
@@ -103,8 +103,18 @@ export default function Profile() {
 
         <div className="max-w-4xl mx-auto">
           <ProfileHeader user={user} isOwnProfile={isOwnProfile} />
-          <ProfileInfo user={user} isOwnProfile={isOwnProfile} />
-          <ActivityTabs user={user} isOwnProfile={isOwnProfile} />
+          <ProfileInfo 
+            userData={user ? { name: user.name, username: user.username } : null}
+            profileData={user}
+            isPrivate={user?.isPrivate || false}
+            getAge={() => user?.age || null}
+          />
+          <ActivityTabs 
+            posts={[]}
+            userData={currentUser}
+            avatarUrl={user?.avatar || null}
+            handleCreatePostClick={() => {}}
+          />
         </div>
       </div>
       

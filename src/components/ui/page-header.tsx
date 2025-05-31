@@ -28,8 +28,7 @@ export function PageHeader({
         <div className="flex items-center gap-3">
           {showBack && (
             <BackNavigation 
-              label={backLabel}
-              fallbackRoute={fallbackRoute}
+              customBackPath={fallbackRoute}
             />
           )}
           <div>

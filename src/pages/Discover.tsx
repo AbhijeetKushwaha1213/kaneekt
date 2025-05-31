@@ -5,7 +5,6 @@ import { DiscoverHero } from "@/components/discover/DiscoverHero";
 import { StoriesCarousel } from "@/components/stories/StoriesCarousel";
 import { NearbyPeople } from "@/components/discover/NearbyPeople";
 import { DiscoverFeed } from "@/components/discover/DiscoverFeed";
-import { DiscoverSidebar } from "@/components/discover/DiscoverSidebar";
 import { DiscoverTopics } from "@/components/discover/DiscoverTopics";
 import { SortOptions } from "@/components/discover/SortOptions";
 import { SearchFilters } from "@/components/ui/search-filters";
@@ -17,9 +16,12 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function Discover() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [ageRange, setAgeRange] = useState<[number, number]>([18, 50]);
   const [sortBy, setSortBy] = useState("distance");
   const { user } = useAuth();
+
+  const timeOfDay = new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening";
 
   return (
     <MainLayout>
@@ -29,7 +31,7 @@ export default function Discover() {
           <div className="flex items-center justify-between p-4">
             <BackNavigation />
             <h1 className="text-xl font-semibold">Discover</h1>
-            <div className="w-10" /> {/* Spacer for centering */}
+            <div className="w-10" />
           </div>
         </div>
 
@@ -40,22 +42,16 @@ export default function Discover() {
 
         {/* Main Content */}
         <div className="flex">
-          {/* Sidebar */}
-          <div className="hidden lg:block w-80 border-r">
-            <DiscoverSidebar 
-              onSearchChange={setSearchQuery}
-              onInterestsChange={setSelectedInterests}
-              onAgeRangeChange={setAgeRange}
-            />
-          </div>
-
           {/* Main Feed */}
           <div className="flex-1">
             {/* Mobile Filters */}
             <div className="lg:hidden border-b">
               <SearchFilters
+                searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
+                selectedInterests={selectedInterests}
                 onInterestsChange={setSelectedInterests}
+                ageRange={ageRange}
                 onAgeRangeChange={setAgeRange}
                 onLocationChange={() => {}}
               />
@@ -85,7 +81,7 @@ export default function Discover() {
               <TabsContent value="people" className="mt-0">
                 <div className="p-4">
                   <div className="mb-4">
-                    <SortOptions onSortChange={setSortBy} />
+                    <SortOptions onChange={setSortBy} />
                   </div>
                   <DiscoverFeed 
                     searchQuery={searchQuery}
@@ -107,19 +103,33 @@ export default function Discover() {
 
               <TabsContent value="topics" className="mt-0">
                 <div className="p-4">
-                  <DiscoverTopics />
+                  <DiscoverTopics 
+                    selectedTopics={selectedTopics}
+                    onTopicSelect={(topic) => {
+                      setSelectedTopics(prev => 
+                        prev.includes(topic) 
+                          ? prev.filter(t => t !== topic)
+                          : [...prev, topic]
+                      );
+                    }}
+                  />
                 </div>
               </TabsContent>
 
               <TabsContent value="feed" className="mt-0">
                 <div className="p-4">
-                  <DiscoverHero />
+                  <DiscoverHero 
+                    timeOfDay={timeOfDay}
+                    location="San Francisco, CA"
+                    onLocationClick={() => {}}
+                  />
                   <div className="mt-6">
                     <DiscoverFeed 
                       searchQuery={searchQuery}
                       selectedInterests={selectedInterests}
                       ageRange={ageRange}
                       sortBy={sortBy}
+                      topics={selectedTopics}
                     />
                   </div>
                 </div>
