@@ -78,19 +78,26 @@ export default function Discover() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="people" className="mt-0">
+
+              <TabsContent value="feed" className="mt-0">
                 <div className="p-4">
-                  <div className="mb-4">
-                    <SortOptions value={sortBy} onChange={setSortBy} />
-                  </div>
-                  <DiscoverFeed 
-                    searchQuery={searchQuery}
-                    selectedInterests={selectedInterests}
-                    ageRange={ageRange}
-                    sortBy={sortBy}
+                  <DiscoverHero 
+                    timeOfDay={timeOfDay}
+                    location="San Francisco, CA"
+                    onLocationClick={() => {}}
                   />
+                  <div className="mt-6">
+                    <DiscoverFeed 
+                      searchQuery={searchQuery}
+                      selectedInterests={selectedInterests}
+                      ageRange={ageRange}
+                      sortBy={sortBy}
+                      topics={selectedTopics}
+                    />
+                  </div>
                 </div>
               </TabsContent>
+              
 
               <TabsContent value="nearby" className="mt-0">
                 <div className="p-4">
@@ -115,23 +122,17 @@ export default function Discover() {
                   />
                 </div>
               </TabsContent>
-
-              <TabsContent value="feed" className="mt-0">
+<TabsContent value="people" className="mt-0">
                 <div className="p-4">
-                  <DiscoverHero 
-                    timeOfDay={timeOfDay}
-                    location="San Francisco, CA"
-                    onLocationClick={() => {}}
-                  />
-                  <div className="mt-6">
-                    <DiscoverFeed 
-                      searchQuery={searchQuery}
-                      selectedInterests={selectedInterests}
-                      ageRange={ageRange}
-                      sortBy={sortBy}
-                      topics={selectedTopics}
-                    />
+                  <div className="mb-4">
+                    <SortOptions value={sortBy} onChange={setSortBy} />
                   </div>
+                  <DiscoverFeed 
+                    searchQuery={searchQuery}
+                    selectedInterests={selectedInterests}
+                    ageRange={ageRange}
+                    sortBy={sortBy}
+                  />
                 </div>
               </TabsContent>
             </Tabs>
