@@ -2,12 +2,32 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Post } from '@/types/supabase';
 import { useToast } from '@/hooks/use-toast';
+
+// Define a proper Post type based on the existing database structure
+interface DatabasePost {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  likes: number;
+  comments: number;
+  is_public: boolean;
+  type: string;
+  event_date: string | null;
+  event_location: string | null;
+  profiles?: {
+    id: string;
+    name: string | null;
+    username: string | null;
+    avatar: string | null;
+  };
+}
 
 export function usePosts(userId?: string) {
   const { user } = useAuth();
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<DatabasePost[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -57,8 +77,6 @@ export function usePosts(userId?: string) {
 
   const createPost = async (postData: {
     content: string;
-    media_url?: string;
-    media_type?: 'image' | 'video';
     is_public?: boolean;
     type?: 'post' | 'event' | 'announcement';
     event_date?: string;

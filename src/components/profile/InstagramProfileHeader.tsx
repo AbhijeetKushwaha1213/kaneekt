@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { User } from "@/types";
-import { Post } from "@/types/supabase";
 import { CreatePostDialog } from "./CreatePostDialog";
 import { useToast } from "@/hooks/use-toast";
 import { usePosts } from "@/hooks/usePosts";
@@ -17,7 +16,7 @@ interface InstagramProfileHeaderProps {
   isOwnProfile: boolean;
   onFollow?: () => void;
   onMessage?: () => void;
-  posts?: Post[];
+  posts?: any[];
   isFollowing?: boolean;
 }
 
@@ -32,8 +31,6 @@ export function InstagramProfileHeader({
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [postContent, setPostContent] = useState("");
   const [isPostPublic, setIsPostPublic] = useState(true);
-  const [postImageUrl, setPostImageUrl] = useState<string | null>(null);
-  const [postImage, setPostImage] = useState<File | null>(null);
   const { createPost } = usePosts(user.id);
   const { toast } = useToast();
 
@@ -46,10 +43,10 @@ export function InstagramProfileHeader({
   };
 
   const handleCreatePost = async () => {
-    if (!postContent.trim() && !postImageUrl) {
+    if (!postContent.trim()) {
       toast({
         title: "Empty post",
-        description: "Please add some content or media to your post",
+        description: "Please add some content to your post",
         variant: "destructive"
       });
       return;
@@ -57,16 +54,12 @@ export function InstagramProfileHeader({
 
     const result = await createPost({
       content: postContent,
-      media_url: postImageUrl || undefined,
-      media_type: postImageUrl ? 'image' : undefined,
       is_public: isPostPublic
     });
 
     if (result.data) {
       // Reset form
       setPostContent("");
-      setPostImageUrl(null);
-      setPostImage(null);
       setIsCreatePostOpen(false);
     }
   };
@@ -207,18 +200,18 @@ export function InstagramProfileHeader({
               {posts.map((post) => (
                 <Card key={post.id} className="aspect-square cursor-pointer group overflow-hidden">
                   <CardContent className="p-0 relative h-full">
-                    <img
-                      src={post.media_url || '/placeholder.svg'}
-                      alt={`Post ${post.id}`}
-                      className="w-full h-full object-cover"
-                    />
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                      <span className="text-gray-500 text-sm text-center p-2">
+                        {post.content.substring(0, 50)}...
+                      </span>
+                    </div>
                     <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <div className="flex items-center text-white gap-4">
                         <div className="flex items-center">
-                          <span className="font-semibold">{post.likes}</span>
+                          <span className="font-semibold">{post.likes || 0}</span>
                         </div>
                         <div className="flex items-center">
-                          <span className="font-semibold">{post.comments}</span>
+                          <span className="font-semibold">{post.comments || 0}</span>
                         </div>
                       </div>
                     </div>
@@ -229,14 +222,14 @@ export function InstagramProfileHeader({
           ) : (
             <div className="text-center py-12">
               <Camera className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-light mb-2">Share Photos</h3>
-              <p className="text-gray-500">When you share photos, they will appear on your profile.</p>
+              <h3 className="text-xl font-light mb-2">Share Posts</h3>
+              <p className="text-gray-500">When you share posts, they will appear on your profile.</p>
               {isOwnProfile && (
                 <Button 
                   className="mt-4" 
                   onClick={() => setIsCreatePostOpen(true)}
                 >
-                  Share your first photo
+                  Share your first post
                 </Button>
               )}
             </div>
@@ -247,15 +240,15 @@ export function InstagramProfileHeader({
           <div className="text-center py-12">
             <Bookmark className="h-12 w-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-light mb-2">Save</h3>
-            <p className="text-gray-500">Save photos and videos that you want to see again.</p>
+            <p className="text-gray-500">Save posts that you want to see again.</p>
           </div>
         </TabsContent>
 
         <TabsContent value="tagged" className="mt-0">
           <div className="text-center py-12">
             <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-light mb-2">Photos of you</h3>
-            <p className="text-gray-500">When people tag you in photos, they'll appear here.</p>
+            <h3 className="text-xl font-light mb-2">Posts with you</h3>
+            <p className="text-gray-500">When people tag you in posts, they'll appear here.</p>
           </div>
         </TabsContent>
       </Tabs>
@@ -267,9 +260,9 @@ export function InstagramProfileHeader({
         setPostContent={setPostContent}
         isPostPublic={isPostPublic}
         setIsPostPublic={setIsPostPublic}
-        postImageUrl={postImageUrl}
-        setPostImageUrl={setPostImageUrl}
-        setPostImage={setPostImage}
+        postImageUrl={null}
+        setPostImageUrl={() => {}}
+        setPostImage={() => {}}
         handleCreatePost={handleCreatePost}
       />
     </div>
