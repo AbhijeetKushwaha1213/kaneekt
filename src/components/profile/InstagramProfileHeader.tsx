@@ -7,77 +7,68 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { User } from "@/types";
+import { Post } from "@/types/supabase";
 import { CreatePostDialog } from "./CreatePostDialog";
 import { useToast } from "@/hooks/use-toast";
+import { usePosts } from "@/hooks/usePosts";
 
 interface InstagramProfileHeaderProps {
   user: User;
   isOwnProfile: boolean;
   onFollow?: () => void;
   onMessage?: () => void;
+  posts?: Post[];
+  isFollowing?: boolean;
 }
 
 export function InstagramProfileHeader({
   user,
   isOwnProfile,
   onFollow,
-  onMessage
+  onMessage,
+  posts = [],
+  isFollowing = false
 }: InstagramProfileHeaderProps) {
-  const [isFollowing, setIsFollowing] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [postContent, setPostContent] = useState("");
   const [isPostPublic, setIsPostPublic] = useState(true);
   const [postImageUrl, setPostImageUrl] = useState<string | null>(null);
   const [postImage, setPostImage] = useState<File | null>(null);
-  const [posts, setPosts] = useState([
-    { id: 1, image: '/placeholder.svg', likes: 42, comments: 8 },
-    { id: 2, image: '/placeholder.svg', likes: 38, comments: 12 },
-    { id: 3, image: '/placeholder.svg', likes: 55, comments: 5 },
-    { id: 4, image: '/placeholder.svg', likes: 23, comments: 15 },
-    { id: 5, image: '/placeholder.svg', likes: 67, comments: 20 },
-    { id: 6, image: '/placeholder.svg', likes: 91, comments: 33 }
-  ]);
+  const { createPost } = usePosts(user.id);
   const { toast } = useToast();
 
   const handleFollow = () => {
-    setIsFollowing(!isFollowing);
     onFollow?.();
-    toast({
-      title: isFollowing ? "Unfollowed" : "Following",
-      description: `You are ${isFollowing ? 'no longer following' : 'now following'} ${user.name}`,
-    });
   };
 
   const handleMessage = () => {
     onMessage?.();
-    toast({
-      title: "Opening chat",
-      description: `Starting conversation with ${user.name}`,
-    });
   };
 
-  const handleCreatePost = () => {
-    if (!postContent.trim() && !postImageUrl) return;
+  const handleCreatePost = async () => {
+    if (!postContent.trim() && !postImageUrl) {
+      toast({
+        title: "Empty post",
+        description: "Please add some content or media to your post",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    const newPost = {
-      id: posts.length + 1,
-      image: postImageUrl || '/placeholder.svg',
-      likes: 0,
-      comments: 0
-    };
-
-    setPosts(prev => [newPost, ...prev]);
-    
-    // Reset form
-    setPostContent("");
-    setPostImageUrl(null);
-    setPostImage(null);
-    setIsCreatePostOpen(false);
-    
-    toast({
-      title: "Post created!",
-      description: "Your post has been shared successfully.",
+    const result = await createPost({
+      content: postContent,
+      media_url: postImageUrl || undefined,
+      media_type: postImageUrl ? 'image' : undefined,
+      is_public: isPostPublic
     });
+
+    if (result.data) {
+      // Reset form
+      setPostContent("");
+      setPostImageUrl(null);
+      setPostImage(null);
+      setIsCreatePostOpen(false);
+    }
   };
 
   const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -217,7 +208,7 @@ export function InstagramProfileHeader({
                 <Card key={post.id} className="aspect-square cursor-pointer group overflow-hidden">
                   <CardContent className="p-0 relative h-full">
                     <img
-                      src={post.image}
+                      src={post.media_url || '/placeholder.svg'}
                       alt={`Post ${post.id}`}
                       className="w-full h-full object-cover"
                     />
