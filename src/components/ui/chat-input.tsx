@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Paperclip, Smile, Mic, Video, Phone } from "lucide-react";
@@ -15,14 +15,30 @@ interface ChatInputProps {
   userId: string;
   recipientName?: string;
   onMessageSent?: () => void;
+  onInputChange?: (value: string) => void;
+  onSubmit?: () => void;
 }
 
-export function ChatInput({ conversationId, userId, recipientName = "User", onMessageSent }: ChatInputProps) {
+export function ChatInput({ 
+  conversationId, 
+  userId, 
+  recipientName = "User", 
+  onMessageSent,
+  onInputChange,
+  onSubmit
+}: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showFileUploader, setShowFileUploader] = useState(false);
   const { toast } = useToast();
+
+  // Handle input change with typing indicator
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMessage(value);
+    onInputChange?.(value);
+  };
 
   const checkMessageLimit = () => {
     const allMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
@@ -67,7 +83,8 @@ export function ChatInput({ conversationId, userId, recipientName = "User", onMe
         sender_id: userId,
         content: message.trim(),
         created_at: new Date().toISOString(),
-        is_read: false
+        is_read: false,
+        type: 'text'
       };
 
       if (userId !== 'anonymous') {
@@ -92,6 +109,7 @@ export function ChatInput({ conversationId, userId, recipientName = "User", onMe
       }
 
       setMessage("");
+      onSubmit?.();
       onMessageSent?.();
     } catch (error) {
       console.error("Error sending message:", error);
@@ -217,7 +235,7 @@ export function ChatInput({ conversationId, userId, recipientName = "User", onMe
         <div className="flex-1 flex items-center space-x-2">
           <Input
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             placeholder={
               hasReachedLimit 
@@ -228,7 +246,27 @@ export function ChatInput({ conversationId, userId, recipientName = "User", onMe
             className="flex-1"
           />
           
-          <VoiceMessage onSend={handleVoiceMessage} />
+          <VoiceMessage onSend={async (audioBlob: Blob) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const messageData = {
+                id: `msg-${Date.now()}`,
+                conversation_id: conversationId,
+                sender_id: userId,
+                content: "🎤 Voice message",
+                type: "voice",
+                audio_data: reader.result,
+                created_at: new Date().toISOString(),
+                is_read: false
+              };
+
+              const allMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+              allMessages.push(messageData);
+              localStorage.setItem("chatMessages", JSON.stringify(allMessages));
+              onMessageSent?.();
+            };
+            reader.readAsDataURL(audioBlob);
+          }} />
           
           <Button
             onClick={handleSendMessage}
@@ -244,14 +282,43 @@ export function ChatInput({ conversationId, userId, recipientName = "User", onMe
       {/* Emoji Picker */}
       {showEmojiPicker && (
         <div className="absolute bottom-full left-0 z-50 mb-2">
-          <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+          <EmojiPicker onEmojiSelect={(emoji: string) => {
+            setMessage(prev => prev + emoji);
+            setShowEmojiPicker(false);
+          }} />
         </div>
       )}
 
       {/* File Uploader */}
       {showFileUploader && (
         <div className="absolute bottom-full left-0 right-0 z-50 mb-2">
-          <FileUploader onFilesUpload={handleFileUpload} />
+          <FileUploader onFilesUpload={(files: File[]) => {
+            files.forEach(file => {
+              const messageData = {
+                id: `msg-${Date.now()}-${Math.random()}`,
+                conversation_id: conversationId,
+                sender_id: userId,
+                content: `📎 ${file.name}`,
+                type: "file",
+                file_data: URL.createObjectURL(file),
+                file_name: file.name,
+                file_type: file.type,
+                created_at: new Date().toISOString(),
+                is_read: false
+              };
+
+              const allMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+              allMessages.push(messageData);
+              localStorage.setItem("chatMessages", JSON.stringify(allMessages));
+            });
+            
+            onMessageSent?.();
+            setShowFileUploader(false);
+            toast({
+              title: "Files uploaded",
+              description: `${files.length} file(s) sent successfully`
+            });
+          }} />
         </div>
       )}
       

@@ -20,7 +20,17 @@ export type ConversationInsert = Tables['conversations']['Insert'];
 export type ConversationUpdate = Tables['conversations']['Update'];
 
 // Message-related types
-export type Message = Tables['messages']['Row'];
+export type Message = Tables['messages']['Row'] & {
+  type?: 'text' | 'image' | 'video' | 'voice' | 'file' | 'location';
+  file_data?: string;
+  audio_data?: string;
+  sender?: {
+    id: string;
+    name: string;
+    username?: string;
+    avatar?: string;
+  };
+};
 export type MessageInsert = Tables['messages']['Insert'];
 export type MessageUpdate = Tables['messages']['Update'];
 
