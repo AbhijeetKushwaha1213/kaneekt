@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Paperclip, Smile, Mic, Video, Phone } from "lucide-react";
 import { VoiceMessage } from "@/components/chat/VoiceMessage";
-import { VideoCall } from "@/components/chat/VideoCall";
 import { EmojiPicker } from "@/components/ui/emoji-picker";
 import { FileUploader } from "@/components/ui/file-uploader";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,14 +32,8 @@ export function ChatInput({
   const [showFileUploader, setShowFileUploader] = useState(false);
   const { toast } = useToast();
 
-  // Handle input change with typing indicator
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setMessage(value);
-    onInputChange?.(value);
-  };
-
-  const checkMessageLimit = () => {
+  // Memoize message limit check for performance
+  const messageLimit = useMemo(() => {
     const allMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
     const conversationMessages = allMessages.filter(
       (m: any) => m.conversation_id === conversationId
@@ -58,14 +51,19 @@ export function ChatInput({
       isFirstMessage: userMessages.length === 0,
       isMatched 
     };
-  };
+  }, [conversationId, userId]);
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
+  // Handle input change with typing indicator
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMessage(value);
+    onInputChange?.(value);
+  }, [onInputChange]);
 
-    const { hasReachedLimit, isFirstMessage, isMatched } = checkMessageLimit();
+  const handleSendMessage = useCallback(async () => {
+    if (!message.trim() || isLoading) return;
 
-    if (hasReachedLimit) {
+    if (messageLimit.hasReachedLimit) {
       toast({
         title: "Message limit reached",
         description: "You can only send one message until they respond or you both like each other",
@@ -99,10 +97,10 @@ export function ChatInput({
       allMessages.push(messageData);
       localStorage.setItem("chatMessages", JSON.stringify(allMessages));
 
-      if (isFirstMessage) {
+      if (messageLimit.isFirstMessage) {
         toast({
           title: "First message sent!",
-          description: isMatched 
+          description: messageLimit.isMatched 
             ? "You can continue chatting freely since you're matched!"
             : "Wait for them to respond or like each other to unlock unlimited messaging",
         });
@@ -121,9 +119,9 @@ export function ChatInput({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [message, conversationId, userId, messageLimit, onSubmit, onMessageSent, toast, isLoading]);
 
-  const handleVoiceMessage = async (audioBlob: Blob) => {
+  const handleVoiceMessage = useCallback(async (audioBlob: Blob) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const messageData = {
@@ -143,9 +141,9 @@ export function ChatInput({
       onMessageSent?.();
     };
     reader.readAsDataURL(audioBlob);
-  };
+  }, [conversationId, userId, onMessageSent]);
 
-  const handleFileUpload = (files: File[]) => {
+  const handleFileUpload = useCallback((files: File[]) => {
     files.forEach(file => {
       const messageData = {
         id: `msg-${Date.now()}-${Math.random()}`,
@@ -171,50 +169,45 @@ export function ChatInput({
       title: "Files uploaded",
       description: `${files.length} file(s) sent successfully`
     });
-  };
+  }, [conversationId, userId, onMessageSent, toast]);
 
-  const handleEmojiSelect = (emoji: string) => {
+  const handleEmojiSelect = useCallback((emoji: string) => {
     setMessage(prev => prev + emoji);
     setShowEmojiPicker(false);
-  };
+  }, []);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
-  };
+  }, [handleSendMessage]);
 
-  const { hasReachedLimit } = checkMessageLimit();
-
-  const handleVideoCall = () => {
+  const handleVideoCall = useCallback(() => {
     toast({
       title: "Video call started",
       description: `Calling ${recipientName}...`
     });
-  };
+  }, [recipientName, toast]);
 
-  const handleAudioCall = () => {
+  const handleAudioCall = useCallback(() => {
     toast({
       title: "Audio call started",
       description: `Calling ${recipientName}...`
     });
-  };
+  }, [recipientName, toast]);
 
   return (
     <div className="relative">
       <div className="flex items-center space-x-2 p-2 border-t">
-        {/* Video Call */}
         <Button variant="ghost" size="icon" onClick={handleVideoCall}>
           <Video className="h-4 w-4" />
         </Button>
 
-        {/* Audio Call */}
         <Button variant="ghost" size="icon" onClick={handleAudioCall}>
           <Phone className="h-4 w-4" />
         </Button>
         
-        {/* File Upload */}
         <Button 
           variant="ghost" 
           size="icon" 
@@ -223,7 +216,6 @@ export function ChatInput({
           <Paperclip className="h-4 w-4" />
         </Button>
 
-        {/* Emoji Picker */}
         <Button 
           variant="ghost" 
           size="icon"
@@ -238,39 +230,19 @@ export function ChatInput({
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             placeholder={
-              hasReachedLimit 
+              messageLimit.hasReachedLimit 
                 ? "Like each other to unlock unlimited messaging"
                 : "Type a message..."
             }
-            disabled={isLoading || hasReachedLimit}
+            disabled={isLoading || messageLimit.hasReachedLimit}
             className="flex-1"
           />
           
-          <VoiceMessage onSend={async (audioBlob: Blob) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const messageData = {
-                id: `msg-${Date.now()}`,
-                conversation_id: conversationId,
-                sender_id: userId,
-                content: "🎤 Voice message",
-                type: "voice",
-                audio_data: reader.result,
-                created_at: new Date().toISOString(),
-                is_read: false
-              };
-
-              const allMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-              allMessages.push(messageData);
-              localStorage.setItem("chatMessages", JSON.stringify(allMessages));
-              onMessageSent?.();
-            };
-            reader.readAsDataURL(audioBlob);
-          }} />
+          <VoiceMessage onSend={handleVoiceMessage} />
           
           <Button
             onClick={handleSendMessage}
-            disabled={!message.trim() || isLoading || hasReachedLimit}
+            disabled={!message.trim() || isLoading || messageLimit.hasReachedLimit}
             size="icon"
             className="h-10 w-10"
           >
@@ -279,50 +251,19 @@ export function ChatInput({
         </div>
       </div>
       
-      {/* Emoji Picker */}
       {showEmojiPicker && (
         <div className="absolute bottom-full left-0 z-50 mb-2">
-          <EmojiPicker onEmojiSelect={(emoji: string) => {
-            setMessage(prev => prev + emoji);
-            setShowEmojiPicker(false);
-          }} />
+          <EmojiPicker onEmojiSelect={handleEmojiSelect} />
         </div>
       )}
 
-      {/* File Uploader */}
       {showFileUploader && (
         <div className="absolute bottom-full left-0 right-0 z-50 mb-2">
-          <FileUploader onFilesUpload={(files: File[]) => {
-            files.forEach(file => {
-              const messageData = {
-                id: `msg-${Date.now()}-${Math.random()}`,
-                conversation_id: conversationId,
-                sender_id: userId,
-                content: `📎 ${file.name}`,
-                type: "file",
-                file_data: URL.createObjectURL(file),
-                file_name: file.name,
-                file_type: file.type,
-                created_at: new Date().toISOString(),
-                is_read: false
-              };
-
-              const allMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-              allMessages.push(messageData);
-              localStorage.setItem("chatMessages", JSON.stringify(allMessages));
-            });
-            
-            onMessageSent?.();
-            setShowFileUploader(false);
-            toast({
-              title: "Files uploaded",
-              description: `${files.length} file(s) sent successfully`
-            });
-          }} />
+          <FileUploader onFilesUpload={handleFileUpload} />
         </div>
       )}
       
-      {hasReachedLimit && (
+      {messageLimit.hasReachedLimit && (
         <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-amber-100 text-amber-800 text-xs px-3 py-1 rounded-full">
           💬 One message limit - like each other to chat freely!
         </div>
