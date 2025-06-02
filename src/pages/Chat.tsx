@@ -5,9 +5,15 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { ChatMessage } from "@/components/ui/chat-message";
 import { ChatInput } from "@/components/ui/chat-input";
 import { BackNavigation } from "@/components/ui/back-navigation";
+import { RealTimeStatus } from "@/components/realtime/RealTimeStatus";
+import { TypingIndicator } from "@/components/ui/typing-indicator";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRealTimeMessages } from "@/hooks/useRealTimeMessages";
+import { useTypingIndicators } from "@/hooks/useTypingIndicators";
+import { useUserPresence } from "@/hooks/useUserPresence";
+import { useMessageStatus } from "@/hooks/useMessageStatus";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Phone, Video, MoreVertical } from "lucide-react";
@@ -19,16 +25,22 @@ export default function Chat() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  const [messages, setMessages] = useState<any[]>([]);
   const [conversationName, setConversationName] = useState("");
   const [conversationUser, setConversationUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isOnline, setIsOnline] = useState(false);
   
+  // Real-time hooks
+  const { messages, loading: messagesLoading, sendMessage } = useRealTimeMessages(id);
+  const { typingUsers, startTyping, stopTyping } = useTypingIndicators(id || '');
+  const { getUserOnlineStatus } = useUserPresence();
+  useMessageStatus(id || '');
+  
+  const isOnline = conversationUser?.id ? getUserOnlineStatus(conversationUser.id) : false;
+
   useEffect(() => {
     if (!id) return;
     
-    const loadMessages = async () => {
+    const loadConversationData = async () => {
       setIsLoading(true);
       
       try {
@@ -38,76 +50,22 @@ export default function Chat() {
         if (conversationData) {
           setConversationName(conversationData.user.name || "Chat");
           setConversationUser(conversationData.user);
-          setIsOnline(Math.random() > 0.5); // Mock online status
-          
-          if (user) {
-            const { data, error } = await supabase
-              .from('messages')
-              .select('*')
-              .eq('conversation_id', id)
-              .order('created_at', { ascending: true });
-              
-            if (data && !error) {
-              setMessages(data);
-            } else {
-              console.error("Error loading messages from Supabase:", error);
-              loadMessagesFromLocalStorage();
-            }
-          } else {
-            loadMessagesFromLocalStorage();
-          }
         }
       } catch (error) {
-        console.error("Error loading messages:", error);
-        loadMessagesFromLocalStorage();
+        console.error("Error loading conversation data:", error);
       } finally {
         setIsLoading(false);
       }
     };
     
-    const loadMessagesFromLocalStorage = () => {
-      try {
-        const allStoredMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-        const filteredMessages = allStoredMessages.filter(
-          (m: any) => m.conversation_id === id
-        );
-        setMessages(filteredMessages);
-      } catch (error) {
-        console.error("Error loading messages from local storage:", error);
-        setMessages([]);
-      }
-    };
-    
-    loadMessages();
-    
-    if (user) {
-      const channel = supabase
-        .channel(`conversation:${id}`)
-        .on('postgres_changes', 
-          { 
-            event: 'INSERT', 
-            schema: 'public', 
-            table: 'messages',
-            filter: `conversation_id=eq.${id}` 
-          }, 
-          (payload) => {
-            setMessages(current => [...current, payload.new]);
-          }
-        )
-        .subscribe();
-        
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [id, user]);
+    loadConversationData();
+  }, [id]);
 
-  const handleMessageSent = () => {
-    const allStoredMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-    const filteredMessages = allStoredMessages.filter(
-      (m: any) => m.conversation_id === id
-    );
-    setMessages(filteredMessages);
+  const handleMessageSent = async (content: string) => {
+    const result = await sendMessage(content);
+    if (result?.error) {
+      console.error("Failed to send message:", result.error);
+    }
   };
 
   const handleProfileClick = () => {
@@ -130,6 +88,18 @@ export default function Chat() {
     });
   };
 
+  const handleInputChange = (value: string) => {
+    if (value.trim()) {
+      startTyping();
+    } else {
+      stopTyping();
+    }
+  };
+
+  const handleInputSubmit = () => {
+    stopTyping();
+  };
+
   return (
     <MainLayout>
       <div className="h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)] flex flex-col">
@@ -148,16 +118,20 @@ export default function Chat() {
                     <AvatarImage src={conversationUser?.avatar || '/placeholder.svg'} />
                     <AvatarFallback>{conversationName[0] || 'U'}</AvatarFallback>
                   </Avatar>
-                  {isOnline && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></div>
+                  {conversationUser?.id && (
+                    <div className="absolute bottom-0 right-0">
+                      <RealTimeStatus userId={conversationUser.id} />
+                    </div>
                   )}
                 </div>
                 
                 <div className="flex-1">
                   <h1 className="font-semibold">{conversationName}</h1>
-                  <p className="text-sm text-muted-foreground">
-                    {isOnline ? 'Online' : `${messages.length} messages`}
-                  </p>
+                  <div className="text-sm text-muted-foreground">
+                    {conversationUser?.id && (
+                      <RealTimeStatus userId={conversationUser.id} showLabel />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -179,7 +153,7 @@ export default function Chat() {
         <div className="flex-1 flex flex-col">
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {isLoading ? (
+            {isLoading || messagesLoading ? (
               <div className="text-center py-10">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                 <p className="text-muted-foreground">Loading messages...</p>
@@ -199,6 +173,7 @@ export default function Chat() {
                     },
                     isCurrentUser: message.sender_id === user?.id,
                     type: message.type || 'text',
+                    status: message.status,
                     mediaUrl: message.file_data || message.audio_data
                   }}
                 />
@@ -222,12 +197,19 @@ export default function Chat() {
             )}
           </div>
           
+          {/* Typing indicator */}
+          {typingUsers.length > 0 && (
+            <TypingIndicator userNames={[conversationName]} />
+          )}
+          
           {/* Chat input */}
           <ChatInput 
             conversationId={id || ""} 
             userId={user?.id || "anonymous"} 
             recipientName={conversationName}
-            onMessageSent={handleMessageSent} 
+            onMessageSent={() => handleMessageSent}
+            onInputChange={handleInputChange}
+            onSubmit={handleInputSubmit}
           />
         </div>
       </div>

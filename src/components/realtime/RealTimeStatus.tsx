@@ -17,23 +17,45 @@ export function RealTimeStatus({ userId, showLabel = false }: RealTimeStatusProp
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase.channel('user-status')
-      .on('presence', { event: 'sync' }, () => {
-        const presenceState = channel.presenceState();
-        const userPresence = presenceState[userId];
-        setIsOnline(!!userPresence && userPresence.length > 0);
-      })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        if (key === userId) {
-          setIsOnline(true);
+    // Fetch current status
+    const fetchStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('user_presence')
+          .select('is_online, last_seen')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (!error && data) {
+          setIsOnline(data.is_online);
+          setLastSeen(data.last_seen ? new Date(data.last_seen) : null);
         }
-      })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        if (key === userId) {
-          setIsOnline(false);
-          setLastSeen(new Date());
+      } catch (error) {
+        console.error('Error fetching user status:', error);
+      }
+    };
+
+    fetchStatus();
+
+    // Listen for real-time updates
+    const channel = supabase
+      .channel(`user-status-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_presence',
+          filter: `user_id=eq.${userId}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const { is_online, last_seen } = payload.new;
+            setIsOnline(is_online);
+            setLastSeen(last_seen ? new Date(last_seen) : null);
+          }
         }
-      })
+      )
       .subscribe();
 
     return () => {

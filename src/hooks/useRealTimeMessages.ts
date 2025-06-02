@@ -84,7 +84,39 @@ export function useRealTimeMessages(conversationId?: string) {
 
           if (!error && data) {
             setMessages(prev => [...prev, data]);
+            
+            // Auto-mark as delivered if not sent by current user
+            if (data.sender_id !== user?.id) {
+              setTimeout(() => {
+                supabase
+                  .from('messages')
+                  .update({
+                    status: 'delivered',
+                    delivered_at: new Date().toISOString()
+                  })
+                  .eq('id', data.id);
+              }, 100);
+            }
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          // Update message status in real-time
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === payload.new.id 
+                ? { ...msg, ...payload.new }
+                : msg
+            )
+          );
         }
       )
       .subscribe();
@@ -104,7 +136,8 @@ export function useRealTimeMessages(conversationId?: string) {
           conversation_id: conversationId,
           sender_id: user.id,
           content,
-          type
+          type,
+          status: 'sent'
         }])
         .select()
         .single();
