@@ -33,7 +33,7 @@ export function useComments(postId: string) {
         .from('comments')
         .select(`
           *,
-          profiles!comments_user_id_fkey (
+          profiles (
             id,
             name,
             username,
@@ -73,7 +73,7 @@ export function useComments(postId: string) {
         .insert(commentData)
         .select(`
           *,
-          profiles!comments_user_id_fkey (
+          profiles (
             id,
             name,
             username,

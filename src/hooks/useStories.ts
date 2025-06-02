@@ -21,7 +21,7 @@ export function useStories() {
         .from('stories')
         .select(`
           *,
-          profiles!stories_user_id_fkey (
+          profiles (
             id,
             name,
             username,
