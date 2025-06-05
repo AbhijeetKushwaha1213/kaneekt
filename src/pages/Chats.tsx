@@ -1,7 +1,7 @@
-
 import { useState } from "react";
 import { ConversationList } from "@/components/ConversationList";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { cn } from "@/lib/utils";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-export default function Chats() {
+function ChatsContent() {
   const location = useLocation();
   const isSpecificChat = location.pathname.includes("/chats/");
   const { user } = useAuth();
@@ -130,5 +130,13 @@ export default function Chats() {
       {/* Add padding at the bottom to account for mobile navigation */}
       <div className="md:hidden h-16"></div>
     </MainLayout>
+  );
+}
+
+export default function Chats() {
+  return (
+    <ProtectedRoute>
+      <ChatsContent />
+    </ProtectedRoute>
   );
 }

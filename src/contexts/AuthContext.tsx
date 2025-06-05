@@ -37,6 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Use setTimeout to avoid blocking the auth state change
           setTimeout(async () => {
             try {
+              // Check if profile exists, if not this will be handled by the database trigger
               const { data: profile } = await supabase
                 .from('profiles')
                 .select('name')
@@ -118,7 +119,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error: new Error('Password is required for email login') };
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
       
       console.log("SignIn result:", error ? `Error: ${error.message}` : "Success");
       
@@ -145,7 +149,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         email,
         password,
         options: {
-          data: userData
+          data: userData,
+          emailRedirectTo: `${window.location.origin}/chats`
         }
       });
       
@@ -156,6 +161,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           title: "Registration error",
           description: error.message,
           variant: "destructive"
+        });
+      } else if (data.user && !data.session) {
+        toast({
+          title: "Check your email",
+          description: "We've sent you a confirmation link to complete your registration.",
         });
       }
       

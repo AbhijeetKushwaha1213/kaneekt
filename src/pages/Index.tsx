@@ -21,8 +21,9 @@ export default function Index() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Loading...</h2>
-          <p className="text-muted-foreground">Please wait</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <h2 className="text-2xl font-bold mt-4">Loading...</h2>
+          <p className="text-muted-foreground">Checking your authentication status</p>
         </div>
       </div>
     );
