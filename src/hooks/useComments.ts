@@ -3,15 +3,10 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Comment, CommentInsert } from '@/types/supabase';
+import { Comment, CommentInsert, BasicProfile } from '@/types/supabase';
 
 interface CommentWithProfile extends Comment {
-  profiles?: {
-    id: string;
-    name: string | null;
-    username: string | null;
-    avatar: string | null;
-  };
+  profiles?: BasicProfile;
 }
 
 export function useComments(postId: string) {

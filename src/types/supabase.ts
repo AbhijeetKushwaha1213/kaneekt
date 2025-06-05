@@ -59,6 +59,14 @@ export type StoryViewInsert = Tables['story_views']['Insert'];
 export type StoryReaction = Tables['story_reactions']['Row'];
 export type StoryReactionInsert = Tables['story_reactions']['Insert'];
 
+// Basic profile type for author information
+export type BasicProfile = {
+  id: string;
+  name: string | null;
+  username: string | null;
+  avatar: string | null;
+};
+
 // Extended profile type with optional location fields for future compatibility
 export interface ProfileWithLocation extends Profile {
   latitude?: number;
@@ -80,5 +88,5 @@ export interface StoryWithInteractions extends Story {
   reactions_count?: number;
   has_viewed?: boolean;
   user_reaction?: string;
-  author?: Profile;
+  author?: BasicProfile;
 }

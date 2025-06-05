@@ -3,27 +3,17 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { FriendRequest } from '@/types/supabase';
+import { FriendRequest, FriendRequestInsert, BasicProfile } from '@/types/supabase';
 
 interface FriendRequestWithProfile extends FriendRequest {
-  sender_profile?: {
-    id: string;
-    name: string | null;
-    username: string | null;
-    avatar: string | null;
-  };
-  receiver_profile?: {
-    id: string;
-    name: string | null;
-    username: string | null;
-    avatar: string | null;
-  };
+  sender_profile?: BasicProfile;
+  receiver_profile?: BasicProfile;
 }
 
 export function useFriendRequests() {
   const { user } = useAuth();
-  const [pendingRequests, setPendingRequests] = useState<FriendRequestWithProfile[]>([]);
   const [sentRequests, setSentRequests] = useState<FriendRequestWithProfile[]>([]);
+  const [receivedRequests, setReceivedRequests] = useState<FriendRequestWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -37,8 +27,24 @@ export function useFriendRequests() {
     if (!user) return;
 
     try {
+      // Fetch sent requests
+      const { data: sentData, error: sentError } = await supabase
+        .from('friend_requests')
+        .select(`
+          *,
+          receiver_profile:profiles!friend_requests_receiver_id_fkey (
+            id,
+            name,
+            username,
+            avatar
+          )
+        `)
+        .eq('sender_id', user.id);
+
+      if (sentError) throw sentError;
+
       // Fetch received requests
-      const { data: received, error: receivedError } = await supabase
+      const { data: receivedData, error: receivedError } = await supabase
         .from('friend_requests')
         .select(`
           *,
@@ -52,27 +58,10 @@ export function useFriendRequests() {
         .eq('receiver_id', user.id)
         .eq('status', 'pending');
 
-      // Fetch sent requests
-      const { data: sent, error: sentError } = await supabase
-        .from('friend_requests')
-        .select(`
-          *,
-          receiver_profile:profiles!friend_requests_receiver_id_fkey (
-            id,
-            name,
-            username,
-            avatar
-          )
-        `)
-        .eq('sender_id', user.id)
-        .eq('status', 'pending');
+      if (receivedError) throw receivedError;
 
-      if (receivedError || sentError) {
-        throw receivedError || sentError;
-      }
-
-      setPendingRequests(received || []);
-      setSentRequests(sent || []);
+      setSentRequests(sentData || []);
+      setReceivedRequests(receivedData || []);
     } catch (error) {
       console.error('Error fetching friend requests:', error);
       toast({
@@ -86,25 +75,30 @@ export function useFriendRequests() {
   };
 
   const sendFriendRequest = async (receiverId: string) => {
-    if (!user || user.id === receiverId) return false;
+    if (!user) return { error: 'Not authenticated' };
 
     try {
-      const { error } = await supabase
+      const requestData: FriendRequestInsert = {
+        sender_id: user.id,
+        receiver_id: receiverId,
+        status: 'pending'
+      };
+
+      const { data, error } = await supabase
         .from('friend_requests')
-        .insert({
-          sender_id: user.id,
-          receiver_id: receiverId
-        });
+        .insert(requestData)
+        .select()
+        .single();
 
       if (error) throw error;
 
-      await fetchFriendRequests();
+      await fetchFriendRequests(); // Refresh requests
       toast({
         title: "Success",
-        description: "Friend request sent successfully"
+        description: "Friend request sent"
       });
 
-      return true;
+      return { data };
     } catch (error) {
       console.error('Error sending friend request:', error);
       toast({
@@ -112,26 +106,28 @@ export function useFriendRequests() {
         description: "Failed to send friend request",
         variant: "destructive"
       });
-      return false;
+      return { error: 'Failed to send friend request' };
     }
   };
 
-  const respondToFriendRequest = async (requestId: string, status: 'accepted' | 'rejected') => {
+  const respondToFriendRequest = async (requestId: string, action: 'accept' | 'decline') => {
     if (!user) return;
 
     try {
+      const status = action === 'accept' ? 'accepted' : 'declined';
+      
       const { error } = await supabase
         .from('friend_requests')
-        .update({ status })
+        .update({ status, updated_at: new Date().toISOString() })
         .eq('id', requestId)
         .eq('receiver_id', user.id);
 
       if (error) throw error;
 
-      await fetchFriendRequests();
+      await fetchFriendRequests(); // Refresh requests
       toast({
         title: "Success",
-        description: `Friend request ${status} successfully`
+        description: `Friend request ${action}ed`
       });
     } catch (error) {
       console.error('Error responding to friend request:', error);
@@ -155,10 +151,10 @@ export function useFriendRequests() {
 
       if (error) throw error;
 
-      await fetchFriendRequests();
+      await fetchFriendRequests(); // Refresh requests
       toast({
         title: "Success",
-        description: "Friend request cancelled successfully"
+        description: "Friend request cancelled"
       });
     } catch (error) {
       console.error('Error cancelling friend request:', error);
@@ -171,8 +167,8 @@ export function useFriendRequests() {
   };
 
   return {
-    pendingRequests,
     sentRequests,
+    receivedRequests,
     loading,
     sendFriendRequest,
     respondToFriendRequest,
