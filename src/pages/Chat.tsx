@@ -25,7 +25,6 @@ export default function Chat() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  const [conversationName, setConversationName] = useState("");
   const [conversationUser, setConversationUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -38,28 +37,63 @@ export default function Chat() {
   const isOnline = conversationUser?.id ? getUserOnlineStatus(conversationUser.id) : false;
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !user) return;
     
     const loadConversationData = async () => {
       setIsLoading(true);
       
       try {
-        const conversations = JSON.parse(localStorage.getItem("conversations") || "[]");
-        const conversationData = conversations.find((c: any) => c.id === id);
+        // Get conversation details
+        const { data: conversation, error: convError } = await supabase
+          .from('conversations')
+          .select('user1_id, user2_id')
+          .eq('id', id)
+          .single();
+
+        if (convError) {
+          console.error("Error loading conversation:", convError);
+          navigate('/chats');
+          return;
+        }
+
+        // Determine the other user
+        const otherUserId = conversation.user1_id === user.id ? conversation.user2_id : conversation.user1_id;
         
-        if (conversationData) {
-          setConversationName(conversationData.user.name || "Chat");
-          setConversationUser(conversationData.user);
+        // Get other user's profile
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, name, username, avatar')
+          .eq('id', otherUserId)
+          .single();
+
+        if (profileError) {
+          console.error("Error loading user profile:", profileError);
+          setConversationUser({
+            id: otherUserId,
+            name: "User",
+            avatar: "/placeholder.svg"
+          });
+        } else {
+          setConversationUser({
+            id: profile.id,
+            name: profile.name || "User",
+            avatar: profile.avatar || "/placeholder.svg"
+          });
         }
       } catch (error) {
         console.error("Error loading conversation data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load conversation",
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
     };
     
     loadConversationData();
-  }, [id]);
+  }, [id, user, navigate, toast]);
 
   const handleMessageSent = async (content: string) => {
     const result = await sendMessage(content);
@@ -77,14 +111,14 @@ export default function Chat() {
   const handleVoiceCall = () => {
     toast({
       title: "Voice call started",
-      description: `Calling ${conversationName}...`
+      description: `Calling ${conversationUser?.name || 'User'}...`
     });
   };
 
   const handleVideoCall = () => {
     toast({
       title: "Video call started",
-      description: `Video calling ${conversationName}...`
+      description: `Video calling ${conversationUser?.name || 'User'}...`
     });
   };
 
@@ -99,6 +133,19 @@ export default function Chat() {
   const handleInputSubmit = () => {
     stopTyping();
   };
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)] flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading conversation...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -116,7 +163,7 @@ export default function Chat() {
                 <div className="relative">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={conversationUser?.avatar || '/placeholder.svg'} />
-                    <AvatarFallback>{conversationName[0] || 'U'}</AvatarFallback>
+                    <AvatarFallback>{conversationUser?.name?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
                   {conversationUser?.id && (
                     <div className="absolute bottom-0 right-0">
@@ -126,7 +173,7 @@ export default function Chat() {
                 </div>
                 
                 <div className="flex-1">
-                  <h1 className="font-semibold">{conversationName}</h1>
+                  <h1 className="font-semibold">{conversationUser?.name || 'User'}</h1>
                   <div className="text-sm text-muted-foreground">
                     {conversationUser?.id && (
                       <RealTimeStatus userId={conversationUser.id} showLabel />
@@ -153,7 +200,7 @@ export default function Chat() {
         <div className="flex-1 flex flex-col">
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {isLoading || messagesLoading ? (
+            {messagesLoading ? (
               <div className="text-center py-10">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                 <p className="text-muted-foreground">Loading messages...</p>
@@ -168,7 +215,7 @@ export default function Chat() {
                     timestamp: new Date(message.created_at || Date.now()),
                     sender: {
                       id: message.sender_id,
-                      name: message.sender_id === user?.id ? "You" : conversationName,
+                      name: message.sender_id === user?.id ? "You" : (conversationUser?.name || 'User'),
                       avatar: message.sender_id === user?.id ? (user?.user_metadata?.avatar_url || '/placeholder.svg') : (conversationUser?.avatar || '/placeholder.svg')
                     },
                     isCurrentUser: message.sender_id === user?.id,
@@ -183,12 +230,12 @@ export default function Chat() {
                 <div className="bg-accent/50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                   <Avatar className="h-12 w-12">
                     <AvatarImage src={conversationUser?.avatar || '/placeholder.svg'} />
-                    <AvatarFallback>{conversationName[0] || 'U'}</AvatarFallback>
+                    <AvatarFallback>{conversationUser?.name?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
                 </div>
-                <h3 className="font-medium mb-1">{conversationName}</h3>
+                <h3 className="font-medium mb-1">{conversationUser?.name || 'User'}</h3>
                 <p className="text-muted-foreground text-sm mb-4">
-                  Start your conversation with {conversationName}
+                  Start your conversation with {conversationUser?.name || 'User'}
                 </p>
                 <Button variant="outline" size="sm" onClick={handleProfileClick}>
                   View Profile
@@ -199,14 +246,14 @@ export default function Chat() {
           
           {/* Typing indicator */}
           {typingUsers.length > 0 && (
-            <TypingIndicator userNames={[conversationName]} />
+            <TypingIndicator userNames={[conversationUser?.name || 'User']} />
           )}
           
           {/* Chat input */}
           <ChatInput 
             conversationId={id || ""} 
             userId={user?.id || "anonymous"} 
-            recipientName={conversationName}
+            recipientName={conversationUser?.name || 'User'}
             onMessageSent={() => handleMessageSent}
             onInputChange={handleInputChange}
             onSubmit={handleInputSubmit}
