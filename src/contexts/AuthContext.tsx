@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Session, User } from '@supabase/supabase-js';
@@ -23,6 +22,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   
+  const checkProfileCompletion = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error checking profile:', error);
+        return false;
+      }
+
+      return !!(profile?.name?.trim());
+    } catch (error) {
+      console.error('Error checking profile completion:', error);
+      return false;
+    }
+  };
+  
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -37,14 +56,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Use setTimeout to avoid blocking the auth state change
           setTimeout(async () => {
             try {
-              // Check if profile exists, if not this will be handled by the database trigger
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('name')
-                .eq('id', session.user.id)
-                .maybeSingle();
-                
-              if (!profile?.name) {
+              const isProfileComplete = await checkProfileCompletion(session.user.id);
+              
+              if (!isProfileComplete) {
                 console.log('Profile incomplete, redirecting to onboarding');
                 navigate('/onboarding');
               } else {
@@ -53,7 +67,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               }
             } catch (error) {
               console.error("Error checking profile:", error);
-              navigate('/chats'); // Fallback to chats
+              navigate('/onboarding'); // Safe fallback
             }
           }, 100);
         } else if (event === 'SIGNED_OUT') {
@@ -150,7 +164,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         password,
         options: {
           data: userData,
-          emailRedirectTo: `${window.location.origin}/chats`
+          emailRedirectTo: `${window.location.origin}/onboarding`
         }
       });
       

@@ -2,22 +2,26 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 
 export default function Index() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { isComplete: profileComplete, loading: profileLoading } = useProfileCompletion();
   
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        navigate("/chats");
-      } else {
+    if (!authLoading && !profileLoading) {
+      if (!user) {
         navigate("/auth");
+      } else if (!profileComplete) {
+        navigate("/onboarding");
+      } else {
+        navigate("/chats");
       }
     }
-  }, [user, loading, navigate]);
+  }, [user, authLoading, profileComplete, profileLoading, navigate]);
   
-  if (loading) {
+  if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
