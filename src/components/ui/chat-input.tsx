@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Send, Paperclip, Smile, Mic, Video, Phone } from "lucide-react";
 import { VoiceMessage } from "@/components/chat/VoiceMessage";
 import { EmojiPicker } from "@/components/ui/emoji-picker";
-import { FileUploader } from "@/components/ui/file-uploader";
+import { EnhancedFileUploader } from "@/components/chat/EnhancedFileUploader";
 import { useToast } from "@/hooks/use-toast";
 import { useRealTimeMessages } from "@/hooks/useRealTimeMessages";
 
@@ -72,20 +72,16 @@ export function ChatInput({
   }, [message, sendMessage, onSubmit, onMessageSent, toast, isLoading]);
 
   const handleVoiceMessage = useCallback(async (audioBlob: Blob) => {
-    // For now, we'll just show a placeholder for voice messages
-    // In a real implementation, you'd upload the audio to storage first
     toast({
       title: "Voice message",
       description: "Voice messages will be implemented soon",
     });
   }, [toast]);
 
-  const handleFileUpload = useCallback((files: File[]) => {
-    // For now, we'll just show a placeholder for file uploads
-    // In a real implementation, you'd upload files to storage first
+  const handleFileUpload = useCallback((attachment: any) => {
     toast({
-      title: "File upload",
-      description: "File uploads will be implemented soon",
+      title: "File uploaded",
+      description: `${attachment.file_name} has been attached to your message`,
     });
     setShowFileUploader(false);
   }, [toast]);
@@ -173,8 +169,12 @@ export function ChatInput({
       )}
 
       {showFileUploader && (
-        <div className="absolute bottom-full left-0 right-0 z-50 mb-2">
-          <FileUploader onFilesUpload={handleFileUpload} />
+        <div className="absolute bottom-full left-0 right-0 z-50 mb-2 p-2">
+          <EnhancedFileUploader 
+            onFileUploaded={handleFileUpload}
+            messageId={`temp-${Date.now()}`}
+            onClose={() => setShowFileUploader(false)}
+          />
         </div>
       )}
     </div>
