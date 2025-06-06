@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
@@ -16,6 +17,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { MessageReactions } from "@/components/chat/MessageReactions";
 import { MessageAttachment } from "@/components/chat/MessageAttachment";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatMessageProps {
   message: Message;
@@ -39,13 +41,17 @@ export function ChatMessage({
   onForward
 }: ChatMessageProps) {
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [showActions, setShowActions] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const handleLongPress = () => {
-    const timer = setTimeout(() => {
-      // Long press functionality can be added here
-    }, 500);
-    setLongPressTimer(timer);
+    if (isMobile) {
+      const timer = setTimeout(() => {
+        setShowActions(true);
+      }, 500);
+      setLongPressTimer(timer);
+    }
   };
 
   const handlePressEnd = () => {
@@ -65,6 +71,7 @@ export function ChatMessage({
     }
     
     if (onCopy) onCopy(message.content);
+    setShowActions(false);
   };
   
   const getMessageStatusIcon = () => {
@@ -85,22 +92,23 @@ export function ChatMessage({
       className={cn(
         "flex items-end gap-2 group animate-in", 
         message.isCurrentUser ? "flex-row-reverse" : "flex-row",
+        isMobile ? "px-2" : "",
         className
       )}
       onTouchStart={handleLongPress}
       onTouchEnd={handlePressEnd}
-      onMouseDown={handleLongPress}
-      onMouseUp={handlePressEnd}
-      onMouseLeave={handlePressEnd}
+      onMouseDown={!isMobile ? handleLongPress : undefined}
+      onMouseUp={!isMobile ? handlePressEnd : undefined}
+      onMouseLeave={!isMobile ? handlePressEnd : undefined}
     >
       {!message.isCurrentUser && (
-        <Avatar className="h-8 w-8 flex-shrink-0">
+        <Avatar className={cn("flex-shrink-0", isMobile ? "h-6 w-6" : "h-8 w-8")}>
           <AvatarImage src={message.sender.avatar || "/placeholder.svg"} alt={message.sender.name} />
           <AvatarFallback>{message.sender.name[0]}</AvatarFallback>
         </Avatar>
       )}
       
-      <div className="relative max-w-[70%]">
+      <div className={cn("relative", isMobile ? "max-w-[85%]" : "max-w-[70%]")}>
         {/* Reply reference if this message is a reply */}
         {message.replyTo && (
           <div className={cn(
@@ -117,11 +125,14 @@ export function ChatMessage({
         {/* Main message content */}
         <div className={cn(
           "px-4 py-2 rounded-2xl break-words relative",
+          isMobile ? "px-3 py-2 text-sm" : "px-4 py-2",
           message.isCurrentUser 
             ? "bg-primary text-primary-foreground rounded-tr-none" 
             : "bg-secondary text-secondary-foreground rounded-tl-none"
         )}>
-          <div className="text-sm">{message.content}</div>
+          <div className={cn("break-words", isMobile ? "text-sm" : "text-sm")}>
+            {message.content}
+          </div>
           
           {/* Message attachments */}
           {message.attachment && (
@@ -135,12 +146,12 @@ export function ChatMessage({
           
           {/* Time and status */}
           <div className="flex items-center justify-end mt-1 gap-1">
-            <span className="text-[0.65rem] opacity-70">
+            <span className={cn("opacity-70", isMobile ? "text-[0.6rem]" : "text-[0.65rem]")}>
               {formatDistanceToNow(message.timestamp, { addSuffix: true })}
             </span>
             {message.isCurrentUser && getMessageStatusIcon()}
             {message.isStarred && (
-              <Star className="h-3 w-3 text-yellow-500 ml-1" />
+              <Star className={cn("text-yellow-500 ml-1", isMobile ? "h-2.5 w-2.5" : "h-3 w-3")} />
             )}
           </div>
         </div>
@@ -149,23 +160,34 @@ export function ChatMessage({
         <MessageReactions messageId={message.id} />
         
         {/* Message actions dropdown */}
-        <DropdownMenu>
+        <DropdownMenu open={showActions} onOpenChange={setShowActions}>
           <DropdownMenuTrigger asChild>
-            <button className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 hover:bg-background/20 rounded-full transition-opacity">
-              <MoreVertical className="h-3 w-3" />
+            <button 
+              className={cn(
+                "absolute top-1 right-1 p-1 hover:bg-background/20 rounded-full transition-opacity",
+                isMobile 
+                  ? showActions ? "opacity-100" : "opacity-0"
+                  : "opacity-0 group-hover:opacity-100 focus:opacity-100"
+              )}
+              onClick={() => setShowActions(!showActions)}
+            >
+              <MoreVertical className={cn(isMobile ? "h-4 w-4" : "h-3 w-3")} />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align={message.isCurrentUser ? "end" : "start"}>
-            <DropdownMenuItem onClick={() => onReply?.(message.id)}>
+          <DropdownMenuContent 
+            align={message.isCurrentUser ? "end" : "start"}
+            className={cn(isMobile ? "text-base" : "")}
+          >
+            <DropdownMenuItem onClick={() => { onReply?.(message.id); setShowActions(false); }}>
               <Reply className="h-4 w-4 mr-2" /> Reply
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleCopy}>
               <Copy className="h-4 w-4 mr-2" /> Copy
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onForward?.(message.id)}>
+            <DropdownMenuItem onClick={() => { onForward?.(message.id); setShowActions(false); }}>
               <Forward className="h-4 w-4 mr-2" /> Forward
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onStar?.(message.id)}>
+            <DropdownMenuItem onClick={() => { onStar?.(message.id); setShowActions(false); }}>
               {message.isStarred ? (
                 <>
                   <StarOff className="h-4 w-4 mr-2" /> Unstar
@@ -178,7 +200,7 @@ export function ChatMessage({
             </DropdownMenuItem>
             {message.isCurrentUser && (
               <DropdownMenuItem 
-                onClick={() => onDelete?.(message.id)}
+                onClick={() => { onDelete?.(message.id); setShowActions(false); }}
                 className="text-destructive focus:text-destructive"
               >
                 <Trash2 className="h-4 w-4 mr-2" /> Delete
@@ -188,12 +210,15 @@ export function ChatMessage({
         </DropdownMenu>
       </div>
       
-      <span className={cn(
-        "text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity",
-        message.isCurrentUser ? "mr-2" : "ml-2"
-      )}>
-        {formatDistanceToNow(message.timestamp, { addSuffix: true })}
-      </span>
+      {/* Hover timestamp - hidden on mobile */}
+      {!isMobile && (
+        <span className={cn(
+          "text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity",
+          message.isCurrentUser ? "mr-2" : "ml-2"
+        )}>
+          {formatDistanceToNow(message.timestamp, { addSuffix: true })}
+        </span>
+      )}
     </div>
   );
 }

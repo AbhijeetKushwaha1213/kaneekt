@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useMessageReactions } from '@/hooks/useMessageReactions';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Smile } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface MessageReactionsProps {
   messageId: string;
@@ -13,6 +15,7 @@ const QUICK_REACTIONS = ['❤️', '👍', '👎', '😂', '😮', '😢', '🔥
 export function MessageReactions({ messageId }: MessageReactionsProps) {
   const { reactions, toggleReaction, loading } = useMessageReactions(messageId);
   const [showPicker, setShowPicker] = useState(false);
+  const isMobile = useIsMobile();
 
   // Group reactions by emoji
   const reactionGroups = reactions.reduce<Record<string, typeof reactions>>((groups, reaction) => {
@@ -29,14 +32,17 @@ export function MessageReactions({ messageId }: MessageReactionsProps) {
   };
 
   return (
-    <div className="flex items-center gap-1 mt-1">
+    <div className={cn("flex items-center gap-1 mt-1", isMobile ? "flex-wrap" : "")}>
       {/* Existing reactions */}
       {Object.entries(reactionGroups).map(([emoji, reactionList]) => (
         <Button
           key={emoji}
           variant="ghost"
           size="sm"
-          className="h-6 px-2 text-xs rounded-full bg-accent/50 hover:bg-accent"
+          className={cn(
+            "rounded-full bg-accent/50 hover:bg-accent",
+            isMobile ? "h-7 px-2 text-xs" : "h-6 px-2 text-xs"
+          )}
           onClick={() => handleReactionClick(emoji)}
           disabled={loading}
         >
@@ -51,19 +57,28 @@ export function MessageReactions({ messageId }: MessageReactionsProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 rounded-full opacity-50 hover:opacity-100"
+            className={cn(
+              "rounded-full opacity-50 hover:opacity-100",
+              isMobile ? "h-7 w-7 p-0" : "h-6 w-6 p-0"
+            )}
           >
-            <Smile className="h-3 w-3" />
+            <Smile className={cn(isMobile ? "h-4 w-4" : "h-3 w-3")} />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-2" align="start">
-          <div className="grid grid-cols-4 gap-1">
+        <PopoverContent 
+          className={cn("w-auto p-2", isMobile ? "w-72" : "")} 
+          align="start"
+        >
+          <div className={cn("grid gap-1", isMobile ? "grid-cols-6" : "grid-cols-4")}>
             {QUICK_REACTIONS.map((emoji) => (
               <Button
                 key={emoji}
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 text-lg hover:bg-accent"
+                className={cn(
+                  "hover:bg-accent",
+                  isMobile ? "h-10 w-10 p-0 text-xl" : "h-8 w-8 p-0 text-lg"
+                )}
                 onClick={() => handleReactionClick(emoji)}
                 disabled={loading}
               >

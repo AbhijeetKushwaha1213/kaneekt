@@ -12,6 +12,8 @@ import { CHANNELS } from "@/data/mock-data";
 import { Channel } from "@/types";
 import { PlusCircle, Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 export default function Channels() {
   const [allChannels, setAllChannels] = useState<Channel[]>([]);
@@ -19,6 +21,7 @@ export default function Channels() {
   const [activeTab, setActiveTab] = useState("all");
   const [isGroupChatDialogOpen, setIsGroupChatDialogOpen] = useState(false);
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const { 
     joinChannel, 
     leaveChannel, 
@@ -104,59 +107,95 @@ export default function Channels() {
 
   return (
     <MainLayout>
-      <div className="container mx-auto px-4 py-6 max-w-6xl">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div className={cn(
+        "container mx-auto max-w-6xl",
+        isMobile ? "px-3 py-4" : "px-4 py-6"
+      )}>
+        <div className={cn(
+          "flex justify-between items-start gap-4 mb-6",
+          isMobile ? "flex-col" : "flex-col sm:flex-row sm:items-center"
+        )}>
           <div>
-            <h1 className="text-3xl font-bold">Channels</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>
+              Channels
+            </h1>
+            <p className={cn("text-muted-foreground mt-1", isMobile ? "text-sm" : "")}>
               Discover and join community channels
             </p>
           </div>
-          <Button onClick={() => setIsGroupChatDialogOpen(true)}>
+          <Button 
+            onClick={() => setIsGroupChatDialogOpen(true)}
+            className={cn(isMobile ? "w-full" : "")}
+            size={isMobile ? "default" : "default"}
+          >
             <PlusCircle className="mr-2 h-4 w-4" />
             Create Channel
           </Button>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className={cn("flex gap-4 mb-6", isMobile ? "flex-col" : "flex-col sm:flex-row")}>
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className={cn(
+              "absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground",
+              isMobile ? "h-4 w-4" : "h-4 w-4"
+            )} />
             <Input
               placeholder="Search channels..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className={cn("pl-10", isMobile ? "text-base" : "")}
             />
           </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-          <TabsList className="grid w-full max-w-md grid-cols-4">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="joined">Joined</TabsTrigger>
-            <TabsTrigger value="public">Public</TabsTrigger>
-            <TabsTrigger value="private">Private</TabsTrigger>
+          <TabsList className={cn(
+            "grid w-full grid-cols-4",
+            isMobile ? "max-w-full h-12" : "max-w-md"
+          )}>
+            <TabsTrigger value="all" className={cn(isMobile ? "text-xs" : "")}>
+              All
+            </TabsTrigger>
+            <TabsTrigger value="joined" className={cn(isMobile ? "text-xs" : "")}>
+              Joined
+            </TabsTrigger>
+            <TabsTrigger value="public" className={cn(isMobile ? "text-xs" : "")}>
+              Public
+            </TabsTrigger>
+            <TabsTrigger value="private" className={cn(isMobile ? "text-xs" : "")}>
+              Private
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab} className="mt-6">
             {filteredChannels.length === 0 ? (
-              <div className="text-center py-12">
-                <h3 className="text-lg font-medium mb-2">No channels found</h3>
-                <p className="text-muted-foreground mb-4">
+              <div className={cn("text-center", isMobile ? "py-8" : "py-12")}>
+                <h3 className={cn("font-medium mb-2", isMobile ? "text-base" : "text-lg")}>
+                  No channels found
+                </h3>
+                <p className={cn("text-muted-foreground mb-4", isMobile ? "text-sm" : "")}>
                   {searchQuery 
                     ? "Try adjusting your search terms" 
                     : "Be the first to create a channel!"
                   }
                 </p>
                 {!searchQuery && (
-                  <Button onClick={() => setIsGroupChatDialogOpen(true)}>
+                  <Button 
+                    onClick={() => setIsGroupChatDialogOpen(true)}
+                    className={cn(isMobile ? "w-full max-w-xs" : "")}
+                  >
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Create Channel
                   </Button>
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className={cn(
+                "grid gap-6",
+                isMobile 
+                  ? "grid-cols-1" 
+                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+              )}>
                 {filteredChannels.map((channel) => (
                   <div key={channel.id} className="space-y-4">
                     <EnhancedChannelCard channel={channel} />

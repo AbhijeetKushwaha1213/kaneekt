@@ -46,35 +46,39 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b py-4 bg-background">
-        <div className="container flex items-center justify-between px-4 relative">
-          <Link to="/" className="text-xl font-bold">syncterest</Link>
+      <header className={cn("border-b bg-background", isMobile ? "py-2" : "py-4")}>
+        <div className={cn("container flex items-center justify-between relative", isMobile ? "px-3" : "px-4")}>
+          <Link to="/" className={cn("font-bold", isMobile ? "text-lg" : "text-xl")}>
+            syncterest
+          </Link>
           
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
-              className="relative"
+              className={cn("relative", isMobile ? "h-8 w-8" : "")}
               aria-label="Notifications"
             >
-              <Bell className="h-5 w-5" />
+              <Bell className={cn(isMobile ? "h-4 w-4" : "h-5 w-5")} />
               <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full" />
             </Button>
             
-            {/* Channel avatar icon */}
-            <ChannelAvatar className="h-8 w-8">
-              <AvatarImage src="/placeholder.svg" alt="Current channel" />
-              <AvatarFallback>CH</AvatarFallback>
-            </ChannelAvatar>
+            {/* Channel avatar icon - hidden on mobile to save space */}
+            {!isMobile && (
+              <ChannelAvatar className="h-8 w-8">
+                <AvatarImage src="/placeholder.svg" alt="Current channel" />
+                <AvatarFallback>CH</AvatarFallback>
+              </ChannelAvatar>
+            )}
             
-            {/* Voice chat button */}
+            {/* Voice chat button - smaller on mobile */}
             <Button
               variant="ghost"
               size="icon"
-              className="relative"
+              className={cn("relative", isMobile ? "h-8 w-8" : "")}
               aria-label="Voice chat"
             >
-              <Mic className="h-5 w-5" />
+              <Mic className={cn(isMobile ? "h-4 w-4" : "h-5 w-5")} />
             </Button>
             
             {user ? (
@@ -83,22 +87,28 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                 <Button
                   variant="ghost"
                   size="icon"
+                  className={cn(isMobile ? "h-8 w-8" : "")}
                   aria-label="Settings"
                   onClick={() => navigate("/settings")}
                 >
-                  <Settings className="h-5 w-5" />
+                  <Settings className={cn(isMobile ? "h-4 w-4" : "h-5 w-5")} />
                 </Button>
                 
                 {/* Profile avatar */}
                 <Link to="/profile">
-                  <Avatar className="h-8 w-8 cursor-pointer">
+                  <Avatar className={cn("cursor-pointer", isMobile ? "h-7 w-7" : "h-8 w-8")}>
                     <AvatarImage src={user.user_metadata?.avatar_url || "/placeholder.svg"} alt={user.user_metadata?.name || "Profile"} />
                     <AvatarFallback>{(user.user_metadata?.name || user.email || "U").charAt(0)}</AvatarFallback>
                   </Avatar>
                 </Link>
               </>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>
+              <Button 
+                variant="outline" 
+                size={isMobile ? "sm" : "sm"} 
+                onClick={() => navigate("/auth")}
+                className={cn(isMobile ? "text-xs px-2" : "")}
+              >
                 Sign In
               </Button>
             )}
@@ -139,7 +149,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                   <User className="h-5 w-5" />
                 </Button>
               </Link>
-              {/* Settings icon in sidebar only for desktop/tablet */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -168,30 +177,39 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         )}
         
         {/* Main content with padding to account for fixed sidebar on desktop */}
-        <main className={cn("flex-1 overflow-auto bg-background", !isMobile && "ml-16")}>{children}</main>
+        <main className={cn(
+          "flex-1 overflow-auto bg-background", 
+          !isMobile && "ml-16",
+          isMobile && "pb-16" // Add bottom padding for mobile navigation
+        )}>
+          {children}
+        </main>
       </div>
       
-      {/* Mobile navigation menu at the bottom of the screen - only visible on mobile */}
+      {/* Mobile navigation menu at the bottom - enhanced for better touch targets */}
       {isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 border-t bg-background z-20">
+        <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur-sm z-20 safe-area-inset-bottom">
           <div className="flex justify-around py-2">
-            <Link to="/discover">
+            <Link to="/discover" className="flex-1">
               <Button
                 variant="ghost"
                 size="icon"
                 className={cn(
+                  "w-full h-12 flex flex-col gap-1",
                   location.pathname === "/discover" ? "text-primary" : "text-muted-foreground"
                 )}
                 aria-label="Home"
               >
                 <Home className="h-5 w-5" />
+                <span className="text-xs">Home</span>
               </Button>
             </Link>
-            <Link to="/chats">
+            <Link to="/chats" className="flex-1">
               <Button
                 variant="ghost"
                 size="icon"
                 className={cn(
+                  "w-full h-12 flex flex-col gap-1",
                   location.pathname === "/chats" || location.pathname.startsWith("/chats/") 
                     ? "text-primary" 
                     : "text-muted-foreground"
@@ -199,13 +217,15 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                 aria-label="Chats"
               >
                 <MessageSquare className="h-5 w-5" />
+                <span className="text-xs">Chats</span>
               </Button>
             </Link>
-            <Link to="/channels">
+            <Link to="/channels" className="flex-1">
               <Button
                 variant="ghost"
                 size="icon"
                 className={cn(
+                  "w-full h-12 flex flex-col gap-1",
                   location.pathname === "/channels" || location.pathname.startsWith("/channels/") 
                     ? "text-primary" 
                     : "text-muted-foreground"
@@ -213,30 +233,21 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                 aria-label="Channels"
               >
                 <Users className="h-5 w-5" />
+                <span className="text-xs">Channels</span>
               </Button>
             </Link>
-            <Link to="/profile">
+            <Link to="/profile" className="flex-1">
               <Button
                 variant="ghost"
                 size="icon"
                 className={cn(
+                  "w-full h-12 flex flex-col gap-1",
                   location.pathname === "/profile" ? "text-primary" : "text-muted-foreground"
                 )}
                 aria-label="Profile"
               >
                 <User className="h-5 w-5" />
-              </Button>
-            </Link>
-            <Link to="/settings">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  location.pathname === "/settings" ? "text-primary" : "text-muted-foreground"
-                )}
-                aria-label="Settings"
-              >
-                <Settings className="h-5 w-5" />
+                <span className="text-xs">Profile</span>
               </Button>
             </Link>
           </div>
