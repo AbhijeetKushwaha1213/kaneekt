@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
@@ -129,7 +128,7 @@ export function ChatMessage({
             <MessageAttachment
               fileName={message.attachment.name}
               fileType={message.attachment.type}
-              fileSize={message.attachment.size || 0}
+              fileSize={0}
               fileUrl={message.attachment.url}
             />
           )}

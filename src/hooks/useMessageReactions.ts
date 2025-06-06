@@ -33,20 +33,35 @@ export function useMessageReactions(messageId?: string) {
     if (!messageId) return;
 
     try {
-      const { data, error } = await supabase
+      // Fetch reactions and separately fetch user profiles
+      const { data: reactionsData, error: reactionsError } = await supabase
         .from('message_reactions')
-        .select(`
-          *,
-          user:profiles!message_reactions_user_id_fkey (
-            name,
-            avatar
-          )
-        `)
+        .select('*')
         .eq('message_id', messageId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
-      setReactions(data || []);
+      if (reactionsError) throw reactionsError;
+
+      // Get unique user IDs
+      const userIds = [...new Set(reactionsData?.map(r => r.user_id) || [])];
+      
+      // Fetch user profiles separately
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, name, avatar')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.warn('Could not fetch user profiles:', profilesError);
+      }
+
+      // Combine reactions with user data
+      const reactionsWithUsers = reactionsData?.map(reaction => ({
+        ...reaction,
+        user: profilesData?.find(profile => profile.id === reaction.user_id) || undefined
+      })) || [];
+
+      setReactions(reactionsWithUsers);
     } catch (error) {
       console.error('Error fetching reactions:', error);
     }
