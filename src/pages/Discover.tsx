@@ -13,6 +13,8 @@ import { EventDiscovery } from "@/components/events/EventDiscovery";
 import { InterestMatcher } from "@/components/matching/InterestMatcher";
 import { LiveLocationSharing } from "@/components/live/LiveLocationSharing";
 import { GroupCreation } from "@/components/groups/GroupCreation";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Heart, Users, MapPin, Compass, CalendarIcon, Sparkles, Wifi, MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
