@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Paperclip, Smile, Mic, Video, Phone } from "lucide-react";
+import { Send, Paperclip, Smile, Mic, Plus, Gift } from "lucide-react";
 import { VoiceMessage } from "@/components/chat/VoiceMessage";
 import { EmojiPicker } from "@/components/ui/emoji-picker";
 import { EnhancedFileUploader } from "@/components/chat/EnhancedFileUploader";
@@ -98,66 +98,55 @@ export function ChatInput({
     }
   }, [handleSendMessage]);
 
-  const handleVideoCall = useCallback(() => {
-    toast({
-      title: "Video call started",
-      description: `Calling ${recipientName}...`
-    });
-  }, [recipientName, toast]);
-
-  const handleAudioCall = useCallback(() => {
-    toast({
-      title: "Audio call started",
-      description: `Calling ${recipientName}...`
-    });
-  }, [recipientName, toast]);
-
   return (
     <div className="relative">
-      <div className="flex items-center space-x-2 p-2 border-t">
-        <Button variant="ghost" size="icon" onClick={handleVideoCall}>
-          <Video className="h-4 w-4" />
-        </Button>
-
-        <Button variant="ghost" size="icon" onClick={handleAudioCall}>
-          <Phone className="h-4 w-4" />
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => setShowFileUploader(!showFileUploader)}
-        >
-          <Paperclip className="h-4 w-4" />
-        </Button>
-
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-        >
-          <Smile className="h-4 w-4" />
-        </Button>
-        
-        <div className="flex-1 flex items-center space-x-2">
-          <Input
-            value={message}
-            onChange={handleInputChange}
-            onKeyPress={handleKeyPress}
-            placeholder="Type a message..."
-            disabled={isLoading}
-            className="flex-1"
-          />
-          
-          <VoiceMessage onSend={handleVoiceMessage} />
-          
-          <Button
-            onClick={handleSendMessage}
-            disabled={!message.trim() || isLoading}
-            size="icon"
-            className="h-10 w-10"
+      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            onClick={() => setShowFileUploader(!showFileUploader)}
           >
-            <Send className="h-4 w-4" />
+            <Plus className="h-4 w-4" />
+          </Button>
+
+          <div className="flex-1 flex items-center space-x-2">
+            <Input
+              value={message}
+              onChange={handleInputChange}
+              onKeyPress={handleKeyPress}
+              placeholder={`Message #${recipientName}`}
+              disabled={isLoading}
+              className="flex-1 border-0 bg-transparent focus-visible:ring-0 shadow-none placeholder:text-gray-500"
+            />
+          </div>
+
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            onClick={() => setShowFileUploader(!showFileUploader)}
+          >
+            <Gift className="h-4 w-4" />
+          </Button>
+
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            onClick={() => setShowFileUploader(!showFileUploader)}
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
+
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          >
+            <Smile className="h-4 w-4" />
           </Button>
         </div>
       </div>
