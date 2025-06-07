@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -67,6 +66,7 @@ export default function EnhancedChannel() {
   const [showMemberList, setShowMemberList] = useState(true);
   const [showChannelList, setShowChannelList] = useState(true);
 
+  // Fix infinite loop by adding proper dependencies and memoization
   useEffect(() => {
     if (!id) return;
 
@@ -83,7 +83,6 @@ export default function EnhancedChannel() {
         
         if (foundChannel) {
           setChannel(foundChannel);
-          setHasJoined(isChannelJoined(id));
           setOnlineMembers(MOCK_MEMBERS.filter(m => m.status === 'online').length);
           
           const storedMessages = JSON.parse(localStorage.getItem(`channel_messages_${id}`) || "[]");
@@ -108,7 +107,14 @@ export default function EnhancedChannel() {
     };
 
     loadChannel();
-  }, [id, isChannelJoined, toast]);
+  }, [id, toast]); // Removed isChannelJoined from dependencies to prevent infinite loop
+
+  // Separate effect for checking join status
+  useEffect(() => {
+    if (id) {
+      setHasJoined(isChannelJoined(id));
+    }
+  }, [id, isChannelJoined]);
 
   const handleJoinChannel = async () => {
     if (!channel) return;
@@ -149,6 +155,7 @@ export default function EnhancedChannel() {
   };
 
   const handleMessageSent = () => {
+    if (!id) return;
     const storedMessages = JSON.parse(localStorage.getItem(`channel_messages_${id}`) || "[]");
     setMessages(storedMessages);
   };

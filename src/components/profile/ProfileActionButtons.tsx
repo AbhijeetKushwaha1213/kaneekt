@@ -1,80 +1,102 @@
 
-import { Settings, MessageCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { CreatePostDialog } from "./CreatePostDialog";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { Heart, MessageCircle, UserPlus, Settings, Share2 } from "lucide-react";
 
 interface ProfileActionButtonsProps {
-  isOwnProfile: boolean;
-  isFollowing: boolean;
-  onFollow: () => void;
-  onMessage: () => void;
-  onCreatePost: (content: string, isPublic: boolean) => Promise<void>;
+  profileId: string;
+  isOwnProfile?: boolean;
+  isFollowing?: boolean;
+  isLiked?: boolean;
+  onFollow?: () => void;
+  onMessage?: () => void;
+  onEditProfile?: () => void;
 }
 
 export function ProfileActionButtons({
-  isOwnProfile,
-  isFollowing,
+  profileId,
+  isOwnProfile = false,
+  isFollowing = false,
+  isLiked = false,
   onFollow,
   onMessage,
-  onCreatePost
+  onEditProfile
 }: ProfileActionButtonsProps) {
-  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
-  const [postContent, setPostContent] = useState("");
-  const [isPostPublic, setIsPostPublic] = useState(true);
+  const [liked, setLiked] = useState(isLiked);
+  const [following, setFollowing] = useState(isFollowing);
+  const { toast } = useToast();
 
-  const handleCreatePost = async () => {
-    await onCreatePost(postContent, isPostPublic);
-    setPostContent("");
-    setIsCreatePostOpen(false);
+  const handleLike = () => {
+    setLiked(!liked);
+    toast({
+      description: liked ? "Removed from favorites" : "Added to favorites",
+    });
   };
 
-  return (
-    <>
-      <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
-        {isOwnProfile ? (
-          <div className="flex gap-2">
-            <Button 
-              variant="outline"
-              onClick={() => setIsCreatePostOpen(true)}
-            >
-              Create Post
-            </Button>
-            <Button variant="outline">
-              <Settings className="h-4 w-4 mr-2" />
-              Edit Profile
-            </Button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <Button
-              variant={isFollowing ? "outline" : "default"}
-              onClick={onFollow}
-              className="min-w-[100px]"
-            >
-              {isFollowing ? "Following" : "Follow"}
-            </Button>
-            
-            <Button variant="outline" onClick={onMessage}>
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Message
-            </Button>
-          </div>
-        )}
-      </div>
+  const handleFollow = () => {
+    setFollowing(!following);
+    onFollow?.();
+    toast({
+      description: following ? "Unfollowed user" : "Following user",
+    });
+  };
 
-      <CreatePostDialog
-        open={isCreatePostOpen}
-        onOpenChange={setIsCreatePostOpen}
-        postContent={postContent}
-        setPostContent={setPostContent}
-        isPostPublic={isPostPublic}
-        setIsPostPublic={setIsPostPublic}
-        postImageUrl={null}
-        setPostImageUrl={() => {}}
-        setPostImage={() => {}}
-        handleCreatePost={handleCreatePost}
-      />
-    </>
+  const handleMessage = () => {
+    onMessage?.();
+    toast({
+      description: "Opening chat...",
+    });
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({
+      description: "Profile link copied to clipboard",
+    });
+  };
+
+  if (isOwnProfile) {
+    return (
+      <div className="flex gap-2">
+        <Button onClick={onEditProfile} className="flex-1">
+          <Settings className="h-4 w-4 mr-2" />
+          Edit Profile
+        </Button>
+        <Button variant="outline" onClick={handleShare}>
+          <Share2 className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2">
+      <Button
+        variant={liked ? "default" : "outline"}
+        onClick={handleLike}
+        className={liked ? "bg-red-500 hover:bg-red-600" : ""}
+      >
+        <Heart className={`h-4 w-4 mr-2 ${liked ? "fill-current" : ""}`} />
+        {liked ? "Liked" : "Like"}
+      </Button>
+      
+      <Button
+        variant={following ? "outline" : "default"}
+        onClick={handleFollow}
+        className="flex-1"
+      >
+        <UserPlus className="h-4 w-4 mr-2" />
+        {following ? "Following" : "Follow"}
+      </Button>
+      
+      <Button variant="outline" onClick={handleMessage}>
+        <MessageCircle className="h-4 w-4" />
+      </Button>
+      
+      <Button variant="outline" onClick={handleShare}>
+        <Share2 className="h-4 w-4" />
+      </Button>
+    </div>
   );
 }
