@@ -1,11 +1,10 @@
-
 import React from "react";
 import { UserCard } from "@/components/ui/user-card";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InterestBadge } from "@/components/ui/interest-badge";
-import { Heart, MessageSquare, Share2, Bookmark, MoreHorizontal, MapPin, Video, Image, FileText, Calendar } from "lucide-react";
+import { Heart, MessageSquare, Share2, Bookmark, MoreHorizontal, MapPin, Video, Image, FileText, Calendar, Users, Compass } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
