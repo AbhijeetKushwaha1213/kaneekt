@@ -9,11 +9,16 @@ import { DiscoverTopics } from "@/components/discover/DiscoverTopics";
 import { DiscoverSidebar } from "@/components/discover/DiscoverSidebar";
 import { SortOptions } from "@/components/discover/SortOptions";
 import { SearchFilters } from "@/components/ui/search-filters";
+import { EventDiscovery } from "@/components/events/EventDiscovery";
+import { InterestMatcher } from "@/components/matching/InterestMatcher";
+import { LiveLocationSharing } from "@/components/live/LiveLocationSharing";
+import { GroupCreation } from "@/components/groups/GroupCreation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Heart, Users, MapPin, Compass } from "lucide-react";
+import { Heart, Users, MapPin, Compass, CalendarIcon, Sparkles, Wifi, MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useProfile } from "@/hooks/useProfile";
 import { cn } from "@/lib/utils";
 
 export default function Discover() {
@@ -24,6 +29,7 @@ export default function Discover() {
   const [sortBy, setSortBy] = useState("distance");
   const [activeTab, setActiveTab] = useState("people");
   const { user } = useAuth();
+  const { profile } = useProfile();
   const isMobile = useIsMobile();
   const { latitude, longitude, error, getCurrentPosition } = useGeolocation();
 
@@ -36,6 +42,9 @@ export default function Discover() {
       getCurrentPosition();
     }
   }, []);
+
+  // Get user interests from profile
+  const userInterests = profile?.interests || selectedInterests;
 
   return (
     <MainLayout>
@@ -88,7 +97,7 @@ export default function Discover() {
             {/* Content Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className={cn(
-                "grid w-full grid-cols-4 sticky top-0 z-10 bg-background/95 backdrop-blur",
+                "grid w-full grid-cols-6 sticky top-0 z-10 bg-background/95 backdrop-blur",
                 isMobile ? "h-14" : ""
               )}>
                 <TabsTrigger 
@@ -108,20 +117,36 @@ export default function Discover() {
                   <span className={cn(isMobile ? "text-xs" : "")}>Nearby</span>
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="topics" 
+                  value="live" 
                   className="flex items-center gap-2"
-                  onClick={() => setActiveTab("topics")}
+                  onClick={() => setActiveTab("live")}
                 >
-                  <Compass className="h-4 w-4" />
-                  <span className={cn(isMobile ? "text-xs" : "")}>Topics</span>
+                  <Wifi className="h-4 w-4" />
+                  <span className={cn(isMobile ? "text-xs" : "")}>Live</span>
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="feed" 
+                  value="events" 
                   className="flex items-center gap-2"
-                  onClick={() => setActiveTab("feed")}
+                  onClick={() => setActiveTab("events")}
                 >
-                  <Heart className="h-4 w-4" />
-                  <span className={cn(isMobile ? "text-xs" : "")}>Feed</span>
+                  <CalendarIcon className="h-4 w-4" />
+                  <span className={cn(isMobile ? "text-xs" : "")}>Events</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="matches" 
+                  className="flex items-center gap-2"
+                  onClick={() => setActiveTab("matches")}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span className={cn(isMobile ? "text-xs" : "")}>Matches</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="groups" 
+                  className="flex items-center gap-2"
+                  onClick={() => setActiveTab("groups")}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span className={cn(isMobile ? "text-xs" : "")}>Groups</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -154,27 +179,67 @@ export default function Discover() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="topics" className="mt-0 animate-in fade-in-50">
-                <div className="p-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <DiscoverFeed 
-                    searchQuery={searchQuery}
-                    selectedInterests={selectedInterests}
-                    topics={selectedTopics}
-                    viewType="categories"
+              <TabsContent value="live" className="mt-0 animate-in fade-in-50">
+                <div className="p-4">
+                  <LiveLocationSharing />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="events" className="mt-0 animate-in fade-in-50">
+                <div className="p-4">
+                  <EventDiscovery 
+                    userLocation={latitude && longitude ? { latitude, longitude } : undefined}
+                    selectedInterests={userInterests}
                   />
                 </div>
               </TabsContent>
 
-              <TabsContent value="feed" className="mt-0 animate-in fade-in-50">
+              <TabsContent value="matches" className="mt-0 animate-in fade-in-50">
                 <div className="p-4">
-                  <DiscoverFeed 
-                    searchQuery={searchQuery}
-                    selectedInterests={selectedInterests}
-                    ageRange={ageRange}
-                    sortBy={sortBy}
-                    topics={selectedTopics}
-                    viewType="feed"
-                  />
+                  <InterestMatcher userInterests={userInterests} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="groups" className="mt-0 animate-in fade-in-50">
+                <div className="p-4 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold">Interest Groups</h2>
+                      <p className="text-muted-foreground">Join group chats with people who share your interests</p>
+                    </div>
+                    <GroupCreation />
+                  </div>
+                  
+                  {/* Mock Group Cards */}
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {[
+                      { name: "Philosophy Discussions", members: 45, topic: "Philosophy", description: "Deep conversations about consciousness, ethics, and reality" },
+                      { name: "Photography Club", members: 128, topic: "Photography", description: "Share photos, tips, and organize photo walks" },
+                      { name: "Book Lovers", members: 89, topic: "Reading", description: "Monthly book discussions and recommendations" },
+                      { name: "Fitness Buddies", members: 156, topic: "Fitness", description: "Workout tips, motivation, and group challenges" },
+                      { name: "Tech Talk", members: 203, topic: "Technology", description: "Latest tech trends, coding tips, and project collaboration" },
+                      { name: "Cooking Together", members: 67, topic: "Cooking", description: "Recipe sharing and virtual cooking sessions" }
+                    ].map((group) => (
+                      <div key={group.name} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="space-y-3">
+                          <div>
+                            <h3 className="font-medium">{group.name}</h3>
+                            <p className="text-sm text-muted-foreground">{group.description}</p>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Users className="h-4 w-4" />
+                              {group.members} members
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">{group.topic}</Badge>
+                              <Button size="sm">Join</Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>
