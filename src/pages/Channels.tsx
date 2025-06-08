@@ -6,34 +6,45 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EnhancedChannelCard } from "@/components/ui/enhanced-channel-card";
 import { ChannelActions } from "@/components/ui/channel-actions";
 import { GroupChatDialog } from "@/components/ui/group-chat-dialog";
-import { useChannels } from "@/hooks/useChannels";
-import { PlusCircle, Search } from "lucide-react";
+import { useChannelManagement } from "@/hooks/useChannelManagement";
+import { CHANNELS } from "@/data/mock-data";
+import { Channel } from "@/types";
+import { PlusCircle, Search, Users, Globe, Lock, Bookmark } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 export default function Channels() {
-  const { channels, userChannels, loading, createChannel, joinChannel, leaveChannel } = useChannels();
+  const [allChannels, setAllChannels] = useState<Channel[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [isGroupChatDialogOpen, setIsGroupChatDialogOpen] = useState(false);
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const { 
+    joinChannel, 
+    leaveChannel, 
+    isChannelJoined, 
+    getChannelsWithJoinedStatus 
+  } = useChannelManagement();
 
-  // Combine all channels with user membership status
-  const allChannels = channels.map(channel => ({
-    ...channel,
-    isPrivate: channel.is_private,
-    isJoined: userChannels.some(uc => uc.id === channel.id),
-    members: channel.member_count || 0,
-    inviteOnly: channel.invite_only,
-    ownerId: channel.owner_id,
-    description: channel.description || '' // Ensure description is always a string
-  }));
+  useEffect(() => {
+    // Load channels from localStorage and mock data
+    const userChannelsString = localStorage.getItem("userChannels");
+    const userChannels = userChannelsString ? JSON.parse(userChannelsString) : [];
+    
+    // Combine mock channels with user created channels
+    const combinedChannels = [...CHANNELS, ...userChannels];
+    setAllChannels(combinedChannels);
+  }, []);
 
-  const filteredChannels = allChannels.filter(channel => {
+  // Get channels with joined status
+  const channelsWithStatus = getChannelsWithJoinedStatus(allChannels);
+
+  const filteredChannels = channelsWithStatus.filter(channel => {
     const matchesSearch = channel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (channel.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+                         channel.description.toLowerCase().includes(searchQuery.toLowerCase());
     
     switch (activeTab) {
       case "joined":
@@ -47,7 +58,7 @@ export default function Channels() {
     }
   });
 
-  const handleChannelCreated = async (groupData: {
+  const handleChannelCreated = (groupData: {
     id: string;
     name: string;
     description: string;
@@ -58,20 +69,30 @@ export default function Channels() {
       role: 'admin' | 'member';
     }[];
   }) => {
-    // Create channel using the backend
-    const result = await createChannel({
+    // Convert the groupData to Channel format
+    const newChannel: Channel = {
+      id: groupData.id,
       name: groupData.name,
       description: groupData.description,
-      is_private: false,
-      invite_only: false,
-      category: 'General',
+      members: groupData.participants.length,
       tags: [],
-      member_count: 1 // Start with 1 member (the creator)
-    });
+      isPrivate: false,
+      isJoined: true
+    };
     
-    if (result?.data) {
-      setIsGroupChatDialogOpen(false);
-    }
+    // Save to localStorage
+    const userChannelsString = localStorage.getItem("userChannels");
+    const userChannels = userChannelsString ? JSON.parse(userChannelsString) : [];
+    const updatedUserChannels = [...userChannels, newChannel];
+    localStorage.setItem("userChannels", JSON.stringify(updatedUserChannels));
+    
+    // Update state
+    setAllChannels(prev => [...prev, newChannel]);
+    
+    // Auto-join the created channel
+    joinChannel(newChannel.id);
+    
+    setIsGroupChatDialogOpen(false);
   };
 
   // Convert User to AuthUser format
@@ -84,21 +105,29 @@ export default function Channels() {
     isLoggedIn: true
   } : null;
 
-  if (loading) {
-    return (
-      <MainLayout>
-        <div className={cn(
-          "container mx-auto max-w-6xl",
-          isMobile ? "px-3 py-4" : "px-4 py-6"
-        )}>
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading channels...</p>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 15
+      }
+    }
+  };
 
   return (
     <MainLayout>
@@ -120,7 +149,10 @@ export default function Channels() {
           </div>
           <Button 
             onClick={() => setIsGroupChatDialogOpen(true)}
-            className={cn(isMobile ? "w-full" : "")}
+            className={cn(
+              isMobile ? "w-full" : "",
+              "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            )}
             size={isMobile ? "default" : "default"}
           >
             <PlusCircle className="mr-2 h-4 w-4" />
@@ -148,23 +180,30 @@ export default function Channels() {
             "grid w-full grid-cols-4",
             isMobile ? "max-w-full h-12" : "max-w-md"
           )}>
-            <TabsTrigger value="all" className={cn(isMobile ? "text-xs" : "")}>
-              All
+            <TabsTrigger value="all" className={cn(isMobile ? "text-xs" : "", "flex items-center gap-1")}>
+              <Globe className="h-3.5 w-3.5" />
+              <span>All</span>
             </TabsTrigger>
-            <TabsTrigger value="joined" className={cn(isMobile ? "text-xs" : "")}>
-              Joined
+            <TabsTrigger value="joined" className={cn(isMobile ? "text-xs" : "", "flex items-center gap-1")}>
+              <Bookmark className="h-3.5 w-3.5" />
+              <span>Joined</span>
             </TabsTrigger>
-            <TabsTrigger value="public" className={cn(isMobile ? "text-xs" : "")}>
-              Public
+            <TabsTrigger value="public" className={cn(isMobile ? "text-xs" : "", "flex items-center gap-1")}>
+              <Globe className="h-3.5 w-3.5" />
+              <span>Public</span>
             </TabsTrigger>
-            <TabsTrigger value="private" className={cn(isMobile ? "text-xs" : "")}>
-              Private
+            <TabsTrigger value="private" className={cn(isMobile ? "text-xs" : "", "flex items-center gap-1")}>
+              <Lock className="h-3.5 w-3.5" />
+              <span>Private</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab} className="mt-6">
             {filteredChannels.length === 0 ? (
               <div className={cn("text-center", isMobile ? "py-8" : "py-12")}>
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+                  <Users className="h-8 w-8 text-muted-foreground" />
+                </div>
                 <h3 className={cn("font-medium mb-2", isMobile ? "text-base" : "text-lg")}>
                   No channels found
                 </h3>
@@ -177,7 +216,10 @@ export default function Channels() {
                 {!searchQuery && (
                   <Button 
                     onClick={() => setIsGroupChatDialogOpen(true)}
-                    className={cn(isMobile ? "w-full max-w-xs" : "")}
+                    className={cn(
+                      isMobile ? "w-full max-w-xs" : "",
+                      "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    )}
                   >
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Create Channel
@@ -185,24 +227,29 @@ export default function Channels() {
                 )}
               </div>
             ) : (
-              <div className={cn(
-                "grid gap-6",
-                isMobile 
-                  ? "grid-cols-1" 
-                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-              )}>
+              <motion.div 
+                className={cn(
+                  "grid gap-6",
+                  isMobile 
+                    ? "grid-cols-1" 
+                    : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+                )}
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
                 {filteredChannels.map((channel) => (
-                  <div key={channel.id} className="space-y-4">
+                  <motion.div key={channel.id} className="space-y-4" variants={itemVariants}>
                     <EnhancedChannelCard channel={channel} />
                     <ChannelActions 
                       channel={channel}
                       isJoined={channel.isJoined || false}
-                      onJoin={() => joinChannel(channel.id)}
-                      onLeave={() => leaveChannel(channel.id)}
+                      onJoin={joinChannel}
+                      onLeave={leaveChannel}
                     />
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
           </TabsContent>
         </Tabs>
@@ -217,3 +264,4 @@ export default function Channels() {
     </MainLayout>
   );
 }
+

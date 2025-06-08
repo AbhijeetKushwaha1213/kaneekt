@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { DiscoverHero } from "@/components/discover/DiscoverHero";
@@ -22,6 +21,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useProfile } from "@/hooks/useProfile";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 export default function Discover() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,6 +47,30 @@ export default function Discover() {
 
   // Get user interests from profile
   const userInterests = profile?.interests || selectedInterests;
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 15
+      }
+    }
+  };
 
   return (
     <MainLayout>
@@ -77,7 +101,7 @@ export default function Discover() {
             <div className="border-b">
               <DiscoverHero 
                 timeOfDay={timeOfDay}
-                location={error ? "Location unavailable" : latitude && longitude ? "Near you" : "Loading location..."}
+                location={error ? "Near you" : latitude && longitude ? "Near you" : "Loading location..."}
                 onLocationClick={getCurrentPosition}
               />
             </div>
@@ -157,7 +181,12 @@ export default function Discover() {
                   <div className="mb-4">
                     <SortOptions value={sortBy} onChange={setSortBy} />
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <motion.div 
+                    className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
                     <DiscoverFeed 
                       searchQuery={searchQuery}
                       selectedInterests={selectedInterests}
@@ -165,7 +194,7 @@ export default function Discover() {
                       sortBy={sortBy}
                       viewType="grid"
                     />
-                  </div>
+                  </motion.div>
                 </div>
               </TabsContent>
 
@@ -213,7 +242,12 @@ export default function Discover() {
                   </div>
                   
                   {/* Mock Group Cards */}
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <motion.div 
+                    className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
                     {[
                       { name: "Philosophy Discussions", members: 45, topic: "Philosophy", description: "Deep conversations about consciousness, ethics, and reality" },
                       { name: "Photography Club", members: 128, topic: "Photography", description: "Share photos, tips, and organize photo walks" },
@@ -222,7 +256,11 @@ export default function Discover() {
                       { name: "Tech Talk", members: 203, topic: "Technology", description: "Latest tech trends, coding tips, and project collaboration" },
                       { name: "Cooking Together", members: 67, topic: "Cooking", description: "Recipe sharing and virtual cooking sessions" }
                     ].map((group) => (
-                      <div key={group.name} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <motion.div 
+                        key={group.name} 
+                        className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow"
+                        variants={itemVariants}
+                      >
                         <div className="space-y-3">
                           <div>
                             <h3 className="font-medium">{group.name}</h3>
@@ -235,13 +273,13 @@ export default function Discover() {
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge variant="secondary">{group.topic}</Badge>
-                              <Button size="sm">Join</Button>
+                              <Button size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">Join</Button>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
-                  </div>
+                  </motion.div>
                 </div>
               </TabsContent>
             </Tabs>
@@ -258,3 +296,4 @@ export default function Discover() {
     </MainLayout>
   );
 }
+
