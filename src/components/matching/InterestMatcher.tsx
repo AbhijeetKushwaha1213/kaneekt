@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { UserCard } from '@/components/ui/user-card';
 import { Sparkles, RefreshCw, Heart } from 'lucide-react';
-import { USERS } from '@/data/mock-data';
+import { useMatching } from '@/hooks/useMatching';
 import { useToast } from '@/hooks/use-toast';
 
 interface InterestMatcherProps {
@@ -13,50 +13,17 @@ interface InterestMatcherProps {
 }
 
 export function InterestMatcher({ userInterests = [] }: InterestMatcherProps) {
-  const [matches, setMatches] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { matches, loading, generateMatches } = useMatching();
   const { toast } = useToast();
 
   useEffect(() => {
     if (userInterests.length > 0) {
-      findMatches();
+      generateMatches();
     }
   }, [userInterests]);
 
-  const calculateMatchScore = (userInterests: string[], otherInterests: string[]) => {
-    const commonInterests = userInterests.filter(interest => 
-      otherInterests.includes(interest)
-    );
-    return commonInterests.length / Math.max(userInterests.length, otherInterests.length);
-  };
-
-  const findMatches = () => {
-    setIsLoading(true);
-    
-    // Simulate API delay
-    setTimeout(() => {
-      const potentialMatches = USERS
-        .filter(user => {
-          const matchScore = calculateMatchScore(userInterests, user.interests);
-          return matchScore > 0.2; // At least 20% compatibility
-        })
-        .map(user => ({
-          ...user,
-          matchScore: calculateMatchScore(userInterests, user.interests),
-          commonInterests: userInterests.filter(interest => 
-            user.interests.includes(interest)
-          )
-        }))
-        .sort((a, b) => b.matchScore - a.matchScore)
-        .slice(0, 6); // Top 6 matches
-
-      setMatches(potentialMatches);
-      setIsLoading(false);
-    }, 1000);
-  };
-
   const refreshMatches = () => {
-    findMatches();
+    generateMatches();
     toast({
       title: "Refreshing matches",
       description: "Finding new people who share your interests..."
@@ -93,14 +60,14 @@ export function InterestMatcher({ userInterests = [] }: InterestMatcherProps) {
           variant="outline"
           size="sm"
           onClick={refreshMatches}
-          disabled={isLoading}
+          disabled={loading}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          {isLoading ? 'Finding...' : 'Refresh'}
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          {loading ? 'Finding...' : 'Refresh'}
         </Button>
       </div>
 
-      {isLoading ? (
+      {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
@@ -118,15 +85,24 @@ export function InterestMatcher({ userInterests = [] }: InterestMatcherProps) {
         </div>
       ) : matches.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {matches.map(user => (
-            <Card key={user.id} className="relative overflow-hidden">
+          {matches.map(match => (
+            <Card key={match.id} className="relative overflow-hidden">
               <div className="absolute top-2 right-2 z-10">
                 <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  {Math.round(user.matchScore * 100)}% match
+                  {Math.round(match.match_score * 100)}% match
                 </Badge>
               </div>
               
-              <UserCard user={user} />
+              <UserCard user={{
+                id: match.matched_user.id,
+                name: match.matched_user.name,
+                avatar: match.matched_user.avatar,
+                bio: match.matched_user.bio || '',
+                interests: match.matched_user.interests || [],
+                location: '',
+                age: 25,
+                distance: match.distance_km || 0
+              }} />
               
               <CardContent className="p-4 pt-0">
                 <div className="space-y-2">
@@ -135,14 +111,14 @@ export function InterestMatcher({ userInterests = [] }: InterestMatcherProps) {
                     Common Interests
                   </h4>
                   <div className="flex flex-wrap gap-1">
-                    {user.commonInterests.slice(0, 3).map((interest: string) => (
+                    {match.common_interests.slice(0, 3).map((interest: string) => (
                       <Badge key={interest} variant="outline" className="text-xs">
                         {interest}
                       </Badge>
                     ))}
-                    {user.commonInterests.length > 3 && (
+                    {match.common_interests.length > 3 && (
                       <Badge variant="outline" className="text-xs">
-                        +{user.commonInterests.length - 3} more
+                        +{match.common_interests.length - 3} more
                       </Badge>
                     )}
                   </div>

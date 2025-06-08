@@ -6,7 +6,7 @@ import { Plus } from 'lucide-react';
 import { CreateStoryDialog } from './CreateStoryDialog';
 import { StoryViewDialog } from './StoryViewDialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { useStories } from '@/hooks/useStories';
 
 interface StoriesCarouselProps {
   currentUserId?: string;
@@ -14,29 +14,24 @@ interface StoriesCarouselProps {
 
 export function StoriesCarousel({ currentUserId }: StoriesCarouselProps) {
   const { user } = useAuth();
+  const { stories, createStory, viewStory } = useStories();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedStory, setSelectedStory] = useState<any>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const { toast } = useToast();
-
-  // Temporarily disabled stories functionality until database tables are properly set up
-  const stories: any[] = [];
 
   const handleCreateStory = async (content: string, image?: File, video?: File) => {
     if (!user) return;
 
-    // Temporarily show a message that stories functionality is coming soon
-    toast({
-      title: "Coming soon!",
-      description: "Stories functionality will be available after database setup is complete.",
-    });
-    
-    setCreateDialogOpen(false);
+    const result = await createStory(content, image, video);
+    if (result.data) {
+      setCreateDialogOpen(false);
+    }
   };
 
   const handleStoryClick = async (story: any) => {
     setSelectedStory(story);
     setViewDialogOpen(true);
+    await viewStory(story.id);
   };
 
   return (
@@ -53,14 +48,19 @@ export function StoriesCarousel({ currentUserId }: StoriesCarouselProps) {
         <span className="text-xs text-center">Your Story</span>
       </div>
 
-      {/* Placeholder for when stories are implemented */}
-      <div className="flex flex-col items-center space-y-2 min-w-[70px] opacity-50">
-        <Avatar className="h-16 w-16 border-2 border-gray-300">
-          <AvatarImage src="/placeholder.svg" alt="Coming soon" />
-          <AvatarFallback>CS</AvatarFallback>
-        </Avatar>
-        <span className="text-xs text-center text-gray-500">Coming Soon</span>
-      </div>
+      {stories.map(story => (
+        <div 
+          key={story.id} 
+          className="flex flex-col items-center space-y-2 min-w-[70px] cursor-pointer"
+          onClick={() => handleStoryClick(story)}
+        >
+          <Avatar className={`h-16 w-16 border-2 ${story.has_viewed ? 'border-gray-300' : 'border-primary'}`}>
+            <AvatarImage src={story.author?.avatar} alt={story.author?.name} />
+            <AvatarFallback>{story.author?.name?.[0] || 'U'}</AvatarFallback>
+          </Avatar>
+          <span className="text-xs text-center truncate w-full">{story.author?.name || 'User'}</span>
+        </div>
+      ))}
 
       <CreateStoryDialog
         open={createDialogOpen}

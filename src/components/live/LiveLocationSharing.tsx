@@ -7,110 +7,29 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { MapPin, Users, Clock, Wifi } from 'lucide-react';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { useLocationSharing } from '@/hooks/useLocationSharing';
 import { useToast } from '@/hooks/use-toast';
-import { formatDistance } from '@/utils/distanceUtils';
-
-interface LiveUser {
-  id: string;
-  name: string;
-  avatar?: string;
-  location: string;
-  distance: number;
-  status: 'looking-to-chat' | 'open-to-meetup' | 'studying' | 'exploring';
-  lastSeen: Date;
-  interests: string[];
-}
 
 export function LiveLocationSharing() {
-  const [isLiveLocationEnabled, setIsLiveLocationEnabled] = useState(false);
-  const [liveUsers, setLiveUsers] = useState<LiveUser[]>([]);
-  const [userStatus, setUserStatus] = useState<LiveUser['status']>('looking-to-chat');
   const { latitude, longitude, getCurrentPosition } = useGeolocation();
+  const { isSharing, nearbyUsers, loading, startSharing, stopSharing, updateStatus } = useLocationSharing();
+  const [userStatus, setUserStatus] = useState<'looking-to-chat' | 'open-to-meetup' | 'studying' | 'exploring'>('looking-to-chat');
   const { toast } = useToast();
-
-  useEffect(() => {
-    // Check if live location is already enabled
-    const savedPreference = localStorage.getItem('liveLocationEnabled');
-    if (savedPreference === 'true') {
-      setIsLiveLocationEnabled(true);
-      if (!latitude || !longitude) {
-        getCurrentPosition();
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isLiveLocationEnabled && latitude && longitude) {
-      loadLiveUsers();
-      
-      // Simulate real-time updates
-      const interval = setInterval(loadLiveUsers, 30000); // Update every 30 seconds
-      return () => clearInterval(interval);
-    }
-  }, [isLiveLocationEnabled, latitude, longitude]);
-
-  const loadLiveUsers = () => {
-    // Mock live users data
-    const mockLiveUsers: LiveUser[] = [
-      {
-        id: '1',
-        name: 'Sarah Chen',
-        avatar: '/placeholder.svg',
-        location: 'Central Park',
-        distance: 0.5,
-        status: 'looking-to-chat',
-        lastSeen: new Date(Date.now() - 120000), // 2 minutes ago
-        interests: ['Photography', 'Travel']
-      },
-      {
-        id: '2',
-        name: 'Alex Rodriguez',
-        location: 'Coffee Bean Café',
-        distance: 1.2,
-        status: 'studying',
-        lastSeen: new Date(Date.now() - 300000), // 5 minutes ago
-        interests: ['Programming', 'Music']
-      },
-      {
-        id: '3',
-        name: 'Jordan Kim',
-        location: 'Library Downtown',
-        distance: 2.8,
-        status: 'open-to-meetup',
-        lastSeen: new Date(Date.now() - 600000), // 10 minutes ago
-        interests: ['Reading', 'Philosophy']
-      }
-    ];
-
-    setLiveUsers(mockLiveUsers);
-  };
 
   const toggleLiveLocation = async (enabled: boolean) => {
     if (enabled) {
       if (!latitude || !longitude) {
         getCurrentPosition();
+        return;
       }
       
-      localStorage.setItem('liveLocationEnabled', 'true');
-      setIsLiveLocationEnabled(true);
-      
-      toast({
-        title: "Live location enabled",
-        description: "You're now visible to nearby users looking to connect"
-      });
+      await startSharing(latitude, longitude, userStatus);
     } else {
-      localStorage.setItem('liveLocationEnabled', 'false');
-      setIsLiveLocationEnabled(false);
-      setLiveUsers([]);
-      
-      toast({
-        title: "Live location disabled",
-        description: "You're no longer sharing your location"
-      });
+      await stopSharing();
     }
   };
 
-  const getStatusColor = (status: LiveUser['status']) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'looking-to-chat':
         return 'bg-green-500';
@@ -125,7 +44,7 @@ export function LiveLocationSharing() {
     }
   };
 
-  const getStatusLabel = (status: LiveUser['status']) => {
+  const getStatusLabel = (status: string) => {
     switch (status) {
       case 'looking-to-chat':
         return 'Looking to chat';
@@ -140,10 +59,10 @@ export function LiveLocationSharing() {
     }
   };
 
-  const connectWithUser = (user: LiveUser) => {
+  const connectWithUser = (user: any) => {
     toast({
       title: "Connection request sent!",
-      description: `We've notified ${user.name} that you'd like to connect`
+      description: `We've notified ${user.user?.name} that you'd like to connect`
     });
   };
 
@@ -166,12 +85,12 @@ export function LiveLocationSharing() {
               </p>
             </div>
             <Switch
-              checked={isLiveLocationEnabled}
+              checked={isSharing}
               onCheckedChange={toggleLiveLocation}
             />
           </div>
           
-          {isLiveLocationEnabled && (
+          {isSharing && (
             <div className="space-y-3 pt-3 border-t">
               <div>
                 <label className="text-sm font-medium">Your status</label>
@@ -181,7 +100,10 @@ export function LiveLocationSharing() {
                       key={status}
                       variant={userStatus === status ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setUserStatus(status)}
+                      onClick={async () => {
+                        setUserStatus(status);
+                        await updateStatus(status);
+                      }}
                       className="text-xs"
                     >
                       <div className={`w-2 h-2 rounded-full ${getStatusColor(status)} mr-2`} />
@@ -196,45 +118,52 @@ export function LiveLocationSharing() {
       </Card>
 
       {/* Live Users */}
-      {isLiveLocationEnabled && (
+      {isSharing && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              People Nearby ({liveUsers.length})
+              People Nearby ({nearbyUsers.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {liveUsers.length > 0 ? (
+            {loading ? (
+              <div className="text-center py-6">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Finding nearby users...</p>
+              </div>
+            ) : nearbyUsers.length > 0 ? (
               <div className="space-y-4">
-                {liveUsers.map(user => (
+                {nearbyUsers.map(user => (
                   <div key={user.id} className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={user.avatar} alt={user.name} />
-                          <AvatarFallback>{user.name[0]}</AvatarFallback>
+                          <AvatarImage src={user.user?.avatar} alt={user.user?.name} />
+                          <AvatarFallback>{user.user?.name?.[0] || 'U'}</AvatarFallback>
                         </Avatar>
                         <div className={`absolute -bottom-1 -right-1 w-4 h-4 ${getStatusColor(user.status)} border-2 border-white rounded-full`} />
                       </div>
                       
                       <div className="flex-1">
-                        <h4 className="font-medium">{user.name}</h4>
+                        <h4 className="font-medium">{user.user?.name || 'User'}</h4>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
-                            {formatDistance(user.distance)} away
+                            {user.distance ? `${user.distance.toFixed(1)}km away` : 'Nearby'}
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {Math.round((Date.now() - user.lastSeen.getTime()) / 60000)}m ago
+                            {Math.round((Date.now() - new Date(user.last_updated).getTime()) / 60000)}m ago
                           </span>
                         </div>
                         <div className="flex items-center gap-1 mt-1">
                           <Badge variant="outline" className={`text-xs ${getStatusColor(user.status)} text-white border-0`}>
                             {getStatusLabel(user.status)}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">at {user.location}</span>
+                          {user.location_name && (
+                            <span className="text-xs text-muted-foreground">at {user.location_name}</span>
+                          )}
                         </div>
                       </div>
                     </div>

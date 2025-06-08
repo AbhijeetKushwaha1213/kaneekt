@@ -24,6 +24,80 @@ export type Database = {
         }
         Relationships: []
       }
+      channel_members: {
+        Row: {
+          channel_id: string
+          id: string
+          joined_at: string | null
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          id?: string
+          joined_at?: string | null
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          id?: string
+          joined_at?: string | null
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_members_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channels: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          invite_only: boolean | null
+          is_private: boolean | null
+          member_count: number | null
+          name: string
+          owner_id: string
+          tags: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          invite_only?: boolean | null
+          is_private?: boolean | null
+          member_count?: number | null
+          name: string
+          owner_id: string
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          invite_only?: boolean | null
+          is_private?: boolean | null
+          member_count?: number | null
+          name?: string
+          owner_id?: string
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           content: string
@@ -104,6 +178,86 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      event_attendees: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          id?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_attendees_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          categories: string[] | null
+          created_at: string | null
+          creator_id: string
+          date_time: string
+          description: string | null
+          id: string
+          is_public: boolean | null
+          latitude: number | null
+          location: string
+          longitude: number | null
+          max_attendees: number | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          categories?: string[] | null
+          created_at?: string | null
+          creator_id: string
+          date_time: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          latitude?: number | null
+          location: string
+          longitude?: number | null
+          max_attendees?: number | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          categories?: string[] | null
+          created_at?: string | null
+          creator_id?: string
+          date_time?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          latitude?: number | null
+          location?: string
+          longitude?: number | null
+          max_attendees?: number | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       follows: {
         Row: {
@@ -304,39 +458,55 @@ export type Database = {
       }
       messages: {
         Row: {
+          channel_id: string | null
           content: string
           conversation_id: string
           created_at: string | null
           delivered_at: string | null
           id: string
           is_read: boolean | null
+          media_url: string | null
           read_at: string | null
           sender_id: string
           status: string | null
+          type: string | null
         }
         Insert: {
+          channel_id?: string | null
           content: string
           conversation_id: string
           created_at?: string | null
           delivered_at?: string | null
           id?: string
           is_read?: boolean | null
+          media_url?: string | null
           read_at?: string | null
           sender_id: string
           status?: string | null
+          type?: string | null
         }
         Update: {
+          channel_id?: string | null
           content?: string
           conversation_id?: string
           created_at?: string | null
           delivered_at?: string | null
           id?: string
           is_read?: boolean | null
+          media_url?: string | null
           read_at?: string | null
           sender_id?: string
           status?: string | null
+          type?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "messages_conversation_id_fkey"
             columns: ["conversation_id"]
@@ -489,30 +659,36 @@ export type Database = {
       }
       stories: {
         Row: {
+          background_color: string | null
           content: string | null
           created_at: string
           expires_at: string
           id: string
           media_type: string | null
           media_url: string | null
+          text_color: string | null
           user_id: string
         }
         Insert: {
+          background_color?: string | null
           content?: string | null
           created_at?: string
           expires_at?: string
           id?: string
           media_type?: string | null
           media_url?: string | null
+          text_color?: string | null
           user_id: string
         }
         Update: {
+          background_color?: string | null
           content?: string | null
           created_at?: string
           expires_at?: string
           id?: string
           media_type?: string | null
           media_url?: string | null
+          text_color?: string | null
           user_id?: string
         }
         Relationships: [
@@ -632,6 +808,96 @@ export type Database = {
           },
         ]
       }
+      user_interests: {
+        Row: {
+          created_at: string | null
+          id: string
+          interest: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          interest: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          interest?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_locations: {
+        Row: {
+          accuracy: number | null
+          expires_at: string | null
+          id: string
+          is_sharing: boolean | null
+          last_updated: string | null
+          latitude: number
+          location_name: string | null
+          longitude: number
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          expires_at?: string | null
+          id?: string
+          is_sharing?: boolean | null
+          last_updated?: string | null
+          latitude: number
+          location_name?: string | null
+          longitude: number
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          expires_at?: string | null
+          id?: string
+          is_sharing?: boolean | null
+          last_updated?: string | null
+          latitude?: number
+          location_name?: string | null
+          longitude?: number
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_matches: {
+        Row: {
+          common_interests: string[] | null
+          created_at: string | null
+          distance_km: number | null
+          id: string
+          match_score: number | null
+          user1_id: string
+          user2_id: string
+        }
+        Insert: {
+          common_interests?: string[] | null
+          created_at?: string | null
+          distance_km?: number | null
+          id?: string
+          match_score?: number | null
+          user1_id: string
+          user2_id: string
+        }
+        Update: {
+          common_interests?: string[] | null
+          created_at?: string | null
+          distance_km?: number | null
+          id?: string
+          match_score?: number | null
+          user1_id?: string
+          user2_id?: string
+        }
+        Relationships: []
+      }
       user_presence: {
         Row: {
           id: string
@@ -661,7 +927,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_locations: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

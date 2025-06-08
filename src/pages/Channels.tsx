@@ -7,58 +7,44 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EnhancedChannelCard } from "@/components/ui/enhanced-channel-card";
 import { ChannelActions } from "@/components/ui/channel-actions";
 import { GroupChatDialog } from "@/components/ui/group-chat-dialog";
-import { useChannelManagement } from "@/hooks/useChannelManagement";
-import { CHANNELS } from "@/data/mock-data";
-import { Channel } from "@/types";
+import { useChannels } from "@/hooks/useChannels";
 import { PlusCircle, Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 export default function Channels() {
-  const [allChannels, setAllChannels] = useState<Channel[]>([]);
+  const { channels, userChannels, loading, createChannel, joinChannel, leaveChannel } = useChannels();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [isGroupChatDialogOpen, setIsGroupChatDialogOpen] = useState(false);
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const { 
-    joinChannel, 
-    leaveChannel, 
-    isChannelJoined, 
-    getChannelsWithJoinedStatus 
-  } = useChannelManagement();
 
-  useEffect(() => {
-    // Load channels from localStorage and mock data
-    const userChannelsString = localStorage.getItem("userChannels");
-    const userChannels = userChannelsString ? JSON.parse(userChannelsString) : [];
-    
-    // Combine mock channels with user created channels
-    const combinedChannels = [...CHANNELS, ...userChannels];
-    setAllChannels(combinedChannels);
-  }, []);
+  // Combine all channels with user membership status
+  const allChannels = channels.map(channel => ({
+    ...channel,
+    isJoined: userChannels.some(uc => uc.id === channel.id),
+    members: channel.member_count || 0
+  }));
 
-  // Get channels with joined status
-  const channelsWithStatus = getChannelsWithJoinedStatus(allChannels);
-
-  const filteredChannels = channelsWithStatus.filter(channel => {
+  const filteredChannels = allChannels.filter(channel => {
     const matchesSearch = channel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         channel.description.toLowerCase().includes(searchQuery.toLowerCase());
+                         (channel.description || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     switch (activeTab) {
       case "joined":
         return matchesSearch && channel.isJoined;
       case "public":
-        return matchesSearch && !channel.isPrivate;
+        return matchesSearch && !channel.is_private;
       case "private":
-        return matchesSearch && channel.isPrivate;
+        return matchesSearch && channel.is_private;
       default:
         return matchesSearch;
     }
   });
 
-  const handleChannelCreated = (groupData: {
+  const handleChannelCreated = async (groupData: {
     id: string;
     name: string;
     description: string;
@@ -69,30 +55,19 @@ export default function Channels() {
       role: 'admin' | 'member';
     }[];
   }) => {
-    // Convert the groupData to Channel format
-    const newChannel: Channel = {
-      id: groupData.id,
+    // Create channel using the backend
+    const result = await createChannel({
       name: groupData.name,
       description: groupData.description,
-      members: groupData.participants.length,
-      tags: [],
-      isPrivate: false,
-      isJoined: true
-    };
+      is_private: false,
+      invite_only: false,
+      category: 'General',
+      tags: []
+    });
     
-    // Save to localStorage
-    const userChannelsString = localStorage.getItem("userChannels");
-    const userChannels = userChannelsString ? JSON.parse(userChannelsString) : [];
-    const updatedUserChannels = [...userChannels, newChannel];
-    localStorage.setItem("userChannels", JSON.stringify(updatedUserChannels));
-    
-    // Update state
-    setAllChannels(prev => [...prev, newChannel]);
-    
-    // Auto-join the created channel
-    joinChannel(newChannel.id);
-    
-    setIsGroupChatDialogOpen(false);
+    if (result?.data) {
+      setIsGroupChatDialogOpen(false);
+    }
   };
 
   // Convert User to AuthUser format
@@ -104,6 +79,22 @@ export default function Channels() {
     avatar: user.user_metadata?.avatar_url,
     isLoggedIn: true
   } : null;
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className={cn(
+          "container mx-auto max-w-6xl",
+          isMobile ? "px-3 py-4" : "px-4 py-6"
+        )}>
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading channels...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -202,8 +193,8 @@ export default function Channels() {
                     <ChannelActions 
                       channel={channel}
                       isJoined={channel.isJoined || false}
-                      onJoin={joinChannel}
-                      onLeave={leaveChannel}
+                      onJoin={() => joinChannel(channel.id)}
+                      onLeave={() => leaveChannel(channel.id)}
                     />
                   </div>
                 ))}

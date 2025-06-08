@@ -3,11 +3,32 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Story, StoryInsert, StoryWithInteractions } from '@/types/supabase';
+
+export interface Story {
+  id: string;
+  user_id: string;
+  content?: string;
+  media_url?: string;
+  media_type?: string;
+  background_color?: string;
+  text_color?: string;
+  created_at: string;
+  expires_at: string;
+  author?: {
+    id: string;
+    name: string;
+    username?: string;
+    avatar?: string;
+  };
+  views_count?: number;
+  reactions_count?: number;
+  has_viewed?: boolean;
+  user_reaction?: string;
+}
 
 export function useStories() {
   const { user } = useAuth();
-  const [stories, setStories] = useState<StoryWithInteractions[]>([]);
+  const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -67,13 +88,39 @@ export function useStories() {
     }
   };
 
-  const createStory = async (storyData: Omit<StoryInsert, 'user_id'>) => {
+  const createStory = async (content: string, image?: File, video?: File) => {
     if (!user) return { error: 'Not authenticated' };
 
     try {
+      const storyData: any = {
+        user_id: user.id,
+        content: content || null,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      };
+
+      // Handle file upload if provided
+      if (image || video) {
+        const file = image || video;
+        const fileExt = file!.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('stories')
+          .upload(fileName, file!);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('stories')
+          .getPublicUrl(fileName);
+
+        storyData.media_url = publicUrl;
+        storyData.media_type = image ? 'image' : 'video';
+      }
+
       const { data, error } = await supabase
         .from('stories')
-        .insert({ ...storyData, user_id: user.id })
+        .insert(storyData)
         .select()
         .single();
 
