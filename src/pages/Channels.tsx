@@ -25,7 +25,10 @@ export default function Channels() {
   const allChannels = channels.map(channel => ({
     ...channel,
     isJoined: userChannels.some(uc => uc.id === channel.id),
-    members: channel.member_count || 0
+    members: channel.member_count || 0,
+    isPrivate: channel.is_private,
+    inviteOnly: channel.invite_only,
+    ownerId: channel.owner_id
   }));
 
   const filteredChannels = allChannels.filter(channel => {
@@ -36,9 +39,9 @@ export default function Channels() {
       case "joined":
         return matchesSearch && channel.isJoined;
       case "public":
-        return matchesSearch && !channel.is_private;
+        return matchesSearch && !channel.isPrivate;
       case "private":
-        return matchesSearch && channel.is_private;
+        return matchesSearch && channel.isPrivate;
       default:
         return matchesSearch;
     }
@@ -189,9 +192,16 @@ export default function Channels() {
               )}>
                 {filteredChannels.map((channel) => (
                   <div key={channel.id} className="space-y-4">
-                    <EnhancedChannelCard channel={channel} />
+                    <EnhancedChannelCard channel={{
+                      ...channel,
+                      description: channel.description || '',
+                      isPrivate: channel.isPrivate
+                    }} />
                     <ChannelActions 
-                      channel={channel}
+                      channel={{
+                        ...channel,
+                        isPrivate: channel.isPrivate
+                      }}
                       isJoined={channel.isJoined || false}
                       onJoin={() => joinChannel(channel.id)}
                       onLeave={() => leaveChannel(channel.id)}

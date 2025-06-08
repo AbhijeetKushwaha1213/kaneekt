@@ -212,16 +212,15 @@ export default function Chat() {
                   message={{
                     id: message.id,
                     content: message.content,
-                    timestamp: new Date(message.created_at || Date.now()),
+                    timestamp: message.timestamp,
                     sender: {
-                      id: message.sender_id,
-                      name: message.sender_id === user?.id ? "You" : (conversationUser?.name || 'User'),
-                      avatar: message.sender_id === user?.id ? (user?.user_metadata?.avatar_url || '/placeholder.svg') : (conversationUser?.avatar || '/placeholder.svg')
+                      id: message.sender.id,
+                      name: message.isCurrentUser ? "You" : (conversationUser?.name || 'User'),
+                      avatar: message.isCurrentUser ? (user?.user_metadata?.avatar_url || '/placeholder.svg') : (conversationUser?.avatar || '/placeholder.svg')
                     },
-                    isCurrentUser: message.sender_id === user?.id,
+                    isCurrentUser: message.isCurrentUser,
                     type: message.type || 'text',
-                    status: message.status,
-                    mediaUrl: message.file_data || message.audio_data
+                    status: message.status
                   }}
                 />
               ))
