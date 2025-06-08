@@ -44,7 +44,7 @@ export interface UserInterest {
   created_at: string;
 }
 
-export interface UserLocationData {
+export interface UserLocation {
   id: string;
   user_id: string;
   latitude: number;
@@ -79,7 +79,7 @@ export interface ChannelMember {
   joined_at: string;
 }
 
-export interface UserMatchData {
+export interface UserMatch {
   id: string;
   user1_id: string;
   user2_id: string;
@@ -90,17 +90,11 @@ export interface UserMatchData {
 }
 
 // Enhanced message type for channel support
-export interface ChannelMessageData {
-  id: string;
-  content: string;
-  conversation_id?: string;
+export interface ChannelMessage extends Message {
   channel_id?: string;
-  sender_id: string;
-  created_at: string;
-  type?: 'text' | 'image' | 'video' | 'voice' | 'file' | 'location';
-  media_url?: string;
-  status?: 'sent' | 'delivered' | 'read';
+  conversation_id?: string;
 }
 
-// Re-export existing types from supabase
+// Re-export existing types
+export * from './index';
 export * from './supabase';

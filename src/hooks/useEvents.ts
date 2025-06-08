@@ -60,10 +60,8 @@ export function useEvents() {
 
       const eventsWithCounts = data?.map(event => ({
         ...event,
-        creator: Array.isArray(event.creator) ? event.creator[0] : event.creator,
-        categories: event.categories || [],
         attendee_count: event.event_attendees?.filter(a => a.status === 'attending').length || 0,
-        user_status: user ? event.event_attendees?.find(a => a.user_id === user.id)?.status as 'attending' | 'maybe' | 'not_attending' : undefined
+        user_status: user ? event.event_attendees?.find(a => a.user_id === user.id)?.status : undefined
       })) || [];
 
       setEvents(eventsWithCounts);

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -376,6 +377,7 @@ export default function EnhancedChannel() {
                     conversationId={`channel_${id}`}
                     userId={user?.id || "anonymous"}
                     onMessageSent={() => {}} // Messages are handled by real-time subscription
+                    onSendMessage={handleMessageSent}
                   />
                 </div>
               </div>
