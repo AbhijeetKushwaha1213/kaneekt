@@ -24,6 +24,10 @@ interface StoryViewDialogProps {
 export function StoryViewDialog({ story, open, onOpenChange }: StoryViewDialogProps) {
   if (!story) return null;
 
+  // Safe fallback for username
+  const displayName = story.userName || 'Unknown User';
+  const avatarFallback = displayName.length > 0 ? displayName[0].toUpperCase() : 'U';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0 bg-black text-white border-none">
@@ -36,11 +40,11 @@ export function StoryViewDialog({ story, open, onOpenChange }: StoryViewDialogPr
           {/* Header */}
           <div className="absolute top-6 left-4 right-4 flex items-center space-x-3 z-10">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={story.userAvatar} alt={story.userName} />
-              <AvatarFallback>{story.userName[0]}</AvatarFallback>
+              <AvatarImage src={story.userAvatar} alt={displayName} />
+              <AvatarFallback>{avatarFallback}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-medium text-sm">{story.userName}</p>
+              <p className="font-medium text-sm">{displayName}</p>
               <p className="text-xs text-white/70">
                 {formatDistanceToNow(story.timestamp, { addSuffix: true })}
               </p>
@@ -57,7 +61,7 @@ export function StoryViewDialog({ story, open, onOpenChange }: StoryViewDialogPr
               />
             ) : (
               <div className="text-center">
-                <p className="text-lg font-medium">{story.content}</p>
+                <p className="text-lg font-medium">{story.content || 'No content'}</p>
               </div>
             )}
           </div>
