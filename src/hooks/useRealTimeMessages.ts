@@ -2,12 +2,33 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Message } from '@/types/supabase';
 import { useToast } from '@/hooks/use-toast';
+
+// Define a more specific Message type for this hook
+export interface RealtimeMessage {
+  id: string;
+  content: string;
+  conversation_id: string;
+  sender_id: string;
+  created_at: string;
+  status?: 'sent' | 'delivered' | 'read';
+  type?: 'text' | 'image' | 'video' | 'voice' | 'file' | 'location';
+  media_url?: string;
+  delivered_at?: string;
+  read_at?: string;
+  is_read?: boolean;
+  channel_id?: string;
+  sender?: {
+    id: string;
+    name: string;
+    username?: string;
+    avatar?: string;
+  };
+}
 
 export function useRealTimeMessages(conversationId?: string) {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<RealtimeMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -44,7 +65,14 @@ export function useRealTimeMessages(conversationId?: string) {
           variant: "destructive"
         });
       } else {
-        setMessages(data || []);
+        const formattedMessages = data?.map(msg => ({
+          ...msg,
+          type: msg.type as 'text' | 'image' | 'video' | 'voice' | 'file' | 'location' || 'text',
+          status: msg.status as 'sent' | 'delivered' | 'read' || 'sent',
+          sender: Array.isArray(msg.sender) ? msg.sender[0] : msg.sender
+        })) || [];
+        
+        setMessages(formattedMessages);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -83,7 +111,14 @@ export function useRealTimeMessages(conversationId?: string) {
             .single();
 
           if (!error && data) {
-            setMessages(prev => [...prev, data]);
+            const formattedMessage = {
+              ...data,
+              type: data.type as 'text' | 'image' | 'video' | 'voice' | 'file' | 'location' || 'text',
+              status: data.status as 'sent' | 'delivered' | 'read' || 'sent',
+              sender: Array.isArray(data.sender) ? data.sender[0] : data.sender
+            };
+            
+            setMessages(prev => [...prev, formattedMessage]);
             
             // Auto-mark as delivered if not sent by current user
             if (data.sender_id !== user?.id) {
@@ -113,7 +148,12 @@ export function useRealTimeMessages(conversationId?: string) {
           setMessages(prev => 
             prev.map(msg => 
               msg.id === payload.new.id 
-                ? { ...msg, ...payload.new }
+                ? { 
+                    ...msg, 
+                    ...payload.new,
+                    type: payload.new.type as 'text' | 'image' | 'video' | 'voice' | 'file' | 'location' || msg.type,
+                    status: payload.new.status as 'sent' | 'delivered' | 'read' || msg.status
+                  }
                 : msg
             )
           );
@@ -126,7 +166,7 @@ export function useRealTimeMessages(conversationId?: string) {
     };
   };
 
-  const sendMessage = async (content: string, type: string = 'text') => {
+  const sendMessage = async (content: string, type: 'text' | 'image' | 'video' | 'voice' | 'file' | 'location' = 'text') => {
     if (!user || !conversationId) return { error: 'Missing requirements' };
 
     try {

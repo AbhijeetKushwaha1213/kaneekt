@@ -41,33 +41,36 @@ export function useMatching() {
       const { data, error } = await supabase
         .from('user_matches')
         .select(`
-          *,
-          user1:profiles!user_matches_user1_id_fkey (
-            id,
-            name,
-            avatar,
-            bio,
-            interests
-          ),
-          user2:profiles!user_matches_user2_id_fkey (
-            id,
-            name,
-            avatar,
-            bio,
-            interests
-          )
+          *
         `)
         .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
         .order('match_score', { ascending: false });
 
       if (error) throw error;
 
-      const matchesWithUser = data?.map(match => ({
-        ...match,
-        matched_user: match.user1_id === user.id ? match.user2 : match.user1
-      })) || [];
+      // Fetch matched user profiles separately
+      const matchesWithUsers = await Promise.all(
+        (data || []).map(async (match) => {
+          const matchedUserId = match.user1_id === user.id ? match.user2_id : match.user1_id;
+          
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('id, name, avatar, bio, interests')
+            .eq('id', matchedUserId)
+            .single();
 
-      setMatches(matchesWithUser);
+          return {
+            ...match,
+            common_interests: match.common_interests || [],
+            matched_user: profileData ? {
+              ...profileData,
+              interests: profileData.interests || []
+            } : undefined
+          };
+        })
+      );
+
+      setMatches(matchesWithUsers);
     } catch (error) {
       console.error('Error fetching matches:', error);
     } finally {
@@ -99,7 +102,7 @@ export function useMatching() {
       if (!potentialMatches) return;
 
       for (const potentialMatch of potentialMatches) {
-        if (!potentialMatch.interests) continue;
+        if (!potentialMatch.interests || !Array.isArray(potentialMatch.interests)) continue;
 
         const commonInterests = currentInterests.filter(interest => 
           potentialMatch.interests.includes(interest)
@@ -113,7 +116,7 @@ export function useMatching() {
             .from('user_matches')
             .select('id')
             .or(`and(user1_id.eq.${user.id},user2_id.eq.${potentialMatch.id}),and(user1_id.eq.${potentialMatch.id},user2_id.eq.${user.id})`)
-            .single();
+            .maybeSingle();
 
           if (!existingMatch && matchScore > 0.2) { // Only create matches with >20% compatibility
             await supabase

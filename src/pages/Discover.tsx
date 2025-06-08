@@ -1,178 +1,164 @@
 
-import { useState, useEffect } from "react";
-import { MainLayout } from "@/components/layout/MainLayout";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { DiscoverHero } from "@/components/discover/DiscoverHero";
-import { PostCreationButton } from "@/components/discover/PostCreationButton";
-import { StoriesCarousel } from "@/components/stories/StoriesCarousel";
-import { CreateStoryDialog } from "@/components/stories/CreateStoryDialog";
-import { EventDiscovery } from "@/components/events/EventDiscovery";
-import { InterestMatcher } from "@/components/matching/InterestMatcher";
-import { LiveLocationSharing } from "@/components/live/LiveLocationSharing";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useGeolocation } from "@/hooks/useGeolocation";
-import { useStories } from "@/hooks/useStories";
-import { useEvents } from "@/hooks/useEvents";
-import { useMatching } from "@/hooks/useMatching";
-import { useLocationSharing } from "@/hooks/useLocationSharing";
-import { MapPin, Users, Calendar, Heart, Plus } from "lucide-react";
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { MapPin, Calendar, Users, Heart, MessageCircle, Camera } from 'lucide-react';
+import { StoriesCarousel } from '@/components/stories/StoriesCarousel';
+import { CreateStoryDialog } from '@/components/stories/CreateStoryDialog';
+import { EventCreation } from '@/components/events/EventCreation';
+import { EventDiscovery } from '@/components/events/EventDiscovery';
+import { InterestMatcher } from '@/components/matching/InterestMatcher';
+import { LiveLocationSharing } from '@/components/live/LiveLocationSharing';
+import { useStories } from '@/hooks/useStories';
+import { useEvents } from '@/hooks/useEvents';
+import { useMatching } from '@/hooks/useMatching';
+import { useLocationSharing } from '@/hooks/useLocationSharing';
 
-function DiscoverContent() {
-  const [storyDialogOpen, setStoryDialogOpen] = useState(false);
-  const { 
-    latitude, 
-    longitude, 
-    error: locationError, 
-    loading: locationLoading,
-    getCurrentPosition 
-  } = useGeolocation();
-  
-  const { stories, createStory } = useStories();
-  const { events } = useEvents();
-  const { matches } = useMatching();
+const Discover = () => {
+  const { stories, loading: storiesLoading } = useStories();
+  const { events, loading: eventsLoading } = useEvents();
+  const { matches, loading: matchesLoading } = useMatching();
   const { nearbyUsers, isSharing } = useLocationSharing();
 
-  // Get time-based greeting
-  const getTimeOfDay = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'morning';
-    if (hour < 17) return 'afternoon';
-    return 'evening';
-  };
-
-  // Format location display
-  const getLocationDisplay = () => {
-    if (locationLoading) return "Loading location...";
-    if (locationError) return "Location unavailable";
-    if (latitude && longitude) {
-      return `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
-    }
-    return "Enable location for better discovery";
-  };
-
-  const handleLocationClick = () => {
-    getCurrentPosition();
-  };
-
-  const handleCreateStory = async (storyData: any) => {
-    const result = await createStory(storyData);
-    if (result.data) {
-      setStoryDialogOpen(false);
-    }
-  };
-
-  const stats = [
-    { icon: Users, label: "Nearby Users", value: nearbyUsers.length },
-    { icon: Calendar, label: "Local Events", value: events.filter(e => e.is_public).length },
-    { icon: Heart, label: "New Matches", value: matches.length },
-    { icon: MapPin, label: "Sharing", value: isSharing ? "Active" : "Inactive" }
-  ];
-
   return (
-    <MainLayout>
-      <div className="min-h-screen bg-background">
-        {/* Hero Section */}
-        <DiscoverHero 
-          timeOfDay={getTimeOfDay()}
-          location={getLocationDisplay()}
-          onLocationClick={handleLocationClick}
-        />
-
-        {/* Quick Stats */}
-        <div className="px-4 py-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-            {stats.map((stat, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border">
-                <div className="flex items-center gap-2 mb-1">
-                  <stat.icon className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">{stat.label}</span>
-                </div>
-                <p className="text-lg font-bold">{stat.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Stories Section */}
-        <div className="px-4 pb-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Stories</h2>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setStoryDialogOpen(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Story
-              </Button>
-            </div>
-            <StoriesCarousel stories={stories} />
-          </div>
-        </div>
-
-        {/* Main Content Tabs */}
-        <div className="px-4 pb-20">
-          <div className="max-w-4xl mx-auto">
-            <Tabs defaultValue="events" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="events">Events</TabsTrigger>
-                <TabsTrigger value="matches">Matches</TabsTrigger>
-                <TabsTrigger value="nearby">Nearby</TabsTrigger>
-                <TabsTrigger value="create">Create</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="events" className="mt-6">
-                <EventDiscovery />
-              </TabsContent>
-              
-              <TabsContent value="matches" className="mt-6">
-                <InterestMatcher />
-              </TabsContent>
-              
-              <TabsContent value="nearby" className="mt-6">
-                <LiveLocationSharing />
-              </TabsContent>
-              
-              <TabsContent value="create" className="mt-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Create Content</h3>
-                  <div className="grid gap-4">
-                    <PostCreationButton />
-                    <Button
-                      variant="outline"
-                      onClick={() => setStoryDialogOpen(true)}
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Story
-                    </Button>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
-
-        {/* Create Story Dialog */}
-        <CreateStoryDialog
-          open={storyDialogOpen}
-          onOpenChange={setStoryDialogOpen}
-          onCreateStory={handleCreateStory}
-        />
-        
-        {/* Mobile bottom padding */}
-        <div className="md:hidden h-16"></div>
+    <div className="max-w-6xl mx-auto p-6 space-y-8">
+      {/* Header */}
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Discover</h1>
+        <p className="text-gray-600">Connect with people and explore events around you</p>
       </div>
-    </MainLayout>
-  );
-}
 
-export default function Discover() {
-  return (
-    <ProtectedRoute>
-      <DiscoverContent />
-    </ProtectedRoute>
+      {/* Stories Section */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Camera className="w-5 h-5" />
+            Stories
+          </CardTitle>
+          <CreateStoryDialog />
+        </CardHeader>
+        <CardContent>
+          {storiesLoading ? (
+            <div className="text-center py-8">Loading stories...</div>
+          ) : (
+            <StoriesCarousel stories={stories} />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Live Location Sharing */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="w-5 h-5" />
+            Live Location
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LiveLocationSharing />
+          {nearbyUsers.length > 0 && (
+            <div className="mt-4">
+              <h3 className="font-semibold mb-2">Nearby Users</h3>
+              <div className="space-y-2">
+                {nearbyUsers.map((userLocation) => (
+                  <div key={userLocation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                        {userLocation.user?.name?.charAt(0) || 'U'}
+                      </div>
+                      <div>
+                        <p className="font-medium">{userLocation.user?.name || 'Anonymous'}</p>
+                        <p className="text-sm text-gray-600">{userLocation.status}</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline">{userLocation.location_name || 'Unknown location'}</Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Interest-Based Matching */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Heart className="w-5 h-5" />
+            Your Matches
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <InterestMatcher />
+          {matchesLoading ? (
+            <div className="text-center py-4">Loading matches...</div>
+          ) : matches.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+              {matches.map((match) => (
+                <div key={match.id} className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                      {match.matched_user?.name?.charAt(0) || 'U'}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{match.matched_user?.name || 'Unknown User'}</h3>
+                      <p className="text-sm text-green-600">{Math.round(match.match_score * 100)}% match</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">{match.matched_user?.bio || 'No bio available'}</p>
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {match.common_interests.map((interest) => (
+                      <Badge key={interest} variant="secondary" className="text-xs">
+                        {interest}
+                      </Badge>
+                    ))}
+                  </div>
+                  <Button size="sm" className="w-full">
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Chat
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500 py-4">No matches found yet. Complete your interests to find matches!</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Events Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Create Event
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <EventCreation />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Upcoming Events
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {eventsLoading ? (
+              <div className="text-center py-4">Loading events...</div>
+            ) : (
+              <EventDiscovery />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
-}
+};
+
+export default Discover;

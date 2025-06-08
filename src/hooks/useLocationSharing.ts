@@ -75,7 +75,14 @@ export function useLocationSharing() {
         .gt('expires_at', new Date().toISOString());
 
       if (error) throw error;
-      setNearbyUsers(data || []);
+      
+      const locationsWithUsers = data?.map(location => ({
+        ...location,
+        status: location.status as 'looking-to-chat' | 'open-to-meetup' | 'studying' | 'exploring',
+        user: Array.isArray(location.user) ? location.user[0] : location.user
+      })) || [];
+      
+      setNearbyUsers(locationsWithUsers);
     } catch (error) {
       console.error('Error fetching nearby users:', error);
     }
