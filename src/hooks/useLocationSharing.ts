@@ -97,9 +97,33 @@ export function useLocationSharing() {
 
       const enhancedUsers = (data || []).map(location => {
         const profileData = location.profiles;
-        const user = Array.isArray(profileData) && profileData.length > 0 
-          ? profileData[0] 
-          : (profileData && typeof profileData === 'object' ? profileData : undefined);
+        let user = undefined;
+        
+        // Safe profile data handling
+        if (profileData) {
+          try {
+            if (Array.isArray(profileData) && profileData.length > 0) {
+              const firstProfile = profileData[0];
+              if (firstProfile && typeof firstProfile === 'object' && firstProfile !== null) {
+                const profile = firstProfile as { id: string; name?: string; avatar?: string };
+                user = {
+                  id: profile.id,
+                  name: profile.name || 'Unknown User',
+                  avatar: profile.avatar || undefined
+                };
+              }
+            } else if (profileData && typeof profileData === 'object' && profileData !== null && !Array.isArray(profileData)) {
+              const profile = profileData as { id: string; name?: string; avatar?: string };
+              user = {
+                id: profile.id,
+                name: profile.name || 'Unknown User',
+                avatar: profile.avatar || undefined
+              };
+            }
+          } catch (err) {
+            console.warn('Error processing profile data:', err);
+          }
+        }
           
         return {
           ...location,
@@ -108,11 +132,7 @@ export function useLocationSharing() {
           accuracy: location.accuracy ? Number(location.accuracy) : undefined,
           status: (location.status || 'looking-to-chat') as UserLocation['status'],
           location_name: location.location_name || undefined,
-          user: user ? {
-            id: user.id,
-            name: user.name || 'Unknown User',
-            avatar: user.avatar || undefined
-          } : undefined
+          user
         };
       }) as UserLocation[];
 

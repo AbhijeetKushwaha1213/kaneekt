@@ -34,44 +34,57 @@ export function NearbyUsersMap() {
   }, [latitude, longitude, radius]);
 
   const loadMockNearbyUsers = () => {
-    // Mock data since database location features aren't available
-    const mockUsers = [
-      {
-        id: 'mock-1',
-        name: 'Sarah Chen',
-        username: 'sarahc',
-        avatar: '/placeholder.svg',
-        distance: 2.3
-      },
-      {
-        id: 'mock-2',
-        name: 'Marcus Johnson',
-        username: 'marcusj',
-        avatar: '/placeholder.svg',
-        distance: 4.7
-      },
-      {
-        id: 'mock-3',
-        name: 'Elena Rodriguez',
-        username: 'elenar',
-        avatar: '/placeholder.svg',
-        distance: radius > 10 ? 15.2 : undefined
-      }
-    ].filter(user => !user.distance || user.distance <= radius);
+    try {
+      // Mock data since database location features aren't available
+      const mockUsers = [
+        {
+          id: 'mock-1',
+          name: 'Sarah Chen',
+          username: 'sarahc',
+          avatar: '/placeholder.svg',
+          distance: 2.3
+        },
+        {
+          id: 'mock-2',
+          name: 'Marcus Johnson',
+          username: 'marcusj',
+          avatar: '/placeholder.svg',
+          distance: 4.7
+        },
+        {
+          id: 'mock-3',
+          name: 'Elena Rodriguez',
+          username: 'elenar',
+          avatar: '/placeholder.svg',
+          distance: radius > 10 ? 15.2 : undefined
+        }
+      ].filter(user => !user.distance || user.distance <= radius);
 
-    setNearbyUsers(mockUsers);
+      setNearbyUsers(mockUsers || []);
+    } catch (error) {
+      console.error('Error loading nearby users:', error);
+      setNearbyUsers([]);
+    }
   };
 
   const handleMessageUser = (userId: string) => {
-    // Navigate to chat with this user
-    window.location.href = `/chats/${userId}`;
+    try {
+      // Navigate to chat with this user
+      window.location.href = `/chats/${userId}`;
+    } catch (error) {
+      console.error('Error navigating to chat:', error);
+    }
   };
 
   const handleConnectUser = (userId: string) => {
-    toast({
-      title: 'Connection request sent',
-      description: 'Your connection request has been sent to this user.'
-    });
+    try {
+      toast({
+        title: 'Connection request sent',
+        description: 'Your connection request has been sent to this user.'
+      });
+    } catch (error) {
+      console.error('Error sending connection request:', error);
+    }
   };
 
   if (!latitude || !longitude) {
@@ -103,7 +116,7 @@ export function NearbyUsersMap() {
           People Near You
         </CardTitle>
         <CardDescription>
-          {nearbyUsers.length} people found within {radius}km
+          {nearbyUsers?.length || 0} people found within {radius}km
         </CardDescription>
       </CardHeader>
       
@@ -126,22 +139,22 @@ export function NearbyUsersMap() {
           <div className="text-center py-8">
             <p className="text-muted-foreground">Finding nearby people...</p>
           </div>
-        ) : nearbyUsers.length > 0 ? (
+        ) : nearbyUsers && nearbyUsers.length > 0 ? (
           <div className="space-y-3">
-            {nearbyUsers.map(nearbyUser => (
+            {nearbyUsers.map(nearbyUser => nearbyUser ? (
               <div
                 key={nearbyUser.id}
                 className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <Avatar>
-                    <AvatarImage src={nearbyUser.avatar} alt={nearbyUser.name} />
-                    <AvatarFallback>{nearbyUser.name?.[0] || 'U'}</AvatarFallback>
+                    <AvatarImage src={nearbyUser.avatar} alt={nearbyUser.name || 'User'} />
+                    <AvatarFallback>{(nearbyUser.name || 'U')?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
                   
                   <div>
-                    <p className="font-medium">{nearbyUser.name}</p>
-                    <p className="text-sm text-muted-foreground">@{nearbyUser.username}</p>
+                    <p className="font-medium">{nearbyUser.name || 'Unknown User'}</p>
+                    <p className="text-sm text-muted-foreground">@{nearbyUser.username || 'unknown'}</p>
                     {nearbyUser.distance && (
                       <Badge variant="secondary" className="text-xs">
                         {formatDistance(nearbyUser.distance)} away
@@ -167,7 +180,7 @@ export function NearbyUsersMap() {
                   </Button>
                 </div>
               </div>
-            ))}
+            ) : null)}
           </div>
         ) : (
           <div className="text-center py-8">

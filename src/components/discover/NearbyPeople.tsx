@@ -25,22 +25,31 @@ export function NearbyPeople({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  // Filter users by search query and interests
-  let filteredUsers = USERS.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.bio.toLowerCase().includes(searchQuery.toLowerCase());
-
-    return matchesSearch;
-  });
-
-  // Filter by selected interests if any are selected
-  if (selectedInterests.length > 0) {
-    filteredUsers = filterUsersByInterests(filteredUsers, selectedInterests);
-  }
+  // Safe filtering with null checks
+  let filteredUsers = [];
   
-  // Sort users by location when we have coordinates
-  if (latitude && longitude) {
-    filteredUsers = sortUsersByLocation(filteredUsers, latitude, longitude);
+  try {
+    filteredUsers = (USERS || []).filter(user => {
+      if (!user) return false;
+      
+      const matchesSearch = (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (user.bio || '').toLowerCase().includes(searchQuery.toLowerCase());
+
+      return matchesSearch;
+    });
+
+    // Filter by selected interests if any are selected
+    if (selectedInterests.length > 0) {
+      filteredUsers = filterUsersByInterests(filteredUsers, selectedInterests);
+    }
+    
+    // Sort users by location when we have coordinates
+    if (latitude && longitude && filteredUsers.length > 0) {
+      filteredUsers = sortUsersByLocation(filteredUsers, latitude, longitude);
+    }
+  } catch (error) {
+    console.error('Error filtering users:', error);
+    filteredUsers = [];
   }
   
   const refreshLocation = async () => {
@@ -85,11 +94,17 @@ export function NearbyPeople({
             </Button>
           </div>
           
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredUsers.map(user => (
-              <UserCard key={user.id} user={user} />
-            ))}
-          </div>
+          {filteredUsers && filteredUsers.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredUsers.map(user => user ? (
+                <UserCard key={user.id} user={user} />
+              ) : null)}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No people found nearby</p>
+            </div>
+          )}
         </>
       )}
       
