@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,20 +79,20 @@ export function useChannels() {
       const enhancedChannels = (data || []).map(channel => {
         const profileData = channel.profiles;
         
-        // Handle profile data more safely - check if it's an array first
+        // Handle profile data more safely with proper type checking
         let owner = undefined;
         if (profileData) {
-          if (Array.isArray(profileData)) {
+          if (Array.isArray(profileData) && profileData.length > 0) {
             // If it's an array, take the first element
             const firstProfile = profileData[0];
-            if (firstProfile) {
+            if (firstProfile && typeof firstProfile === 'object' && 'id' in firstProfile) {
               owner = {
                 id: firstProfile.id,
                 name: firstProfile.name || 'Unknown',
                 avatar: firstProfile.avatar || undefined
               };
             }
-          } else if (typeof profileData === 'object') {
+          } else if (profileData && typeof profileData === 'object' && 'id' in profileData) {
             // If it's a single object
             owner = {
               id: profileData.id,
@@ -182,20 +183,20 @@ export function useChannels() {
         
         const profileData = channel.profiles;
         
-        // Handle profile data more safely - check if it's an array first
+        // Handle profile data more safely with proper type checking
         let owner = undefined;
         if (profileData) {
-          if (Array.isArray(profileData)) {
+          if (Array.isArray(profileData) && profileData.length > 0) {
             // If it's an array, take the first element
             const firstProfile = profileData[0];
-            if (firstProfile) {
+            if (firstProfile && typeof firstProfile === 'object' && 'id' in firstProfile) {
               owner = {
                 id: firstProfile.id,
                 name: firstProfile.name || 'Unknown',
                 avatar: firstProfile.avatar || undefined
               };
             }
-          } else if (typeof profileData === 'object') {
+          } else if (profileData && typeof profileData === 'object' && 'id' in profileData) {
             // If it's a single object
             owner = {
               id: profileData.id,
