@@ -5,18 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Calendar, Users, Heart, MessageCircle, Camera } from 'lucide-react';
 import { StoriesCarousel } from '@/components/stories/StoriesCarousel';
-import { CreateStoryDialog } from '@/components/stories/CreateStoryDialog';
 import { EventCreation } from '@/components/events/EventCreation';
 import { EventDiscovery } from '@/components/events/EventDiscovery';
-import { InterestMatcher } from '@/components/matching/InterestMatcher';
 import { LiveLocationSharing } from '@/components/live/LiveLocationSharing';
-import { useStories } from '@/hooks/useStories';
 import { useEvents } from '@/hooks/useEvents';
 import { useMatching } from '@/hooks/useMatching';
 import { useLocationSharing } from '@/hooks/useLocationSharing';
 
 const Discover = () => {
-  const { stories, loading: storiesLoading } = useStories();
   const { events, loading: eventsLoading } = useEvents();
   const { matches, loading: matchesLoading } = useMatching();
   const { nearbyUsers, isSharing } = useLocationSharing();
@@ -36,14 +32,9 @@ const Discover = () => {
             <Camera className="w-5 h-5" />
             Stories
           </CardTitle>
-          <CreateStoryDialog />
         </CardHeader>
         <CardContent>
-          {storiesLoading ? (
-            <div className="text-center py-8">Loading stories...</div>
-          ) : (
-            <StoriesCarousel stories={stories} />
-          )}
+          <StoriesCarousel />
         </CardContent>
       </Card>
 
@@ -90,7 +81,6 @@ const Discover = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <InterestMatcher />
           {matchesLoading ? (
             <div className="text-center py-4">Loading matches...</div>
           ) : matches.length > 0 ? (

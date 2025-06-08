@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +13,8 @@ export interface RealtimeMessage {
   status?: 'sent' | 'delivered' | 'read';
   type?: 'text' | 'image' | 'video' | 'voice' | 'file' | 'location';
   media_url?: string;
+  file_data?: string;
+  audio_data?: string;
   delivered_at?: string;
   read_at?: string;
   is_read?: boolean;

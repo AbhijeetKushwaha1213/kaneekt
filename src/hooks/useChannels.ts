@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -99,7 +98,7 @@ export function useChannels() {
       const channelsWithRole = data?.map(item => ({
         ...item.channel,
         owner: Array.isArray(item.channel.owner) ? item.channel.owner[0] : item.channel.owner,
-        user_role: item.role,
+        user_role: item.role as 'admin' | 'moderator' | 'member',
         is_member: true,
         tags: item.channel.tags || []
       })) || [];
