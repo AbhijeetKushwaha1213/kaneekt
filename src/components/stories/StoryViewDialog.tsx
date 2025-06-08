@@ -28,6 +28,21 @@ export function StoryViewDialog({ story, open, onOpenChange }: StoryViewDialogPr
   const displayName = story.userName || 'Unknown User';
   const avatarFallback = displayName.length > 0 ? displayName[0].toUpperCase() : 'U';
 
+  // Safe timestamp handling
+  const getFormattedTime = () => {
+    try {
+      if (!story.timestamp) return 'Unknown time';
+      
+      const timestamp = new Date(story.timestamp);
+      if (isNaN(timestamp.getTime())) return 'Unknown time';
+      
+      return formatDistanceToNow(timestamp, { addSuffix: true });
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return 'Unknown time';
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0 bg-black text-white border-none">
@@ -46,7 +61,7 @@ export function StoryViewDialog({ story, open, onOpenChange }: StoryViewDialogPr
             <div>
               <p className="font-medium text-sm">{displayName}</p>
               <p className="text-xs text-white/70">
-                {formatDistanceToNow(story.timestamp, { addSuffix: true })}
+                {getFormattedTime()}
               </p>
             </div>
           </div>
