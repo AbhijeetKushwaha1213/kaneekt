@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 export interface Channel {
   id: string;
   name: string;
-  description?: string;
+  description: string;
   owner_id: string;
   is_private: boolean;
   invite_only: boolean;
@@ -21,8 +21,8 @@ export interface Channel {
     name: string;
     avatar?: string;
   };
-  user_role?: 'admin' | 'moderator' | 'member';
   is_member?: boolean;
+  user_role?: string;
 }
 
 export function useChannels() {
@@ -51,18 +51,50 @@ export function useChannels() {
             avatar
           )
         `)
-        .eq('is_private', false)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching channels:', error);
+        // Fallback query without profile relationship
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('channels')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (fallbackError) throw fallbackError;
+        
+        const channelsWithFallback = (fallbackData || []).map(channel => ({
+          ...channel,
+          description: channel.description || '',
+          category: channel.category || undefined,
+          tags: channel.tags || [],
+          member_count: channel.member_count || 0,
+          owner: undefined
+        })) as Channel[];
+        
+        setChannels(channelsWithFallback);
+        return;
+      }
 
-      const enhancedChannels = (data || []).map(channel => ({
-        ...channel,
-        owner: Array.isArray(channel.profiles) ? channel.profiles[0] : channel.profiles,
-        tags: channel.tags || [],
-        category: channel.category || undefined,
-        description: channel.description || undefined
-      })) as Channel[];
+      const enhancedChannels = (data || []).map(channel => {
+        const profileData = channel.profiles;
+        const owner = Array.isArray(profileData) && profileData.length > 0 
+          ? profileData[0] 
+          : (profileData && typeof profileData === 'object' ? profileData : undefined);
+          
+        return {
+          ...channel,
+          description: channel.description || '',
+          category: channel.category || undefined,
+          tags: channel.tags || [],
+          member_count: channel.member_count || 0,
+          owner: owner ? {
+            id: owner.id,
+            name: owner.name || 'Unknown',
+            avatar: owner.avatar || undefined
+          } : undefined
+        };
+      }) as Channel[];
 
       setChannels(enhancedChannels);
     } catch (error) {
@@ -84,8 +116,8 @@ export function useChannels() {
       const { data, error } = await supabase
         .from('channel_members')
         .select(`
-          role,
-          channels (
+          *,
+          channels!channel_members_channel_id_fkey (
             *,
             profiles!channels_owner_id_fkey (
               id,
@@ -96,17 +128,63 @@ export function useChannels() {
         `)
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching user channels:', error);
+        // Fallback query without relationships
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('channel_members')
+          .select(`
+            *,
+            channels!channel_members_channel_id_fkey (*)
+          `)
+          .eq('user_id', user.id);
+          
+        if (fallbackError) throw fallbackError;
+        
+        const userChannelsWithFallback = (fallbackData || []).map(membership => {
+          const channel = membership.channels;
+          if (!channel) return null;
+          
+          return {
+            ...channel,
+            description: channel.description || '',
+            category: channel.category || undefined,
+            tags: channel.tags || [],
+            member_count: channel.member_count || 0,
+            is_member: true,
+            user_role: membership.role || 'member',
+            owner: undefined
+          };
+        }).filter(Boolean) as Channel[];
+        
+        setUserChannels(userChannelsWithFallback);
+        return;
+      }
 
-      const enhancedUserChannels = (data || []).map(member => ({
-        ...member.channels,
-        owner: Array.isArray(member.channels.profiles) ? member.channels.profiles[0] : member.channels.profiles,
-        user_role: member.role as 'admin' | 'moderator' | 'member',
-        is_member: true,
-        tags: member.channels.tags || [],
-        category: member.channels.category || undefined,
-        description: member.channels.description || undefined
-      })) as Channel[];
+      const enhancedUserChannels = (data || []).map(membership => {
+        const channel = membership.channels;
+        if (!channel) return null;
+        
+        const profileData = channel.profiles;
+        const owner = Array.isArray(profileData) && profileData.length > 0 
+          ? profileData[0] 
+          : (profileData && typeof profileData === 'object' ? profileData : undefined);
+
+        return {
+          ...channel,
+          description: channel.description || '',
+          category: channel.category || undefined,
+          tags: channel.tags || [],
+          member_count: channel.member_count || 0,
+          is_member: true,
+          user_role: membership.role || 'member',
+          owner: owner ? {
+            id: owner.id,
+            name: owner.name || 'Unknown',
+            avatar: owner.avatar || undefined
+          } : undefined
+        };
+      }).filter(Boolean) as Channel[];
 
       setUserChannels(enhancedUserChannels);
     } catch (error) {
@@ -114,7 +192,7 @@ export function useChannels() {
     }
   };
 
-  const createChannel = async (channelData: Omit<Channel, 'id' | 'owner_id' | 'member_count' | 'created_at' | 'updated_at'>) => {
+  const createChannel = async (channelData: Omit<Channel, 'id' | 'owner_id' | 'created_at' | 'updated_at' | 'owner'>) => {
     if (!user) return { error: 'Not authenticated' };
 
     try {
@@ -122,15 +200,14 @@ export function useChannels() {
         .from('channels')
         .insert({
           ...channelData,
-          owner_id: user.id,
-          member_count: 1
+          owner_id: user.id
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Auto-join the creator as admin
+      // Auto-join the creator
       await supabase.from('channel_members').insert({
         channel_id: data.id,
         user_id: user.id,
@@ -139,7 +216,7 @@ export function useChannels() {
 
       await fetchChannels();
       await fetchUserChannels();
-
+      
       toast({
         title: "Success",
         description: "Channel created successfully"
@@ -169,7 +246,7 @@ export function useChannels() {
 
       await fetchChannels();
       await fetchUserChannels();
-
+      
       toast({
         title: "Success",
         description: "Joined channel successfully"
@@ -196,7 +273,7 @@ export function useChannels() {
 
       await fetchChannels();
       await fetchUserChannels();
-
+      
       toast({
         title: "Success",
         description: "Left channel successfully"

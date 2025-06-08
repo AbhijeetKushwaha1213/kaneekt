@@ -69,17 +69,52 @@ export function useLocationSharing() {
         .gt('expires_at', new Date().toISOString())
         .neq('user_id', user?.id || '');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching nearby users:', error);
+        // Fallback query without profile relationship
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('user_locations')
+          .select('*')
+          .eq('is_sharing', true)
+          .gt('expires_at', new Date().toISOString())
+          .neq('user_id', user?.id || '');
+          
+        if (fallbackError) throw fallbackError;
+        
+        const enhancedFallbackUsers = (fallbackData || []).map(location => ({
+          ...location,
+          latitude: Number(location.latitude),
+          longitude: Number(location.longitude),
+          accuracy: location.accuracy ? Number(location.accuracy) : undefined,
+          status: (location.status || 'looking-to-chat') as UserLocation['status'],
+          location_name: location.location_name || undefined,
+          user: undefined
+        })) as UserLocation[];
+        
+        setNearbyUsers(enhancedFallbackUsers);
+        return;
+      }
 
-      const enhancedUsers = (data || []).map(location => ({
-        ...location,
-        user: Array.isArray(location.profiles) ? location.profiles[0] : location.profiles,
-        latitude: Number(location.latitude),
-        longitude: Number(location.longitude),
-        accuracy: location.accuracy ? Number(location.accuracy) : undefined,
-        status: location.status as 'looking-to-chat' | 'open-to-meetup' | 'studying' | 'exploring',
-        location_name: location.location_name || undefined
-      })) as UserLocation[];
+      const enhancedUsers = (data || []).map(location => {
+        const profileData = location.profiles;
+        const user = Array.isArray(profileData) && profileData.length > 0 
+          ? profileData[0] 
+          : (profileData && typeof profileData === 'object' ? profileData : undefined);
+          
+        return {
+          ...location,
+          latitude: Number(location.latitude),
+          longitude: Number(location.longitude),
+          accuracy: location.accuracy ? Number(location.accuracy) : undefined,
+          status: (location.status || 'looking-to-chat') as UserLocation['status'],
+          location_name: location.location_name || undefined,
+          user: user ? {
+            id: user.id,
+            name: user.name || 'Unknown User',
+            avatar: user.avatar || undefined
+          } : undefined
+        };
+      }) as UserLocation[];
 
       setNearbyUsers(enhancedUsers);
     } catch (error) {
