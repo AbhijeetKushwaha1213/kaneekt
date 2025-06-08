@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,8 @@ export default function Channels() {
     members: channel.member_count || 0,
     isPrivate: channel.is_private,
     inviteOnly: channel.invite_only,
-    ownerId: channel.owner_id
+    ownerId: channel.owner_id,
+    description: channel.description || '' // Ensure description is always a string
   }));
 
   const filteredChannels = allChannels.filter(channel => {
@@ -192,16 +192,9 @@ export default function Channels() {
               )}>
                 {filteredChannels.map((channel) => (
                   <div key={channel.id} className="space-y-4">
-                    <EnhancedChannelCard channel={{
-                      ...channel,
-                      description: channel.description || '',
-                      isPrivate: channel.isPrivate
-                    }} />
+                    <EnhancedChannelCard channel={channel} />
                     <ChannelActions 
-                      channel={{
-                        ...channel,
-                        isPrivate: channel.isPrivate
-                      }}
+                      channel={channel}
                       isJoined={channel.isJoined || false}
                       onJoin={() => joinChannel(channel.id)}
                       onLeave={() => leaveChannel(channel.id)}
