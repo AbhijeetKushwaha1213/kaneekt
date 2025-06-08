@@ -61,10 +61,25 @@ export function useMatching() {
 
       if (error) throw error;
 
-      const enhancedMatches = (data || []).map(match => ({
-        ...match,
-        matched_user: match.user1_id === user.id ? match.user2 : match.user1
-      }));
+      const enhancedMatches = (data || []).map(match => {
+        const matchedUser = match.user1_id === user.id ? 
+          (Array.isArray(match.user2) ? match.user2[0] : match.user2) : 
+          (Array.isArray(match.user1) ? match.user1[0] : match.user1);
+
+        return {
+          ...match,
+          matched_user: {
+            id: matchedUser?.id || '',
+            name: matchedUser?.name || '',
+            avatar: matchedUser?.avatar || undefined,
+            bio: matchedUser?.bio || undefined,
+            interests: matchedUser?.interests || []
+          },
+          common_interests: match.common_interests || [],
+          distance_km: match.distance_km ? Number(match.distance_km) : undefined,
+          match_score: Number(match.match_score)
+        };
+      }) as UserMatch[];
 
       setMatches(enhancedMatches);
     } catch (error) {

@@ -2,12 +2,25 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Message } from '@/types/supabase';
 import { useToast } from '@/hooks/use-toast';
+
+export interface RealtimeMessage {
+  id: string;
+  content: string;
+  timestamp: Date;
+  sender: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  isCurrentUser: boolean;
+  type?: 'text' | 'image' | 'video' | 'voice' | 'file' | 'location';
+  status?: 'sent' | 'delivered' | 'read';
+}
 
 export function useRealTimeMessages(conversationId?: string) {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<RealtimeMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -44,7 +57,21 @@ export function useRealTimeMessages(conversationId?: string) {
           variant: "destructive"
         });
       } else {
-        setMessages(data || []);
+        const transformedMessages = (data || []).map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          timestamp: new Date(msg.created_at || ''),
+          sender: {
+            id: msg.sender?.id || '',
+            name: msg.sender?.name || '',
+            avatar: msg.sender?.avatar || undefined
+          },
+          isCurrentUser: msg.sender_id === user?.id,
+          type: (msg.type as 'text' | 'image' | 'video' | 'voice' | 'file' | 'location') || 'text',
+          status: (msg.status as 'sent' | 'delivered' | 'read') || 'sent'
+        })) as RealtimeMessage[];
+
+        setMessages(transformedMessages);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -83,7 +110,21 @@ export function useRealTimeMessages(conversationId?: string) {
             .single();
 
           if (!error && data) {
-            setMessages(prev => [...prev, data]);
+            const newMessage = {
+              id: data.id,
+              content: data.content,
+              timestamp: new Date(data.created_at || ''),
+              sender: {
+                id: data.sender?.id || '',
+                name: data.sender?.name || '',
+                avatar: data.sender?.avatar || undefined
+              },
+              isCurrentUser: data.sender_id === user?.id,
+              type: (data.type as 'text' | 'image' | 'video' | 'voice' | 'file' | 'location') || 'text',
+              status: (data.status as 'sent' | 'delivered' | 'read') || 'sent'
+            } as RealtimeMessage;
+
+            setMessages(prev => [...prev, newMessage]);
             
             // Auto-mark as delivered if not sent by current user
             if (data.sender_id !== user?.id) {
@@ -113,7 +154,10 @@ export function useRealTimeMessages(conversationId?: string) {
           setMessages(prev => 
             prev.map(msg => 
               msg.id === payload.new.id 
-                ? { ...msg, ...payload.new }
+                ? { 
+                    ...msg, 
+                    status: (payload.new.status as 'sent' | 'delivered' | 'read') || 'sent'
+                  }
                 : msg
             )
           );

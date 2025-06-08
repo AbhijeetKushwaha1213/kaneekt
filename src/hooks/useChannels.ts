@@ -58,8 +58,11 @@ export function useChannels() {
 
       const enhancedChannels = (data || []).map(channel => ({
         ...channel,
-        owner: channel.profiles
-      }));
+        owner: Array.isArray(channel.profiles) ? channel.profiles[0] : channel.profiles,
+        tags: channel.tags || [],
+        category: channel.category || undefined,
+        description: channel.description || undefined
+      })) as Channel[];
 
       setChannels(enhancedChannels);
     } catch (error) {
@@ -97,10 +100,13 @@ export function useChannels() {
 
       const enhancedUserChannels = (data || []).map(member => ({
         ...member.channels,
-        owner: member.channels.profiles,
-        user_role: member.role,
-        is_member: true
-      }));
+        owner: Array.isArray(member.channels.profiles) ? member.channels.profiles[0] : member.channels.profiles,
+        user_role: member.role as 'admin' | 'moderator' | 'member',
+        is_member: true,
+        tags: member.channels.tags || [],
+        category: member.channels.category || undefined,
+        description: member.channels.description || undefined
+      })) as Channel[];
 
       setUserChannels(enhancedUserChannels);
     } catch (error) {

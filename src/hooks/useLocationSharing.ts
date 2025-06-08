@@ -73,8 +73,13 @@ export function useLocationSharing() {
 
       const enhancedUsers = (data || []).map(location => ({
         ...location,
-        user: location.profiles
-      }));
+        user: Array.isArray(location.profiles) ? location.profiles[0] : location.profiles,
+        latitude: Number(location.latitude),
+        longitude: Number(location.longitude),
+        accuracy: location.accuracy ? Number(location.accuracy) : undefined,
+        status: location.status as 'looking-to-chat' | 'open-to-meetup' | 'studying' | 'exploring',
+        location_name: location.location_name || undefined
+      })) as UserLocation[];
 
       setNearbyUsers(enhancedUsers);
     } catch (error) {

@@ -62,10 +62,15 @@ export function useEvents() {
 
       const enhancedEvents = (data || []).map(event => ({
         ...event,
-        creator: event.profiles,
+        creator: Array.isArray(event.profiles) ? event.profiles[0] : event.profiles,
         attendee_count: event.event_attendees?.length || 0,
-        user_status: user ? event.event_attendees?.find((a: any) => a.user_id === user.id)?.status || null : null
-      }));
+        user_status: user ? event.event_attendees?.find((a: any) => a.user_id === user.id)?.status || null : null,
+        categories: event.categories || [],
+        description: event.description || undefined,
+        max_attendees: event.max_attendees || undefined,
+        latitude: event.latitude ? Number(event.latitude) : undefined,
+        longitude: event.longitude ? Number(event.longitude) : undefined
+      })) as Event[];
 
       setEvents(enhancedEvents);
     } catch (error) {
