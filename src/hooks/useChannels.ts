@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,9 +77,29 @@ export function useChannels() {
 
       const enhancedChannels = (data || []).map(channel => {
         const profileData = channel.profiles;
-        const owner = Array.isArray(profileData) && profileData.length > 0 
-          ? profileData[0] 
-          : (profileData && typeof profileData === 'object' ? profileData : undefined);
+        
+        // Handle profile data more safely - check if it's an array first
+        let owner = undefined;
+        if (profileData) {
+          if (Array.isArray(profileData)) {
+            // If it's an array, take the first element
+            const firstProfile = profileData[0];
+            if (firstProfile) {
+              owner = {
+                id: firstProfile.id,
+                name: firstProfile.name || 'Unknown',
+                avatar: firstProfile.avatar || undefined
+              };
+            }
+          } else if (typeof profileData === 'object') {
+            // If it's a single object
+            owner = {
+              id: profileData.id,
+              name: profileData.name || 'Unknown',
+              avatar: profileData.avatar || undefined
+            };
+          }
+        }
           
         return {
           ...channel,
@@ -88,11 +107,7 @@ export function useChannels() {
           category: channel.category || undefined,
           tags: channel.tags || [],
           member_count: channel.member_count || 0,
-          owner: owner ? {
-            id: owner.id,
-            name: owner.name || 'Unknown',
-            avatar: owner.avatar || undefined
-          } : undefined
+          owner
         };
       }) as Channel[];
 
@@ -166,9 +181,29 @@ export function useChannels() {
         if (!channel) return null;
         
         const profileData = channel.profiles;
-        const owner = Array.isArray(profileData) && profileData.length > 0 
-          ? profileData[0] 
-          : (profileData && typeof profileData === 'object' ? profileData : undefined);
+        
+        // Handle profile data more safely - check if it's an array first
+        let owner = undefined;
+        if (profileData) {
+          if (Array.isArray(profileData)) {
+            // If it's an array, take the first element
+            const firstProfile = profileData[0];
+            if (firstProfile) {
+              owner = {
+                id: firstProfile.id,
+                name: firstProfile.name || 'Unknown',
+                avatar: firstProfile.avatar || undefined
+              };
+            }
+          } else if (typeof profileData === 'object') {
+            // If it's a single object
+            owner = {
+              id: profileData.id,
+              name: profileData.name || 'Unknown',
+              avatar: profileData.avatar || undefined
+            };
+          }
+        }
 
         return {
           ...channel,
@@ -178,11 +213,7 @@ export function useChannels() {
           member_count: channel.member_count || 0,
           is_member: true,
           user_role: membership.role || 'member',
-          owner: owner ? {
-            id: owner.id,
-            name: owner.name || 'Unknown',
-            avatar: owner.avatar || undefined
-          } : undefined
+          owner
         };
       }).filter(Boolean) as Channel[];
 

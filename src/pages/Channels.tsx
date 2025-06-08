@@ -23,9 +23,9 @@ export default function Channels() {
   // Combine all channels with user membership status
   const allChannels = channels.map(channel => ({
     ...channel,
+    isPrivate: channel.is_private,
     isJoined: userChannels.some(uc => uc.id === channel.id),
     members: channel.member_count || 0,
-    isPrivate: channel.is_private,
     inviteOnly: channel.invite_only,
     ownerId: channel.owner_id,
     description: channel.description || '' // Ensure description is always a string
@@ -65,7 +65,8 @@ export default function Channels() {
       is_private: false,
       invite_only: false,
       category: 'General',
-      tags: []
+      tags: [],
+      member_count: 1 // Start with 1 member (the creator)
     });
     
     if (result?.data) {
