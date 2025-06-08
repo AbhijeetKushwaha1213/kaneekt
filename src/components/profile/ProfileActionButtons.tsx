@@ -2,16 +2,17 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, MessageCircle, UserPlus, Settings, Share2 } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, Settings, Share2, Plus } from "lucide-react";
 
 interface ProfileActionButtonsProps {
-  profileId: string;
+  profileId?: string;
   isOwnProfile?: boolean;
   isFollowing?: boolean;
   isLiked?: boolean;
   onFollow?: () => void;
   onMessage?: () => void;
   onEditProfile?: () => void;
+  onCreatePost?: (content: string, isPublic: boolean) => Promise<void>;
 }
 
 export function ProfileActionButtons({
@@ -21,7 +22,8 @@ export function ProfileActionButtons({
   isLiked = false,
   onFollow,
   onMessage,
-  onEditProfile
+  onEditProfile,
+  onCreatePost
 }: ProfileActionButtonsProps) {
   const [liked, setLiked] = useState(isLiked);
   const [following, setFollowing] = useState(isFollowing);
@@ -56,12 +58,24 @@ export function ProfileActionButtons({
     });
   };
 
+  const handleCreatePost = () => {
+    // Simple demo - in a real app this would open a create post dialog
+    onCreatePost?.("New post content", true);
+    toast({
+      description: "Post created successfully",
+    });
+  };
+
   if (isOwnProfile) {
     return (
       <div className="flex gap-2">
         <Button onClick={onEditProfile} className="flex-1">
           <Settings className="h-4 w-4 mr-2" />
           Edit Profile
+        </Button>
+        <Button variant="outline" onClick={handleCreatePost}>
+          <Plus className="h-4 w-4 mr-2" />
+          Post
         </Button>
         <Button variant="outline" onClick={handleShare}>
           <Share2 className="h-4 w-4" />

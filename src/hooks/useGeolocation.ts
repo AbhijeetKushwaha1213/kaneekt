@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 interface GeolocationState {
   latitude: number | null;
   longitude: number | null;
+  accuracy: number | null;
   error: string | null;
   loading: boolean;
 }
@@ -12,6 +13,7 @@ export function useGeolocation() {
   const [state, setState] = useState<GeolocationState>({
     latitude: null,
     longitude: null,
+    accuracy: null,
     error: null,
     loading: false,
   });
@@ -39,6 +41,7 @@ export function useGeolocation() {
         setState({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
           error: null,
           loading: false,
         });
