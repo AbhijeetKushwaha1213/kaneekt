@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -85,19 +86,21 @@ export function useChannels() {
           if (Array.isArray(profileData) && profileData.length > 0) {
             // If it's an array, take the first element
             const firstProfile = profileData[0];
-            if (firstProfile && typeof firstProfile === 'object' && 'id' in firstProfile) {
+            if (firstProfile && typeof firstProfile === 'object' && firstProfile !== null) {
+              const profile = firstProfile as { id: string; name?: string; avatar?: string };
               owner = {
-                id: firstProfile.id,
-                name: firstProfile.name || 'Unknown',
-                avatar: firstProfile.avatar || undefined
+                id: profile.id,
+                name: profile.name || 'Unknown',
+                avatar: profile.avatar || undefined
               };
             }
-          } else if (profileData && typeof profileData === 'object' && 'id' in profileData) {
+          } else if (profileData && typeof profileData === 'object' && profileData !== null && !Array.isArray(profileData)) {
             // If it's a single object
+            const profile = profileData as { id: string; name?: string; avatar?: string };
             owner = {
-              id: profileData.id,
-              name: profileData.name || 'Unknown',
-              avatar: profileData.avatar || undefined
+              id: profile.id,
+              name: profile.name || 'Unknown',
+              avatar: profile.avatar || undefined
             };
           }
         }
@@ -189,19 +192,21 @@ export function useChannels() {
           if (Array.isArray(profileData) && profileData.length > 0) {
             // If it's an array, take the first element
             const firstProfile = profileData[0];
-            if (firstProfile && typeof firstProfile === 'object' && 'id' in firstProfile) {
+            if (firstProfile && typeof firstProfile === 'object' && firstProfile !== null) {
+              const profile = firstProfile as { id: string; name?: string; avatar?: string };
               owner = {
-                id: firstProfile.id,
-                name: firstProfile.name || 'Unknown',
-                avatar: firstProfile.avatar || undefined
+                id: profile.id,
+                name: profile.name || 'Unknown',
+                avatar: profile.avatar || undefined
               };
             }
-          } else if (profileData && typeof profileData === 'object' && 'id' in profileData) {
+          } else if (profileData && typeof profileData === 'object' && profileData !== null && !Array.isArray(profileData)) {
             // If it's a single object
+            const profile = profileData as { id: string; name?: string; avatar?: string };
             owner = {
-              id: profileData.id,
-              name: profileData.name || 'Unknown',
-              avatar: profileData.avatar || undefined
+              id: profile.id,
+              name: profile.name || 'Unknown',
+              avatar: profile.avatar || undefined
             };
           }
         }
@@ -330,3 +335,4 @@ export function useChannels() {
     refetch: fetchChannels
   };
 }
+
