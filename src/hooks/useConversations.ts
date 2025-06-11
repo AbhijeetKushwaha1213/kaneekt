@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -86,14 +85,14 @@ export function useConversations() {
             .eq('id', otherUserId)
             .single();
 
-          // Fetch last message
+          // Fetch last message - use maybeSingle() to handle conversations with no messages
           const { data: lastMessage } = await supabase
             .from('messages')
             .select('id, content, created_at, sender_id, is_read, status')
             .eq('conversation_id', conv.id)
             .order('created_at', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
           // Count unread messages
           const { count: unreadCount } = await supabase
