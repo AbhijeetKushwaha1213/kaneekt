@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,8 +30,11 @@ export function useRealTimeMessages(conversationId?: string) {
     }
   }, [conversationId, user]);
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (retryCount = 0) => {
     if (!conversationId) return;
+
+    const maxRetries = 3;
+    const retryDelay = 1000 * Math.pow(2, retryCount); // Exponential backoff
 
     try {
       const { data, error } = await supabase
@@ -75,8 +77,27 @@ export function useRealTimeMessages(conversationId?: string) {
       }
     } catch (error) {
       console.error('Error:', error);
+      
+      // Check if it's a network error and retry if we haven't exceeded max retries
+      if (error instanceof TypeError && error.message.includes('Failed to fetch') && retryCount < maxRetries) {
+        console.log(`Retrying fetch messages (attempt ${retryCount + 1}/${maxRetries}) in ${retryDelay}ms...`);
+        setTimeout(() => {
+          fetchMessages(retryCount + 1);
+        }, retryDelay);
+        return;
+      }
+      
+      // Show error toast only after all retries have failed
+      toast({
+        title: "Network Error",
+        description: "Unable to load messages. Please check your internet connection and try again.",
+        variant: "destructive"
+      });
     } finally {
-      setLoading(false);
+      // Only set loading to false if this is the final attempt or successful
+      if (retryCount === 0) {
+        setLoading(false);
+      }
     }
   };
 
