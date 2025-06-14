@@ -190,6 +190,7 @@ export default function Discover() {
                     <DiscoverFeed 
                       searchQuery={searchQuery}
                       selectedInterests={selectedInterests}
+                      currentUserInterests={userInterests}
                       ageRange={ageRange}
                       sortBy={sortBy}
                       viewType="grid"
@@ -296,4 +297,3 @@ export default function Discover() {
     </MainLayout>
   );
 }
-
