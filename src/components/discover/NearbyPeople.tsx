@@ -23,15 +23,13 @@ function calculateLocalAge(dob: string | null | undefined): number {
 }
 
 function mapProfileToAppUserForNearby(profile: Profile, currentLatitude: number | null, currentLongitude: number | null): User {
-  let userLat: number | undefined = undefined;
-  let userLng: number | undefined = undefined;
+  const userLat = (profile as any).latitude as number | undefined;
+  const userLng = (profile as any).longitude as number | undefined;
   let distance: number | undefined = undefined;
 
-  // Placeholder: If profiles had lat/lng, you'd assign them to userLat/userLng.
-  // For now, we rely on sortUsersByLocation to attempt distance calculation if possible
-  // via its internal extractCoordinates, which now checks user.latitude/longitude.
-  // Since profile.location is text, this won't directly yield coordinates unless parsed.
-  // This example doesn't parse profile.location into lat/lng.
+  if (typeof userLat === 'number' && typeof userLng === 'number' && currentLatitude !== null && currentLongitude !== null) {
+    distance = calculateDistance(currentLatitude, currentLongitude, userLat, userLng);
+  }
 
   const mappedUser: User = {
     id: profile.id,
@@ -42,20 +40,11 @@ function mapProfileToAppUserForNearby(profile: Profile, currentLatitude: number 
     interests: profile.interests || [],
     age: calculateLocalAge(profile.dob),
     location: profile.location || undefined, // Text location
-    // latitude/longitude/distance would be populated if available from profile or a join
-    profileData: profile,
+    latitude: userLat,
+    longitude: userLng,
+    distance: distance,
+    profileData: profile, // Added profileData
   };
-
-  // If user's coordinates were available on `profile` (e.g., profile.latitude, profile.longitude)
-  // and current user's location is known, calculate distance.
-  // This is a conceptual step; current `Profile` type doesn't have lat/lng.
-  // For demonstration, if `profile` had `latitude` and `longitude` fields:
-  // if (currentLatitude !== null && currentLongitude !== null && profile.latitude !== null && profile.longitude !== null) {
-  //   mappedUser.distance = calculateDistance(currentLatitude, currentLongitude, profile.latitude, profile.longitude);
-  //   mappedUser.latitude = profile.latitude;
-  //   mappedUser.longitude = profile.longitude;
-  // }
-
 
   return mappedUser;
 }

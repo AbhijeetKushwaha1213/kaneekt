@@ -1,3 +1,4 @@
+import type { Profile } from '@/types/supabase';
 
 export interface User {
   id: string;
@@ -15,6 +16,10 @@ export interface User {
   followers?: number;
   following?: number;
   isPrivate?: boolean;
+  isOnline?: boolean; // Added
+  profileData?: Profile; // Added
+  latitude?: number; // Added
+  longitude?: number; // Added
 }
 
 export interface Channel {

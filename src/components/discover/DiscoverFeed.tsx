@@ -180,7 +180,9 @@ function calculateAge(dob: string | null | undefined): number {
 }
 
 function mapProfileToAppUser(profile: Profile): User {
-  return {
+  // Assuming profile might contain latitude and longitude directly or via a joined table
+  // For now, we'll check for direct properties, ProfileWithLocation interface implies they could exist.
+  const appUser: User = {
     id: profile.id,
     name: profile.name || profile.username || 'Unnamed User',
     username: profile.username || undefined,
@@ -189,10 +191,12 @@ function mapProfileToAppUser(profile: Profile): User {
     interests: profile.interests || [],
     age: calculateAge(profile.dob),
     location: profile.location || undefined,
-    isOnline: false, // Default, can be enhanced with presence system
-    // Include raw profile data if sorters/filters need original fields like created_at, updated_at
-    profileData: profile, 
+    isOnline: false, // Default, can be enhanced with presence system like useUserPresence
+    profileData: profile, // Store the raw profile data
+    latitude: (profile as any).latitude || undefined, // Attempt to get latitude
+    longitude: (profile as any).longitude || undefined, // Attempt to get longitude
   };
+  return appUser;
 }
 
 async function fetchDiscoverProfiles(): Promise<Profile[]> {
