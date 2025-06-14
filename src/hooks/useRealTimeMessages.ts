@@ -115,6 +115,7 @@ export function useRealTimeMessages(conversationId?: string) {
           filter: `conversation_id=eq.${conversationId}`
         },
         async (payload) => {
+          console.log("[Realtime] Received INSERT event:", payload);
           // Fetch the complete message with sender info
           const { data, error } = await supabase
             .from('messages')
@@ -146,6 +147,7 @@ export function useRealTimeMessages(conversationId?: string) {
             } as RealtimeMessage;
 
             setMessages(prev => [...prev, newMessage]);
+            console.log("[Realtime] New message added to state:", newMessage);
             
             // Auto-mark as delivered if not sent by current user
             if (data.sender_id !== user?.id) {
@@ -159,6 +161,8 @@ export function useRealTimeMessages(conversationId?: string) {
                   .eq('id', data.id);
               }, 100);
             }
+          } else {
+            console.log("[Realtime] Error fetching inserted message:", error, data);
           }
         }
       )
@@ -171,6 +175,7 @@ export function useRealTimeMessages(conversationId?: string) {
           filter: `conversation_id=eq.${conversationId}`
         },
         (payload) => {
+          console.log("[Realtime] Received UPDATE event:", payload);
           // Update message status in real-time
           setMessages(prev => 
             prev.map(msg => 
