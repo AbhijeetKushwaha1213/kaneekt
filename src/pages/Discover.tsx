@@ -22,6 +22,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { useProfile } from "@/hooks/useProfile";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { DiscoverGroupsTab } from "@/components/discover/tabs/DiscoverGroupsTab";
 
 export default function Discover() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -43,7 +44,7 @@ export default function Discover() {
     if (!latitude && !longitude && !error) {
       getCurrentPosition();
     }
-  }, []);
+  }, [latitude, longitude, error, getCurrentPosition]);
 
   // Get user interests from profile
   const userInterests = profile?.interests || selectedInterests;
@@ -101,7 +102,7 @@ export default function Discover() {
             <div className="border-b">
               <DiscoverHero 
                 timeOfDay={timeOfDay}
-                location={error ? "Near you" : latitude && longitude ? "Near you" : "Loading location..."}
+                location={error ? "Location unavailable" : latitude && longitude ? "Near you" : "Loading location..."}
                 onLocationClick={getCurrentPosition}
               />
             </div>
@@ -233,55 +234,7 @@ export default function Discover() {
               </TabsContent>
 
               <TabsContent value="groups" className="mt-0 animate-in fade-in-50">
-                <div className="p-4 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-xl font-semibold">Interest Groups</h2>
-                      <p className="text-muted-foreground">Join group chats with people who share your interests</p>
-                    </div>
-                    <GroupCreation />
-                  </div>
-                  
-                  {/* Mock Group Cards */}
-                  <motion.div 
-                    className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                  >
-                    {[
-                      { name: "Philosophy Discussions", members: 45, topic: "Philosophy", description: "Deep conversations about consciousness, ethics, and reality" },
-                      { name: "Photography Club", members: 128, topic: "Photography", description: "Share photos, tips, and organize photo walks" },
-                      { name: "Book Lovers", members: 89, topic: "Reading", description: "Monthly book discussions and recommendations" },
-                      { name: "Fitness Buddies", members: 156, topic: "Fitness", description: "Workout tips, motivation, and group challenges" },
-                      { name: "Tech Talk", members: 203, topic: "Technology", description: "Latest tech trends, coding tips, and project collaboration" },
-                      { name: "Cooking Together", members: 67, topic: "Cooking", description: "Recipe sharing and virtual cooking sessions" }
-                    ].map((group) => (
-                      <motion.div 
-                        key={group.name} 
-                        className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow"
-                        variants={itemVariants}
-                      >
-                        <div className="space-y-3">
-                          <div>
-                            <h3 className="font-medium">{group.name}</h3>
-                            <p className="text-sm text-muted-foreground">{group.description}</p>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Users className="h-4 w-4" />
-                              {group.members} members
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary">{group.topic}</Badge>
-                              <Button size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">Join</Button>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                </div>
+                <DiscoverGroupsTab containerVariants={containerVariants} itemVariants={itemVariants} />
               </TabsContent>
             </Tabs>
           </div>
