@@ -11,51 +11,78 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { CHANNELS } from "@/data/mock-data";
 import { Channel } from "@/types";
-import { 
-  Users, 
-  Hash, 
-  Bell, 
-  Settings, 
-  UserPlus, 
-  Volume2,
-  VolumeX,
-  Heart,
-  MessageSquare,
-  Share2,
-  Pin,
-  Search,
-  AtSign,
-  MoreVertical,
-  Home,
-  Mic,
-  Headphones,
-  ChevronDown,
-  Crown,
-  Shield
-} from "lucide-react";
-
-const MOCK_CHANNELS = [
-  { id: "1", name: "General", isActive: false },
-  { id: "2", name: "Ethics101", isActive: false },
-  { id: "3", name: "BookClub", isActive: false },
-  { id: "4", name: "Resources", isActive: false }
-];
-
-const MOCK_MEMBERS = [
-  { id: "1", name: "Alex Thompson", status: "online", role: "admin", avatar: "/placeholder.svg" },
-  { id: "2", name: "Sarah Chen", status: "online", role: "moderator", avatar: "/placeholder.svg" },
-  { id: "3", name: "Marcus Rodriguez", status: "online", role: "member", avatar: "/placeholder.svg" },
-  { id: "4", name: "Emma Wilson", status: "away", role: "member", avatar: "/placeholder.svg" },
-  { id: "5", name: "David Kim", status: "offline", role: "member", avatar: "/placeholder.svg" },
-  { id: "6", name: "Lisa Brown", status: "offline", role: "member", avatar: "/placeholder.svg" }
-];
-
+import { Users, Hash, Bell, Settings, UserPlus, Volume2, VolumeX, Heart, MessageSquare, Share2, Pin, Search, AtSign, MoreVertical, Home, Mic, Headphones, ChevronDown, Crown, Shield } from "lucide-react";
+const MOCK_CHANNELS = [{
+  id: "1",
+  name: "General",
+  isActive: false
+}, {
+  id: "2",
+  name: "Ethics101",
+  isActive: false
+}, {
+  id: "3",
+  name: "BookClub",
+  isActive: false
+}, {
+  id: "4",
+  name: "Resources",
+  isActive: false
+}];
+const MOCK_MEMBERS = [{
+  id: "1",
+  name: "Alex Thompson",
+  status: "online",
+  role: "admin",
+  avatar: "/placeholder.svg"
+}, {
+  id: "2",
+  name: "Sarah Chen",
+  status: "online",
+  role: "moderator",
+  avatar: "/placeholder.svg"
+}, {
+  id: "3",
+  name: "Marcus Rodriguez",
+  status: "online",
+  role: "member",
+  avatar: "/placeholder.svg"
+}, {
+  id: "4",
+  name: "Emma Wilson",
+  status: "away",
+  role: "member",
+  avatar: "/placeholder.svg"
+}, {
+  id: "5",
+  name: "David Kim",
+  status: "offline",
+  role: "member",
+  avatar: "/placeholder.svg"
+}, {
+  id: "6",
+  name: "Lisa Brown",
+  status: "offline",
+  role: "member",
+  avatar: "/placeholder.svg"
+}];
 export default function EnhancedChannel() {
-  const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const { joinChannel, leaveChannel, isChannelJoined } = useChannelManagement();
-  
+  const {
+    id
+  } = useParams<{
+    id: string;
+  }>();
+  const {
+    user
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    joinChannel,
+    leaveChannel,
+    isChannelJoined
+  } = useChannelManagement();
   const [channel, setChannel] = useState<Channel | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,22 +96,17 @@ export default function EnhancedChannel() {
   // Fix infinite loop by adding proper dependencies and memoization
   useEffect(() => {
     if (!id) return;
-
     const loadChannel = async () => {
       setIsLoading(true);
-      
       try {
         const mockChannel = CHANNELS.find(c => c.id === id);
         const userChannelsString = localStorage.getItem("userChannels");
         const userChannels = userChannelsString ? JSON.parse(userChannelsString) : [];
         const userChannel = userChannels.find((c: Channel) => c.id === id);
-        
         const foundChannel = mockChannel || userChannel;
-        
         if (foundChannel) {
           setChannel(foundChannel);
           setOnlineMembers(MOCK_MEMBERS.filter(m => m.status === 'online').length);
-          
           const storedMessages = JSON.parse(localStorage.getItem(`channel_messages_${id}`) || "[]");
           setMessages(storedMessages);
         } else {
@@ -105,7 +127,6 @@ export default function EnhancedChannel() {
         setIsLoading(false);
       }
     };
-
     loadChannel();
   }, [id, toast]); // Removed isChannelJoined from dependencies to prevent infinite loop
 
@@ -115,16 +136,14 @@ export default function EnhancedChannel() {
       setHasJoined(isChannelJoined(id));
     }
   }, [id, isChannelJoined]);
-
   const handleJoinChannel = async () => {
     if (!channel) return;
-    
     try {
       joinChannel(channel.id);
       setHasJoined(true);
       toast({
         title: "Joined channel",
-        description: `Welcome to ${channel.name}!`,
+        description: `Welcome to ${channel.name}!`
       });
     } catch (error) {
       toast({
@@ -134,16 +153,14 @@ export default function EnhancedChannel() {
       });
     }
   };
-
   const handleLeaveChannel = async () => {
     if (!channel) return;
-    
     try {
       leaveChannel(channel.id);
       setHasJoined(false);
       toast({
         title: "Left channel",
-        description: `You've left ${channel.name}`,
+        description: `You've left ${channel.name}`
       });
     } catch (error) {
       toast({
@@ -153,16 +170,13 @@ export default function EnhancedChannel() {
       });
     }
   };
-
   const handleMessageSent = () => {
     if (!id) return;
     const storedMessages = JSON.parse(localStorage.getItem(`channel_messages_${id}`) || "[]");
     setMessages(storedMessages);
   };
-
   const getPrivacyBadge = () => {
     if (!channel) return null;
-    
     if (channel.inviteOnly) {
       return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Invite Only</Badge>;
     }
@@ -171,7 +185,6 @@ export default function EnhancedChannel() {
     }
     return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Public</Badge>;
   };
-
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'admin':
@@ -182,7 +195,6 @@ export default function EnhancedChannel() {
         return null;
     }
   };
-
   const getStatusDot = (status: string) => {
     switch (status) {
       case 'online':
@@ -195,23 +207,18 @@ export default function EnhancedChannel() {
         return "bg-gray-400";
     }
   };
-
   if (isLoading) {
-    return (
-      <MainLayout>
+    return <MainLayout>
         <div className="flex items-center justify-center h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading channel...</p>
           </div>
         </div>
-      </MainLayout>
-    );
+      </MainLayout>;
   }
-
   if (!channel) {
-    return (
-      <MainLayout>
+    return <MainLayout>
         <div className="flex items-center justify-center h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)]">
           <div className="text-center">
             <Hash className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -219,25 +226,16 @@ export default function EnhancedChannel() {
             <p className="text-muted-foreground">The channel you're looking for doesn't exist.</p>
           </div>
         </div>
-      </MainLayout>
-    );
+      </MainLayout>;
   }
-
-  return (
-    <MainLayout>
+  return <MainLayout>
       <div className="h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)] flex bg-gray-50 dark:bg-gray-900">
         {/* Left Sidebar - Navigation */}
         <div className="w-16 bg-gray-900 flex flex-col items-center py-3 space-y-2">
           <BackNavigation customBackPath="/channels" showHome={false} />
-          <Button variant="ghost" size="icon" className="h-12 w-12 text-gray-400 hover:text-white hover:bg-gray-700 rounded-xl">
-            <Home className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-12 w-12 text-gray-400 hover:text-white hover:bg-gray-700 rounded-xl">
-            <MessageSquare className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-12 w-12 text-gray-400 hover:text-white hover:bg-gray-700 rounded-xl">
-            <Settings className="h-5 w-5" />
-          </Button>
+          
+          
+          
         </div>
 
         {/* Channel List Sidebar */}
@@ -245,12 +243,7 @@ export default function EnhancedChannel() {
           <div className="p-4 border-b border-gray-700">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-white">syncterest</h3>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6 text-gray-400 hover:text-white"
-                onClick={() => setShowChannelList(!showChannelList)}
-              >
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-white" onClick={() => setShowChannelList(!showChannelList)}>
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </div>
@@ -266,12 +259,10 @@ export default function EnhancedChannel() {
                   <Hash className="h-4 w-4 mr-2" />
                   <span className="text-sm">{channel.name}</span>
                 </div>
-                {MOCK_CHANNELS.map((ch) => (
-                  <div key={ch.id} className="flex items-center px-2 py-1 rounded text-gray-400 hover:bg-gray-700 hover:text-gray-200 cursor-pointer">
+                {MOCK_CHANNELS.map(ch => <div key={ch.id} className="flex items-center px-2 py-1 rounded text-gray-400 hover:bg-gray-700 hover:text-gray-200 cursor-pointer">
                     <Hash className="h-4 w-4 mr-2" />
                     <span className="text-sm">{ch.name}</span>
-                  </div>
-                ))}
+                  </div>)}
               </div>
             </div>
           </div>
@@ -293,12 +284,7 @@ export default function EnhancedChannel() {
               </div>
 
               <div className="flex items-center gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  onClick={() => setIsMuted(!isMuted)}
-                >
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsMuted(!isMuted)}>
                   {isMuted ? <VolumeX className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -310,12 +296,7 @@ export default function EnhancedChannel() {
                 <Button variant="ghost" size="icon" className="h-8 w-8">
                   <Mic className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  onClick={() => setShowMemberList(!showMemberList)}
-                >
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowMemberList(!showMemberList)}>
                   <Users className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -325,15 +306,12 @@ export default function EnhancedChannel() {
             </div>
 
             {/* Channel description */}
-            {channel.description && (
-              <div className="px-4 pb-2">
+            {channel.description && <div className="px-4 pb-2">
                 <p className="text-sm text-muted-foreground">{channel.description}</p>
-              </div>
-            )}
+              </div>}
           </div>
 
-          {!hasJoined ? (
-            <div className="flex-1 flex items-center justify-center p-8">
+          {!hasJoined ? <div className="flex-1 flex items-center justify-center p-8">
               <div className="text-center max-w-md">
                 <Hash className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
                 <h2 className="text-2xl font-bold mb-2">Welcome to #{channel.name}</h2>
@@ -356,9 +334,7 @@ export default function EnhancedChannel() {
                   Join Channel
                 </Button>
               </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex">
+            </div> : <div className="flex-1 flex">
               {/* Messages Area */}
               <div className="flex-1 flex flex-col">
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
@@ -384,47 +360,33 @@ export default function EnhancedChannel() {
                     <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
                   </div>
 
-                  {messages.length > 0 ? (
-                    messages.map((message, index) => (
-                      <ChatMessage 
-                        key={message.id || index}
-                        message={{
-                          id: message.id || `msg-${index}`,
-                          content: message.content,
-                          timestamp: new Date(message.created_at || Date.now()),
-                          sender: {
-                            id: message.sender_id || "user",
-                            name: message.sender_id === user?.id ? "You" : "User",
-                            avatar: "/placeholder.svg"
-                          },
-                          isCurrentUser: message.sender_id === user?.id
-                        }}
-                      />
-                    ))
-                  ) : (
-                    <div className="text-center py-10">
+                  {messages.length > 0 ? messages.map((message, index) => <ChatMessage key={message.id || index} message={{
+                id: message.id || `msg-${index}`,
+                content: message.content,
+                timestamp: new Date(message.created_at || Date.now()),
+                sender: {
+                  id: message.sender_id || "user",
+                  name: message.sender_id === user?.id ? "You" : "User",
+                  avatar: "/placeholder.svg"
+                },
+                isCurrentUser: message.sender_id === user?.id
+              }} />) : <div className="text-center py-10">
                       <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="font-medium mb-2">No messages yet</h3>
                       <p className="text-sm text-muted-foreground">
                         Be the first to start the conversation!
                       </p>
-                    </div>
-                  )}
+                    </div>}
                 </div>
 
                 {/* Message Input */}
                 <div className="border-t bg-background p-4">
-                  <ChatInput 
-                    conversationId={`channel_${id}`}
-                    userId={user?.id || "anonymous"}
-                    onMessageSent={handleMessageSent}
-                  />
+                  <ChatInput conversationId={`channel_${id}`} userId={user?.id || "anonymous"} onMessageSent={handleMessageSent} />
                 </div>
               </div>
 
               {/* Member List (Right Panel) */}
-              {showMemberList && (
-                <div className="w-60 bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
+              {showMemberList && <div className="w-60 bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
                   <div className="p-4">
                     <h3 className="font-medium text-gray-900 dark:text-white mb-4">
                       Members — {channel.members}
@@ -437,8 +399,7 @@ export default function EnhancedChannel() {
                           Online — {onlineMembers}
                         </h4>
                         <div className="space-y-2">
-                          {MOCK_MEMBERS.filter(member => member.status === 'online').map((member) => (
-                            <div key={member.id} className="flex items-center gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                          {MOCK_MEMBERS.filter(member => member.status === 'online').map(member => <div key={member.id} className="flex items-center gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
                               <div className="relative">
                                 <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center text-sm font-medium">
                                   {member.name[0]}
@@ -449,8 +410,7 @@ export default function EnhancedChannel() {
                                 {getRoleIcon(member.role)}
                                 <span className="text-sm text-gray-900 dark:text-white truncate">{member.name}</span>
                               </div>
-                            </div>
-                          ))}
+                            </div>)}
                         </div>
                       </div>
                       
@@ -460,8 +420,7 @@ export default function EnhancedChannel() {
                           Offline — {MOCK_MEMBERS.filter(m => m.status === 'offline').length}
                         </h4>
                         <div className="space-y-2">
-                          {MOCK_MEMBERS.filter(member => member.status === 'offline').map((member) => (
-                            <div key={member.id} className="flex items-center gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                          {MOCK_MEMBERS.filter(member => member.status === 'offline').map(member => <div key={member.id} className="flex items-center gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
                               <div className="relative">
                                 <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center text-sm font-medium opacity-60">
                                   {member.name[0]}
@@ -472,20 +431,16 @@ export default function EnhancedChannel() {
                                 {getRoleIcon(member.role)}
                                 <span className="text-sm text-gray-500 truncate">{member.name}</span>
                               </div>
-                            </div>
-                          ))}
+                            </div>)}
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                </div>}
+            </div>}
         </div>
       </div>
       
       <div className="md:hidden h-16"></div>
-    </MainLayout>
-  );
+    </MainLayout>;
 }
