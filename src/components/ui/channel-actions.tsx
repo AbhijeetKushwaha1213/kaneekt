@@ -1,11 +1,13 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Channel } from '@/types';
 import { Users, Lock, Globe, User } from 'lucide-react';
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ChannelActionsProps {
   channel: Channel;
@@ -14,24 +16,83 @@ interface ChannelActionsProps {
   onLeave: (channelId: string) => void;
 }
 
+// Helper to ensure channel exists in Supabase and return the channel id
+async function ensureSupabaseChannel(channel: Channel, userId: string) {
+  // Try to find the channel in Supabase by name
+  const { data: existingChannels } = await supabase
+    .from('channels')
+    .select('id')
+    .eq('name', channel.name);
+
+  let supabaseChannelId = existingChannels && existingChannels[0]?.id;
+
+  if (!supabaseChannelId) {
+    // Create the channel in supabase
+    const { data, error } = await supabase.from('channels').insert([{
+      name: channel.name,
+      description: channel.description || '',
+      tags: channel.tags || [],
+      owner_id: userId,
+      is_private: channel.isPrivate || false,
+      invite_only: (channel as any).inviteOnly || false,
+      member_count: 1
+    }]).select().single();
+
+    if (error) throw error;
+    supabaseChannelId = data.id;
+  }
+
+  // Add current user as a member (if not already)
+  // Check if membership exists
+  const { data: memberData, error: memberError } = await supabase
+    .from('channel_members')
+    .select('id')
+    .eq('channel_id', supabaseChannelId)
+    .eq('user_id', userId);
+
+  if (!memberData?.length) {
+    await supabase.from('channel_members').insert([{
+      channel_id: supabaseChannelId,
+      user_id: userId,
+      role: 'member'
+    }]);
+  }
+
+  return supabaseChannelId;
+}
+
 export function ChannelActions({ channel, isJoined, onJoin, onLeave }: ChannelActionsProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const handleJoin = async () => {
     setIsLoading(true);
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      onJoin(channel.id);
+      if (!user) {
+        toast({
+          title: "Login required",
+          description: "Please sign in to join a channel.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      const supabaseChannelId = await ensureSupabaseChannel(channel, user.id);
+      onJoin(supabaseChannelId); // this updates any parent state if needed
+
       toast({
         title: "Joined channel",
         description: `You've successfully joined ${channel.name}`,
       });
-    } catch (error) {
+
+      // Route to channel page
+      navigate(`/channels/${supabaseChannelId}`);
+    } catch (error: any) {
       toast({
         title: "Failed to join",
-        description: "Please try again later",
+        description: error?.message || "Please try again later",
         variant: "destructive"
       });
     } finally {
@@ -42,8 +103,6 @@ export function ChannelActions({ channel, isJoined, onJoin, onLeave }: ChannelAc
   const handleLeave = async () => {
     setIsLoading(true);
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
       onLeave(channel.id);
       toast({
         title: "Left channel",
@@ -61,7 +120,7 @@ export function ChannelActions({ channel, isJoined, onJoin, onLeave }: ChannelAc
   };
 
   const getPrivacyBadge = () => {
-    if (channel.inviteOnly) {
+    if ((channel as any).inviteOnly) {
       return (
         <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">
           <User className="h-3 w-3 mr-1" />
@@ -69,7 +128,7 @@ export function ChannelActions({ channel, isJoined, onJoin, onLeave }: ChannelAc
         </Badge>
       );
     }
-    
+
     if (channel.isPrivate) {
       return (
         <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
@@ -78,7 +137,7 @@ export function ChannelActions({ channel, isJoined, onJoin, onLeave }: ChannelAc
         </Badge>
       );
     }
-    
+
     return (
       <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
         <Globe className="h-3 w-3 mr-1" />
@@ -89,7 +148,7 @@ export function ChannelActions({ channel, isJoined, onJoin, onLeave }: ChannelAc
 
   const getButtonText = () => {
     if (isJoined) return "View Channel";
-    if (channel.inviteOnly) return "Request Invite";
+    if ((channel as any).inviteOnly) return "Request Invite";
     if (channel.isPrivate) return "Request to Join";
     return "Join Channel";
   };
@@ -109,11 +168,14 @@ export function ChannelActions({ channel, isJoined, onJoin, onLeave }: ChannelAc
       <div className="flex gap-2">
         {isJoined ? (
           <>
-            <Link to={`/channels/${channel.id}`} className="flex-1">
-              <Button variant="default" className="w-full" disabled={isLoading}>
-                View Channel
-              </Button>
-            </Link>
+            <Button 
+              variant="default" 
+              className="w-full"
+              disabled={isLoading}
+              onClick={() => navigate(`/channels/${channel.id}`)}
+            >
+              View Channel
+            </Button>
             <Button 
               variant="outline" 
               onClick={handleLeave}
@@ -136,3 +198,4 @@ export function ChannelActions({ channel, isJoined, onJoin, onLeave }: ChannelAc
     </div>
   );
 }
+
