@@ -1,8 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Profile } from "@/types/supabase";
 import { User } from "@/types";
-import { Video, Image as LucideImage, FileText, Calendar } from "lucide-react"; // Aliased Image
+import { Video, Image as LucideImage, FileText, Calendar } from "lucide-react";
 import React from "react";
 
 // Mock data for posts with enhanced properties
@@ -103,7 +102,7 @@ export const getContentTypeIcon = (post: any) => {
   if (post.mediaType === "video") {
     return <Video className="h-5 w-5 text-blue-500" />;
   } else if (post.mediaType === "image") {
-    return <LucideImage className="h-5 w-5 text-green-500" />; // Used aliased LucideImage
+    return <LucideImage className="h-5 w-5 text-green-500" />;
   } else if (post.tags && post.tags.some((tag: string) => tag.toLowerCase().includes("event"))) { // Added null check for post.tags
     return <Calendar className="h-5 w-5 text-purple-500" />;
   } else {
@@ -135,11 +134,11 @@ export const TOPIC_STYLES: Record<string, { color: string, icon: React.ReactNode
   },
   music: { 
     color: 'bg-purple-50 text-purple-700 border-purple-200', 
-    icon: <LucideImage className="h-5 w-5 text-purple-500" /> // Used aliased LucideImage
+    icon: <LucideImage className="h-5 w-5 text-purple-500" />
   },
   food: { 
     color: 'bg-orange-50 text-orange-700 border-orange-200', 
-    icon: <LucideImage className="h-5 w-5 text-orange-500" /> // Used aliased LucideImage
+    icon: <LucideImage className="h-5 w-5 text-orange-500" />
   },
   events: { 
     color: 'bg-pink-50 text-pink-700 border-pink-200', 
@@ -151,7 +150,7 @@ export const TOPIC_STYLES: Record<string, { color: string, icon: React.ReactNode
   },
   art: { 
     color: 'bg-amber-50 text-amber-700 border-amber-200', 
-    icon: <LucideImage className="h-5 w-5 text-amber-500" /> // Used aliased LucideImage
+    icon: <LucideImage className="h-5 w-5 text-amber-500" />
   },
 };
 
@@ -204,4 +203,3 @@ export interface DiscoverFeedCommonProps {
   sortBy?: string;
   topics?: string[];
 }
-
