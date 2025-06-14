@@ -43,7 +43,7 @@ export function useChannelMembers(channelId?: string) {
         .from('channel_members')
         .select(`
           *,
-          profiles!channel_members_user_id_fkey (
+          profiles (
             id,
             name,
             username,
