@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -6,12 +7,25 @@ import { Badge } from "@/components/ui/badge";
 import { ChatInput } from "@/components/ui/chat-input";
 import { ChatMessage } from "@/components/ui/chat-message";
 import { BackNavigation } from "@/components/ui/back-navigation";
-import { useChannelManagement } from "@/hooks/useChannelManagement";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { CHANNELS } from "@/data/mock-data";
-import { Channel } from "@/types";
+import { useChannelMessages } from "@/hooks/useChannelMessages";
+import { useChannelMembers } from "@/hooks/useChannelMembers";
+import { supabase } from "@/integrations/supabase/client";
 import { Users, Hash, Bell, Settings, UserPlus, Volume2, VolumeX, Heart, MessageSquare, Share2, Pin, Search, AtSign, MoreVertical, Home, Mic, Headphones, ChevronDown, Crown, Shield } from "lucide-react";
+
+interface Channel {
+  id: string;
+  name: string;
+  description?: string;
+  owner_id: string;
+  is_private: boolean;
+  invite_only: boolean;
+  member_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 const MOCK_CHANNELS = [{
   id: "1",
   name: "General",
@@ -29,92 +43,44 @@ const MOCK_CHANNELS = [{
   name: "Resources",
   isActive: false
 }];
-const MOCK_MEMBERS = [{
-  id: "1",
-  name: "Alex Thompson",
-  status: "online",
-  role: "admin",
-  avatar: "/placeholder.svg"
-}, {
-  id: "2",
-  name: "Sarah Chen",
-  status: "online",
-  role: "moderator",
-  avatar: "/placeholder.svg"
-}, {
-  id: "3",
-  name: "Marcus Rodriguez",
-  status: "online",
-  role: "member",
-  avatar: "/placeholder.svg"
-}, {
-  id: "4",
-  name: "Emma Wilson",
-  status: "away",
-  role: "member",
-  avatar: "/placeholder.svg"
-}, {
-  id: "5",
-  name: "David Kim",
-  status: "offline",
-  role: "member",
-  avatar: "/placeholder.svg"
-}, {
-  id: "6",
-  name: "Lisa Brown",
-  status: "offline",
-  role: "member",
-  avatar: "/placeholder.svg"
-}];
+
 export default function EnhancedChannel() {
-  const {
-    id
-  } = useParams<{
-    id: string;
-  }>();
-  const {
-    user
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
-  const {
-    joinChannel,
-    leaveChannel,
-    isChannelJoined
-  } = useChannelManagement();
+  const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [channel, setChannel] = useState<Channel | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
-  const [hasJoined, setHasJoined] = useState(false);
-  const [onlineMembers, setOnlineMembers] = useState(0);
   const [showMemberList, setShowMemberList] = useState(true);
   const [showChannelList, setShowChannelList] = useState(true);
 
-  // Fix infinite loop by adding proper dependencies and memoization
+  // Use our new hooks for real-time functionality
+  const { messages, loading: messagesLoading } = useChannelMessages(id);
+  const { members, isJoined, joinChannel, leaveChannel, loading: membersLoading } = useChannelMembers(id);
+
+  // Load channel data from database
   useEffect(() => {
     if (!id) return;
+    
     const loadChannel = async () => {
       setIsLoading(true);
       try {
-        const mockChannel = CHANNELS.find(c => c.id === id);
-        const userChannelsString = localStorage.getItem("userChannels");
-        const userChannels = userChannelsString ? JSON.parse(userChannelsString) : [];
-        const userChannel = userChannels.find((c: Channel) => c.id === id);
-        const foundChannel = mockChannel || userChannel;
-        if (foundChannel) {
-          setChannel(foundChannel);
-          setOnlineMembers(MOCK_MEMBERS.filter(m => m.status === 'online').length);
-          const storedMessages = JSON.parse(localStorage.getItem(`channel_messages_${id}`) || "[]");
-          setMessages(storedMessages);
-        } else {
+        const { data, error } = await supabase
+          .from('channels')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) {
+          console.error("Error loading channel:", error);
           toast({
             title: "Channel not found",
             description: "The channel you're looking for doesn't exist.",
             variant: "destructive"
           });
+        } else {
+          setChannel(data);
         }
       } catch (error) {
         console.error("Error loading channel:", error);
@@ -127,64 +93,26 @@ export default function EnhancedChannel() {
         setIsLoading(false);
       }
     };
-    loadChannel();
-  }, [id, toast]); // Removed isChannelJoined from dependencies to prevent infinite loop
 
-  // Separate effect for checking join status
-  useEffect(() => {
-    if (id) {
-      setHasJoined(isChannelJoined(id));
-    }
-  }, [id, isChannelJoined]);
-  const handleJoinChannel = async () => {
-    if (!channel) return;
-    try {
-      joinChannel(channel.id);
-      setHasJoined(true);
-      toast({
-        title: "Joined channel",
-        description: `Welcome to ${channel.name}!`
-      });
-    } catch (error) {
-      toast({
-        title: "Failed to join",
-        description: "Please try again later",
-        variant: "destructive"
-      });
-    }
-  };
-  const handleLeaveChannel = async () => {
-    if (!channel) return;
-    try {
-      leaveChannel(channel.id);
-      setHasJoined(false);
-      toast({
-        title: "Left channel",
-        description: `You've left ${channel.name}`
-      });
-    } catch (error) {
-      toast({
-        title: "Failed to leave",
-        description: "Please try again later",
-        variant: "destructive"
-      });
-    }
-  };
+    loadChannel();
+  }, [id, toast]);
+
   const handleMessageSent = () => {
-    if (!id) return;
-    const storedMessages = JSON.parse(localStorage.getItem(`channel_messages_${id}`) || "[]");
-    setMessages(storedMessages);
+    // Messages are automatically updated via real-time subscription
+    console.log("Message sent");
   };
+
   const getPrivacyBadge = () => {
     if (!channel) return null;
-    if (channel.inviteOnly) {
+    if (channel.invite_only) {
       return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Invite Only</Badge>;
     }
-    if (channel.isPrivate) {
+    if (channel.is_private) {
       return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Private</Badge>;
     }
     return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Public</Badge>;
   };
+
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'admin':
@@ -195,30 +123,27 @@ export default function EnhancedChannel() {
         return null;
     }
   };
-  const getStatusDot = (status: string) => {
-    switch (status) {
-      case 'online':
-        return "bg-green-500";
-      case 'away':
-        return "bg-yellow-500";
-      case 'busy':
-        return "bg-red-500";
-      default:
-        return "bg-gray-400";
-    }
+
+  const getStatusDot = (isOnline: boolean) => {
+    return isOnline ? "bg-green-500" : "bg-gray-400";
   };
+
   if (isLoading) {
-    return <MainLayout>
+    return (
+      <MainLayout>
         <div className="flex items-center justify-center h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading channel...</p>
           </div>
         </div>
-      </MainLayout>;
+      </MainLayout>
+    );
   }
+
   if (!channel) {
-    return <MainLayout>
+    return (
+      <MainLayout>
         <div className="flex items-center justify-center h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)]">
           <div className="text-center">
             <Hash className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -226,16 +151,16 @@ export default function EnhancedChannel() {
             <p className="text-muted-foreground">The channel you're looking for doesn't exist.</p>
           </div>
         </div>
-      </MainLayout>;
+      </MainLayout>
+    );
   }
-  return <MainLayout>
+
+  return (
+    <MainLayout>
       <div className="h-[calc(100vh-7.5rem)] md:h-[calc(100vh-3.5rem)] flex bg-gray-50 dark:bg-gray-900">
         {/* Left Sidebar - Navigation */}
         <div className="w-16 bg-gray-900 flex flex-col items-center py-3 space-y-2">
           <BackNavigation customBackPath="/channels" showHome={false} />
-          
-          
-          
         </div>
 
         {/* Channel List Sidebar */}
@@ -259,10 +184,12 @@ export default function EnhancedChannel() {
                   <Hash className="h-4 w-4 mr-2" />
                   <span className="text-sm">{channel.name}</span>
                 </div>
-                {MOCK_CHANNELS.map(ch => <div key={ch.id} className="flex items-center px-2 py-1 rounded text-gray-400 hover:bg-gray-700 hover:text-gray-200 cursor-pointer">
+                {MOCK_CHANNELS.map(ch => (
+                  <div key={ch.id} className="flex items-center px-2 py-1 rounded text-gray-400 hover:bg-gray-700 hover:text-gray-200 cursor-pointer">
                     <Hash className="h-4 w-4 mr-2" />
                     <span className="text-sm">{ch.name}</span>
-                  </div>)}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -279,7 +206,7 @@ export default function EnhancedChannel() {
                 {getPrivacyBadge()}
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Users className="h-4 w-4 mr-1" />
-                  {channel.members} members
+                  {channel.member_count} members
                 </div>
               </div>
 
@@ -305,36 +232,40 @@ export default function EnhancedChannel() {
               </div>
             </div>
 
-            {/* Channel description */}
-            {channel.description && <div className="px-4 pb-2">
+            {channel.description && (
+              <div className="px-4 pb-2">
                 <p className="text-sm text-muted-foreground">{channel.description}</p>
-              </div>}
+              </div>
+            )}
           </div>
 
-          {!hasJoined ? <div className="flex-1 flex items-center justify-center p-8">
+          {!isJoined ? (
+            <div className="flex-1 flex items-center justify-center p-8">
               <div className="text-center max-w-md">
                 <Hash className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
                 <h2 className="text-2xl font-bold mb-2">Welcome to #{channel.name}</h2>
                 <p className="text-muted-foreground mb-6">
-                  Deep discussions on consciousness, ethics, and the nature of reality. All perspectives welcome.
+                  {channel.description || "Join this channel to start participating in the conversation."}
                 </p>
                 <div className="flex items-center justify-center gap-4 mb-6">
                   {getPrivacyBadge()}
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Users className="h-4 w-4 mr-1" />
-                    {channel.members} members
+                    {channel.member_count} members
                   </div>
                   <div className="flex items-center text-sm text-muted-foreground">
                     <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
-                    {onlineMembers} online
+                    {members.length} online
                   </div>
                 </div>
-                <Button onClick={handleJoinChannel} className="w-full bg-green-600 hover:bg-green-700">
+                <Button onClick={joinChannel} className="w-full bg-green-600 hover:bg-green-700" disabled={membersLoading}>
                   <UserPlus className="h-4 w-4 mr-2" />
                   Join Channel
                 </Button>
               </div>
-            </div> : <div className="flex-1 flex">
+            </div>
+          ) : (
+            <div className="flex-1 flex">
               {/* Messages Area */}
               <div className="flex-1 flex flex-col">
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
@@ -347,7 +278,7 @@ export default function EnhancedChannel() {
                           Welcome to #{channel.name}!
                         </h3>
                         <p className="text-sm text-blue-700 dark:text-blue-200">
-                          Deep discussions on consciousness, ethics, and the nature of reality. All perspectives welcome.
+                          {channel.description || "Start the conversation in this channel."}
                         </p>
                       </div>
                     </div>
@@ -356,91 +287,107 @@ export default function EnhancedChannel() {
                   {/* Date Separator */}
                   <div className="flex items-center my-4">
                     <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
-                    <span className="px-3 text-xs text-gray-500 bg-background">Saturday, June 07, 2025</span>
+                    <span className="px-3 text-xs text-gray-500 bg-background">Today</span>
                     <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
                   </div>
 
-                  {messages.length > 0 ? messages.map((message, index) => <ChatMessage key={message.id || index} message={{
-                id: message.id || `msg-${index}`,
-                content: message.content,
-                timestamp: new Date(message.created_at || Date.now()),
-                sender: {
-                  id: message.sender_id || "user",
-                  name: message.sender_id === user?.id ? "You" : "User",
-                  avatar: "/placeholder.svg"
-                },
-                isCurrentUser: message.sender_id === user?.id
-              }} />) : <div className="text-center py-10">
+                  {messagesLoading ? (
+                    <div className="text-center py-10">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-sm text-muted-foreground">Loading messages...</p>
+                    </div>
+                  ) : messages.length > 0 ? (
+                    messages.map((message) => (
+                      <ChatMessage 
+                        key={message.id} 
+                        message={{
+                          id: message.id,
+                          content: message.content,
+                          timestamp: new Date(message.created_at),
+                          sender: {
+                            id: message.sender_id,
+                            name: message.sender?.name || "Unknown User",
+                            avatar: message.sender?.avatar || "/placeholder.svg"
+                          },
+                          isCurrentUser: message.sender_id === user?.id
+                        }} 
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-10">
                       <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="font-medium mb-2">No messages yet</h3>
                       <p className="text-sm text-muted-foreground">
                         Be the first to start the conversation!
                       </p>
-                    </div>}
+                    </div>
+                  )}
                 </div>
 
                 {/* Message Input */}
                 <div className="border-t bg-background p-4">
-                  <ChatInput conversationId={`channel_${id}`} userId={user?.id || "anonymous"} onMessageSent={handleMessageSent} />
+                  <ChatInput 
+                    channelId={id} 
+                    userId={user?.id || "anonymous"} 
+                    recipientName={channel.name}
+                    onMessageSent={handleMessageSent} 
+                  />
                 </div>
               </div>
 
               {/* Member List (Right Panel) */}
-              {showMemberList && <div className="w-60 bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
+              {showMemberList && (
+                <div className="w-60 bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
                   <div className="p-4">
                     <h3 className="font-medium text-gray-900 dark:text-white mb-4">
-                      Members — {channel.members}
+                      Members — {channel.member_count}
                     </h3>
                     
-                    <div className="space-y-4">
-                      {/* Online Members */}
-                      <div>
-                        <h4 className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-2">
-                          Online — {onlineMembers}
-                        </h4>
-                        <div className="space-y-2">
-                          {MOCK_MEMBERS.filter(member => member.status === 'online').map(member => <div key={member.id} className="flex items-center gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
-                              <div className="relative">
-                                <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center text-sm font-medium">
-                                  {member.name[0]}
+                    {membersLoading ? (
+                      <div className="text-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Online Members */}
+                        <div>
+                          <h4 className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-2">
+                            Members — {members.length}
+                          </h4>
+                          <div className="space-y-2">
+                            {members.map(member => (
+                              <div key={member.id} className="flex items-center gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                                <div className="relative">
+                                  <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center text-sm font-medium">
+                                    {member.user.avatar ? (
+                                      <img src={member.user.avatar} alt={member.user.name} className="h-8 w-8 rounded-full" />
+                                    ) : (
+                                      member.user.name?.[0] || 'U'
+                                    )}
+                                  </div>
+                                  <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${getStatusDot(true)} border-2 border-white rounded-full`}></div>
                                 </div>
-                                <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${getStatusDot(member.status)} border-2 border-white rounded-full`}></div>
+                                <div className="flex items-center gap-1 flex-1 min-w-0">
+                                  {getRoleIcon(member.role)}
+                                  <span className="text-sm text-gray-900 dark:text-white truncate">
+                                    {member.user.name || 'Unknown User'}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1 flex-1 min-w-0">
-                                {getRoleIcon(member.role)}
-                                <span className="text-sm text-gray-900 dark:text-white truncate">{member.name}</span>
-                              </div>
-                            </div>)}
+                            ))}
+                          </div>
                         </div>
                       </div>
-                      
-                      {/* Offline Members */}
-                      <div>
-                        <h4 className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-2">
-                          Offline — {MOCK_MEMBERS.filter(m => m.status === 'offline').length}
-                        </h4>
-                        <div className="space-y-2">
-                          {MOCK_MEMBERS.filter(member => member.status === 'offline').map(member => <div key={member.id} className="flex items-center gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
-                              <div className="relative">
-                                <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center text-sm font-medium opacity-60">
-                                  {member.name[0]}
-                                </div>
-                                <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${getStatusDot(member.status)} border-2 border-white rounded-full`}></div>
-                              </div>
-                              <div className="flex items-center gap-1 flex-1 min-w-0">
-                                {getRoleIcon(member.role)}
-                                <span className="text-sm text-gray-500 truncate">{member.name}</span>
-                              </div>
-                            </div>)}
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                </div>}
-            </div>}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
       
       <div className="md:hidden h-16"></div>
-    </MainLayout>;
+    </MainLayout>
+  );
 }

@@ -7,10 +7,12 @@ import { VoiceMessage } from "@/components/chat/VoiceMessage";
 import { EmojiPicker } from "@/components/ui/emoji-picker";
 import { EnhancedFileUploader } from "@/components/chat/EnhancedFileUploader";
 import { useToast } from "@/hooks/use-toast";
-import { useRealTimeMessages } from "@/hooks/useRealTimeMessages";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ChatInputProps {
-  conversationId: string;
+  conversationId?: string;
+  channelId?: string;
   userId: string;
   recipientName?: string;
   onMessageSent?: () => void;
@@ -19,7 +21,8 @@ interface ChatInputProps {
 }
 
 export function ChatInput({ 
-  conversationId, 
+  conversationId,
+  channelId,
   userId, 
   recipientName = "User", 
   onMessageSent,
@@ -31,9 +34,8 @@ export function ChatInput({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showFileUploader, setShowFileUploader] = useState(false);
   const { toast } = useToast();
-  const { sendMessage } = useRealTimeMessages(conversationId);
+  const { user } = useAuth();
 
-  // Handle input change with typing indicator
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setMessage(value);
@@ -41,12 +43,34 @@ export function ChatInput({
   }, [onInputChange]);
 
   const handleSendMessage = useCallback(async () => {
-    if (!message.trim() || isLoading) return;
+    if (!message.trim() || isLoading || !user) return;
 
     setIsLoading(true);
 
     try {
-      const result = await sendMessage(message.trim());
+      let result;
+      
+      if (channelId) {
+        // Send channel message
+        result = await supabase
+          .from('messages')
+          .insert({
+            content: message.trim(),
+            sender_id: user.id,
+            channel_id: channelId,
+            type: 'text'
+          });
+      } else if (conversationId) {
+        // Send direct message
+        result = await supabase
+          .from('messages')
+          .insert({
+            content: message.trim(),
+            sender_id: user.id,
+            conversation_id: conversationId,
+            type: 'text'
+          });
+      }
       
       if (result?.error) {
         toast({
@@ -69,7 +93,7 @@ export function ChatInput({
     } finally {
       setIsLoading(false);
     }
-  }, [message, sendMessage, onSubmit, onMessageSent, toast, isLoading]);
+  }, [message, user, channelId, conversationId, onSubmit, onMessageSent, toast, isLoading]);
 
   const handleVoiceMessage = useCallback(async (audioBlob: Blob) => {
     toast({
