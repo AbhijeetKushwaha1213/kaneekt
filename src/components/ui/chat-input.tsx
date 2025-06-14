@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,14 +50,15 @@ export function ChatInput({
       let result;
       
       if (channelId) {
-        // Send channel message
+        // Send channel message - conversation_id is nullable for channel messages
         result = await supabase
           .from('messages')
           .insert({
             content: message.trim(),
             sender_id: user.id,
             channel_id: channelId,
-            type: 'text'
+            type: 'text',
+            conversation_id: null
           });
       } else if (conversationId) {
         // Send direct message

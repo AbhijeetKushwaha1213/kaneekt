@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,7 +43,7 @@ export function useChannelMembers(channelId?: string) {
         .from('channel_members')
         .select(`
           *,
-          user:profiles!channel_members_user_id_fkey (
+          profiles!channel_members_user_id_fkey (
             id,
             name,
             username,
@@ -54,11 +55,26 @@ export function useChannelMembers(channelId?: string) {
       if (error) {
         console.error('Error fetching channel members:', error);
       } else {
-        setMembers(data || []);
+        // Transform the data to match our interface
+        const transformedMembers = (data || []).map(member => ({
+          id: member.id,
+          user_id: member.user_id,
+          channel_id: member.channel_id,
+          role: member.role as 'admin' | 'moderator' | 'member',
+          joined_at: member.joined_at,
+          user: {
+            id: member.profiles?.id || member.user_id,
+            name: member.profiles?.name || 'Unknown User',
+            username: member.profiles?.username,
+            avatar: member.profiles?.avatar
+          }
+        }));
+        
+        setMembers(transformedMembers);
         
         // Check if current user is a member
         if (user) {
-          const userIsMember = data?.some(member => member.user_id === user.id);
+          const userIsMember = transformedMembers.some(member => member.user_id === user.id);
           setIsJoined(!!userIsMember);
         }
       }
