@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Heart, MessageSquare, Share2, Bookmark, MoreHorizontal, MapPin, Image as ImageIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { POSTS, DiscoverFeedCommonProps, getContentTypeIcon } from "@/utils/discoverFeedUtils";
+import { POSTS, DiscoverFeedCommonProps, getContentTypeIcon } from "@/utils/discoverFeedUtils.tsx";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 
 
@@ -92,7 +91,7 @@ export function DiscoverFeedPosts({
             <p className="text-sm">{post.content}</p>
             {post.mediaUrl && post.mediaType === 'image' && (
               <div className="rounded-lg overflow-hidden border">
-                <ImageIcon src={post.mediaUrl} alt="Post media" className="w-full h-auto object-cover" />
+                <img src={post.mediaUrl} alt="Post media" className="w-full h-auto object-cover" />
               </div>
             )}
             {post.tags && post.tags.length > 0 && (
@@ -111,10 +110,10 @@ export function DiscoverFeedPosts({
               </Button>
             </div>
             <div className="flex space-x-2">
-              <Button variant="ghost" size="iconSm" className="text-muted-foreground hover:text-primary">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
                 <Share2 className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="iconSm" className="text-muted-foreground hover:text-primary">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
                 <Bookmark className="h-4 w-4" />
               </Button>
             </div>
